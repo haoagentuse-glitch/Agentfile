@@ -1,29 +1,29 @@
 ---
 name: api-contract
-description: Contract-driven development for HTTP APIs — author the OpenAPI spec first, generate models and contract tests from it. Use when building or changing an HTTP endpoint, or when the API surface is under discussion.
+description: HTTP API 的契約驅動開發——先寫 OpenAPI 規格，models 與契約測試都由它生成。用於新增或修改 HTTP 端點，或討論 API 介面形狀的時候。
 ---
 
-# API contract
+# API 契約
 
-`openapi.yaml` is the single source of truth for the API surface. Models and contract tests are generated from it. Neither is edited by hand.
+`openapi.yaml` 是 API 介面的唯一來源。models 與契約測試都由它生成，兩者皆不得手改。
 
-## Loop
+## 迴圈
 
-1. **Write or amend `openapi.yaml`.** This is the design step. Nothing else moves first.
-2. **Generate models.**
+1. **寫或修改 `openapi.yaml`。** 這是設計步驟，其他東西一律不先動。
+2. **生成 models。**
    ```bash
    uv run datamodel-codegen --input openapi.yaml --input-file-type openapi --output src/<pkg>/models.py --output-model-type pydantic_v2.BaseModel --target-python-version 3.12 --disable-timestamp
    ```
-   `--disable-timestamp` is **required**, not cosmetic: without it the generator stamps the current time into the file, every regeneration differs, and the drift check below can never pass.
+   `--disable-timestamp` 是**必要參數**，不是美化：少了它，生成器會把當下時間寫進檔案，每次重生成都不同，下面的漂移檢查永遠不可能通過。
 
-   The output is a build artifact. Never hand-edit it — the next regeneration silently discards your change.
-3. **Run contract tests.** They should fail; nothing implements the spec yet.
-4. **Implement the handler** against the generated models until contract tests pass.
-5. **Hand over to `tdd`** for behaviour.
+   產出是建置產物。絕不手改——下一次重生成會無聲地把你的修改丟掉。
+3. **跑契約測試。** 此時應該紅，因為還沒有任何實作。
+4. **實作 handler**，對著生成的 models 寫，直到契約測試轉綠。
+5. **交棒給 `tdd`** 處理行為。
 
-## Contract tests
+## 契約測試
 
-No server required — bind the spec to the ASGI app directly:
+不需要跑伺服器——直接把規格綁到 ASGI 應用上：
 
 ```python
 import schemathesis
@@ -38,34 +38,34 @@ def test_api_obeys_its_contract(case):
     case.call_and_validate()
 ```
 
-Cases are generated from the spec; do not write them by hand.
+測試案例由規格生成，不要手寫。
 
-Expect the first run to flag status codes your framework emits but the spec never declared — FastAPI answers an unparseable body with `400`, which a spec written by hand will almost always have missed. That is the contract test doing its job. **Fix the spec or the handler; never loosen the test.**
+第一次跑通常會抓到框架會發出、但規格從未宣告的狀態碼——FastAPI 對無法解析的 body 回 `400`，手寫的規格幾乎必然漏掉。那是契約測試在做它該做的事。**改規格或改 handler，絕不放寬測試。**
 
-## What each test layer is responsible for
+## 兩層測試各自負責什麼
 
-`schemathesis` checks only that the implementation obeys the spec:
+`schemathesis` 只檢查實作有沒有遵守規格：
 
-- responses match the declared schema
-- no undeclared status codes, no undeclared 500s
-- declared constraints reject what they say they reject
+- 回應符合宣告的 schema
+- 沒有未宣告的狀態碼，沒有未宣告的 500
+- 宣告的限制確實拒絕它說會拒絕的東西
 
-**It does not check that the behaviour is correct.** An endpoint returning a well-formed, schema-valid, entirely wrong answer passes every contract test — a handler that stores the title it was given and one that stores `"placeholder"` are indistinguishable to the contract.
+**它不檢查行為是否正確。** 一個回傳格式完美、schema 合規、內容完全錯誤的端點，能通過所有契約測試——把使用者給的標題存下來的 handler，跟寫死 `"placeholder"` 的 handler，對契約測試而言完全無法區分。
 
-Business behaviour and regressions are hand-written tests, driven by `tdd`'s red-green-refactor. Write the cases that matter; there is no rule against hand-written tests here. Contract testing narrows the surface those tests have to cover — it does not replace them.
+業務行為與 regression 由手寫測試負責，走 `tdd` 的 red-green-refactor。該寫的案例就寫，這裡沒有禁止手寫測試的規則。契約測試縮小了手寫測試要涵蓋的面，不取代它。
 
-## Drift
+## 漂移
 
-Generated code drifts: someone edits the artifact, or amends the spec without regenerating. Guard it in CI and locally — regenerate, then demand no diff:
+生成的程式碼會漂移：有人手改了產物，或改了規格卻沒重新生成。在 CI 與本機都要守——重新生成，然後要求零差異：
 
 ```bash
 uv run datamodel-codegen --input openapi.yaml --input-file-type openapi --output src/<pkg>/models.py --output-model-type pydantic_v2.BaseModel --target-python-version 3.12 --disable-timestamp && git diff --exit-code src/<pkg>/models.py
 ```
 
-Non-empty diff means the committed artifact does not match the spec. Fix the spec or regenerate — never resolve it by editing the artifact.
+差異非空，代表提交的產物與規格不一致。修規格或重新生成——絕不靠改產物解決。
 
-Generated files are excluded from the project's lint and format rules. They are artifacts, not source: their style is the generator's business, and a rule you cannot fix without hand-editing the file is a rule that will be broken.
+生成的檔案排除在專案的 lint 與 format 規範之外。它們是產物不是原始碼：格式是生成器的事，而一條只能靠手改產物才能滿足的規則，遲早會被手改產物滿足。
 
-## Changing a published contract
+## 更動已發布的契約
 
-A breaking change to a published endpoint is a hard-to-reverse decision. It does not get made inline: record an ADR via `domain-modeling` first, then change the spec.
+破壞已發布端點屬於難逆決定，不在實作過程中順手做：先透過 `domain-modeling` 記一份 ADR，再改規格。

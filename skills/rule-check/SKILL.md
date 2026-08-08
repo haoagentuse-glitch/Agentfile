@@ -1,6 +1,6 @@
 ---
 name: rule-check
-description: Audit the current changes against this repo's AGENTS.md, clause by clause. Use before committing, during review, or when finishing a piece of work.
+description: 對照本專案的 AGENTS.md 逐條稽核當前變更。用於提交前、審查中，或一段工作收尾的時候。
 ---
 
 # 規範自檢
@@ -37,11 +37,17 @@ description: Audit the current changes against this repo's AGENTS.md, clause by 
 - [ ] 被取代的舊路徑刪乾淨了嗎？有沒有留下相容層、fallback、註解掉的舊碼？
 - [ ] 動到難逆的東西（對外契約、schema、持久化格式）時，是長期考量還是權宜方案？後者不接受，且理由要進 `docs/adr/`。
 
+## 輸出語言
+
+- [ ] 這次寫的文件、commit 訊息、issue 內容有沒有中英夾雜？
+- [ ] 本包自有的技能檔是不是全中文？（vendored 檔案不算，那是刻意不翻譯的）
+- [ ] 保留原文的詞，是不是真的沒有廣為使用的中文說法？
+
 ## 技能 vendoring
 
 - [ ] 有沒有同一能力存在兩份實作？
 - [ ] vendored SKILL.md 的 workflow 內文有沒有被改動？只允許出處 metadata 與設定檔引用的改寫。
-- [ ] 每份 vendored skill 的 frontmatter 都有 `metadata.source` 與 `metadata.license` 嗎？
+- [ ] 每份 vendored 技能的 frontmatter 都有 `metadata.source` 嗎？授權在頂層 `license` 或 `metadata.license` 擇一宣告，不重複。
 - [ ] 有沒有引用到沒被 vendor 進來的 skill？
 - [ ] `LICENSES/` 有涵蓋所有 vendored 來源嗎？
 

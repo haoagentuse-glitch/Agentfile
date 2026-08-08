@@ -71,12 +71,26 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 ✓ pytest tests/test_ingest.py::test_schema
 ```
 
+## 輸出
+
+**語言**：對使用者的一切輸出一律全中文——回覆、`docs/`、README、commit 訊息、issue 內容、本包自有的技能檔。
+
+- 判準：這個詞有沒有廣為使用的中文說法？有就用中文（提交、分支、變更、技能、符號連結）。沒有，或翻了反而讓人查不到原文，就保留原文（frontmatter、OpenAPI、embedding）。
+- 一律保留原文：套件名、指令名、檔名、技術與模型名稱、程式碼識別符。
+- 不做中英夾雜。同一個概念在同一份文件裡只用一種寫法。
+- vendored 檔案是例外，不翻譯——那會構成改寫上游內文。
+
+**形狀**：每個 session 開始就套用 `i-have-adhd` 技能，不等使用者輸入 `/i-have-adhd`。
+
+- 該技能是唯一來源，規則不複製到本檔。要改輸出形狀就去改它，或說「stop adhd mode」關掉。
+- 它的「不要開場白、不要收尾寒暄」與「執行面」的 Glass Box 不衝突：Glass Box 要的是命令、設定、輸入與 commit 的事實摘要，那是內容不是寒暄。該講的照講，只是不加「希望有幫助」。
+
 ## 技能 vendoring
 
 - 每個能力只有一份實作。來源不限，同一能力不得存在兩份。
 - 外部技能 vendor 成本包自有檔案，不以外掛安裝。外掛裝在使用者層級，clean checkout 換機就散，違反「執行面」的驗收。
 - vendored 檔案逐字保留，只允許：注入出處 metadata、把上游的 per-repo 設定引用改指向本包交付的設定檔。不改 workflow 內文。
-- 出處記於 frontmatter 的 `metadata`，含來源 repo、commit、授權。授權全文放 `LICENSES/`。
+- 出處記於 frontmatter 的 `metadata.source`，含來源 repo 與 commit。授權在頂層 `license` 或 `metadata.license` 擇一宣告，不重複；全文放 `LICENSES/`。
 - 更新是刻意行為：手動 diff 上游後決定是否採納，不自動同步。
 
 canonical source 是 `skills/<name>/`。`.claude/skills` 是指向它的 symlink；Codex 直接掃 `.agents/skills`，不另做投影。

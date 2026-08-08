@@ -1,6 +1,6 @@
 ---
 name: project-bootstrap
-description: Set up a new repo from this pack — apply the skills and rules, create the GitHub repo and triage label, and prepare the Python environment. Use at project start, or to bring an existing repo under these rules.
+description: 用這包建立新專案的骨架——套用技能與規範、建立 GitHub 儲存庫與分流標籤、備妥 Python 環境。用於專案啟動，或把既有專案納入這套規範。
 ---
 
 # 專案骨架建立

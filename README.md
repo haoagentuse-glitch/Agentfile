@@ -134,6 +134,8 @@ symlink 在 Windows 原生環境不可靠；WSL、macOS、Linux 正常。
 
 `grilling` `grill-me` `grill-with-docs` `writing-for-agents` `domain-modeling` `codebase-design` `to-spec` `to-tickets` `tdd` `implement` `code-review` `handoff`
 
+另取自 [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd)（MIT）：`i-have-adhd`。它是輸出形狀的唯一來源，`AGENTS.md` 只指向它、不複製規則。每個 session 自動套用，不必手動輸入 `/i-have-adhd`；要關掉就說「stop adhd mode」。
+
 每份的 frontmatter `metadata` 記著來源 commit。改動只有兩處，都不碰 workflow：
 
 - 注入 `metadata.source` / `metadata.license`
