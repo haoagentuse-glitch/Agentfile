@@ -63,6 +63,38 @@ agentkit doctor
 
 agentkit 只管**結構化歷史**：哪個 agent、哪個 model、哪個分支、動了哪些檔案、當時的 commit。語意檢索是另一層，兩者不互相依賴——agentkit 的程式碼裡不會出現任何 semantic backend 的名字，換掉它不用動 agentkit 一行。
 
+## 語意檢索（選用）
+
+`docs/` 底下的 markdown 是 durable knowledge 的唯一來源。語意索引是從它衍生、可重建的快取，隨時可以砍掉重建、也隨時可以換掉。
+
+```bash
+uv tool install "memsearch[onnx]"
+```
+
+memsearch 的**預設 embedding provider 是 OpenAI**，不設定的話第一次索引會因為缺 `OPENAI_API_KEY` 直接失敗。要用本機模型得裝 `[onnx]` extra 並切換：
+
+```bash
+memsearch config set embedding.provider onnx
+```
+
+> **切換後首次 `memsearch index` 會從 HuggingFace 下載約 558 MB 的 bge-m3 int8 模型**，之後快取在家目錄。本機 CPU 執行，不需 API key。安裝本身不下載，只有第一次索引才會。
+>
+> 模型快取在 `~/.cache/huggingface/`（實測 560 M），索引在 `~/.memsearch/milvus.db`。兩者都在家目錄，不在 repo 內，也不進版控。`apply.sh` **不會**觸發下載——套用這包不需要語意層，它是選用的。
+>
+> 不想拉本機模型就跳過上面那步，改用 `openai`、`ollama`、`google`、`voyage`、`jina`、`mistral` 其中之一。
+
+```bash
+memsearch index docs/
+```
+
+```bash
+memsearch search "為什麼契約用 spec-first"
+```
+
+**只用 CLI，不要裝 memsearch 的 Claude Code 外掛**——它會自動擷取每輪對話寫進 `.memsearch/memory/`，與 agentkit 的職責重疊，而且裝在使用者層級、換機就散。理由見 [ADR 0001](docs/adr/0001-semantic-layer-is-cli-only-and-replaceable.md)。
+
+換成別的工具不用改這包任何東西——接軌只是「markdown 放在 `docs/`」這個慣例。
+
 ## 誰擁有什麼
 
 同一件事只有一個擁有者。這是整包的核心約束。

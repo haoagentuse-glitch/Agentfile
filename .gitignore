@@ -1,6 +1,9 @@
 # 本機覆寫，不進版控
 .claude/settings.local.json
 
+# 語意索引是從 docs/ 衍生的快取，可重建
+.memsearch/
+
 # Python
 .venv/
 __pycache__/
