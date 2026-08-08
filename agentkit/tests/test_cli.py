@@ -68,7 +68,7 @@ def test_a_captured_session_shows_up_in_status(repo: Path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "s-001" in out
     assert "Add health endpoint" in out
-    assert "2 changed" in out
+    assert "2 個變更檔案" in out
 
     # The raw transcript is archived alongside the structured record.
     assert (transcripts_dir(repo, "claude") / "s-001.jsonl").exists()

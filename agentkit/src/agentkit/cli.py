@@ -12,18 +12,25 @@ from pathlib import Path
 
 from agentkit import db
 from agentkit.capture import parse_transcript
-from agentkit.paths import NotAGitRepo, agentkit_dir, db_path, head_commit, transcripts_dir
+from agentkit.paths import (
+    NotAGitRepo,
+    agentkit_dir,
+    db_path,
+    export_dir,
+    head_commit,
+    transcripts_dir,
+)
 
 
 def cmd_init(args: argparse.Namespace) -> int:
     cwd = Path.cwd()
     store = db_path(cwd)
     if store.exists():
-        print(f"already initialised: {store}")
+        print(f"已初始化：{store}")
         return 0
     db.create(store)
-    print(f"initialised: {store}")
-    print(f"transcripts: {agentkit_dir(cwd) / 'transcripts'}")
+    print(f"已建立：{store}")
+    print(f"逐字稿封存：{agentkit_dir(cwd) / 'transcripts'}")
     return 0
 
 
@@ -34,10 +41,10 @@ def cmd_capture(args: argparse.Namespace) -> int:
 
     store = db_path(cwd)
     if not store.exists():
-        print(f"error: not initialised — run `agentkit init` (expected {store})", file=sys.stderr)
+        print(f"錯誤：尚未初始化，請先跑 `agentkit init`（預期位置 {store}）", file=sys.stderr)
         return 2
     if not transcript.exists():
-        print(f"error: transcript not found: {transcript}", file=sys.stderr)
+        print(f"錯誤：找不到逐字稿 {transcript}", file=sys.stderr)
         return 2
 
     parsed = parse_transcript(transcript)
@@ -66,12 +73,12 @@ def cmd_capture(args: argparse.Namespace) -> int:
     with db.connect(store) as conn:
         db.upsert_session(conn, record, parsed.messages, parsed.tool_calls, parsed.changed_files)
 
-    print(f"captured {session_id} from {transcript}")
+    print(f"已擷取 {session_id}，來源 {transcript}")
     print(
-        f"  {len(parsed.messages)} messages, {len(parsed.tool_calls)} tool calls, "
-        f"{len(parsed.changed_files)} changed files"
+        f"  {len(parsed.messages)} 則訊息、{len(parsed.tool_calls)} 次工具呼叫、"
+        f"{len(parsed.changed_files)} 個變更檔案"
     )
-    print(f"  archived to {archive}")
+    print(f"  已封存至 {archive}")
     return 0
 
 
@@ -79,24 +86,24 @@ def cmd_status(args: argparse.Namespace) -> int:
     cwd = Path.cwd()
     store = db_path(cwd)
     if not store.exists():
-        print(f"error: not initialised — run `agentkit init` (expected {store})", file=sys.stderr)
+        print(f"錯誤：尚未初始化，請先跑 `agentkit init`（預期位置 {store}）", file=sys.stderr)
         return 2
 
     with db.connect(store) as conn:
         rows = db.recent_sessions(conn, limit=args.limit)
 
-    print(f"store:  {store}")
-    print(f"commit: {head_commit(cwd) or '(no commits)'}")
+    print(f"資料庫：{store}")
+    print(f"commit：{head_commit(cwd) or '（尚無 commit）'}")
     if not rows:
-        print("no sessions captured yet")
+        print("尚未擷取任何 session")
         return 0
 
-    print(f"{len(rows)} most recent session(s):")
+    print(f"最近 {len(rows)} 個 session：")
     for row in rows:
         print(
             f"  {row['session_id']}  {row['agent']}/{row['model']}  "
             f"{row['branch']}  {row['ended_at']}  "
-            f"{row['changed_count']} changed  {row['title'] or ''}".rstrip()
+            f"{row['changed_count']} 個變更檔案  {row['title'] or ''}".rstrip()
         )
     return 0
 
@@ -105,14 +112,14 @@ def cmd_search(args: argparse.Namespace) -> int:
     cwd = Path.cwd()
     store = db_path(cwd)
     if not store.exists():
-        print(f"error: not initialised — run `agentkit init` (expected {store})", file=sys.stderr)
+        print(f"錯誤：尚未初始化，請先跑 `agentkit init`（預期位置 {store}）", file=sys.stderr)
         return 2
 
     with db.connect(store) as conn:
         rows = db.search_messages(conn, args.query, limit=args.limit)
 
-    print(f"store: {store}")
-    print(f"查詢: {args.query!r}")
+    print(f"資料庫：{store}")
+    print(f"查詢：{args.query!r}")
     if not rows:
         print("沒有符合的訊息")
         return 0
@@ -127,6 +134,61 @@ def cmd_search(args: argparse.Namespace) -> int:
     return 0
 
 
+def _session_markdown(session: dict, messages, changed_files) -> str:
+    """One session as Markdown. Headings per message so a chunker has seams to cut on."""
+    head = session["title"] or session["session_id"]
+    lines = [
+        f"# {head}",
+        "",
+        f"- session: `{session['session_id']}`",
+        f"- agent: {session['agent']} / {session['model']}",
+        f"- branch: {session['branch']}",
+        f"- 期間: {session['started_at']} → {session['ended_at']}",
+        f"- commit: {session['commit_sha']}",
+    ]
+    lines.append("")
+    for msg in messages:
+        lines += [f"## {msg['role']} · {msg['timestamp']}", "", msg["text"], ""]
+    if changed_files:
+        # Own heading, own chunk: a wall of paths would otherwise dilute the
+        # embedding of whatever chunk it landed in.
+        lines += ["## 變更檔案", ""]
+        lines += [f"- `{p}`" for p in changed_files]
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def cmd_export(args: argparse.Namespace) -> int:
+    cwd = Path.cwd()
+    store = db_path(cwd)
+    if not store.exists():
+        print(f"錯誤：尚未初始化，請先跑 `agentkit init`（預期位置 {store}）", file=sys.stderr)
+        return 2
+
+    target = Path(args.markdown) if args.markdown else export_dir(cwd)
+    target.mkdir(parents=True, exist_ok=True)
+
+    with db.connect(store) as conn:
+        sessions = db.all_sessions(conn)
+        written = []
+        for row in sessions:
+            session = dict(row)
+            sid = session["session_id"]
+            text = _session_markdown(
+                session, db.messages_of(conn, sid), db.changed_files_of(conn, sid)
+            )
+            # A projection, never a merge: whatever is there is replaced.
+            path = target / f"{sid}.md"
+            path.write_text(text, encoding="utf-8")
+            written.append(path)
+
+    print(f"已輸出 {len(written)} 個 session 至 {target}")
+    for path in written:
+        print(f"  {path}")
+    print("這是可重建的投影，手改沒有意義——下次 export 會直接覆蓋")
+    return 0
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     """Check the things that silently break capture. Structured history only —
     the semantic layer is a separate, swappable concern and is not checked here."""
@@ -136,28 +198,28 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     checks: list[tuple[bool, str]] = []
 
     writable = root.parent.exists() and os.access(root.parent, os.W_OK)
-    checks.append((writable, f"shared git dir is writable: {root.parent}"))
-    checks.append((store.exists(), f"store exists (else run `agentkit init`): {store}"))
+    checks.append((writable, f"共用 git 目錄可寫入：{root.parent}"))
+    checks.append((store.exists(), f"資料庫存在（否則請跑 `agentkit init`）：{store}"))
 
     if store.exists():
         with db.connect(store) as conn:
             names = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master")}
         missing = {"sessions", "messages", "tool_calls", "changed_files"} - names
         detail = (
-            "schema complete"
+            "schema 完整"
             if not missing
-            else f"schema incomplete — missing {missing}; delete {store} and re-run `init`"
+            else f"schema 不完整，缺少 {missing}；請刪除 {store} 後重跑 `init`"
         )
         checks.append((not missing, detail))
 
     settings = cwd / ".claude" / "settings.json"
     hooked = settings.exists() and "agentkit capture" in settings.read_text()
-    checks.append((hooked, f"SessionEnd hook registered in {settings}"))
+    checks.append((hooked, f"SessionEnd hook 已註冊於 {settings}"))
 
     for ok, label in checks:
-        print(f"  {'ok  ' if ok else 'FAIL'} {label}")
+        print(f"  {'通過' if ok else '失敗'} {label}")
     failed = [label for ok, label in checks if not ok]
-    print(f"{len(checks) - len(failed)}/{len(checks)} checks passed")
+    print(f"{len(checks) - len(failed)}/{len(checks)} 項檢查通過")
     return 0 if not failed else 1
 
 
@@ -183,6 +245,16 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--limit", type=int, default=20, help="how many matches to show")
     search.set_defaults(func=cmd_search)
 
+    export = sub.add_parser("export", help="project the store to Markdown for external indexers")
+    export.add_argument(
+        "--markdown",
+        nargs="?",
+        const="",
+        metavar="DIR",
+        help="output directory; omit the value for <git-common-dir>/agentkit/export/",
+    )
+    export.set_defaults(func=cmd_export)
+
     doctor = sub.add_parser("doctor", help="check the things that silently break capture")
     doctor.set_defaults(func=cmd_doctor)
 
@@ -194,7 +266,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.func(args)
     except NotAGitRepo as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"錯誤：{exc}", file=sys.stderr)
         return 2
 
 

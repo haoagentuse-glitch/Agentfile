@@ -41,3 +41,12 @@ def db_path(cwd: Path) -> Path:
 
 def transcripts_dir(cwd: Path, agent: str) -> Path:
     return agentkit_dir(cwd) / "transcripts" / agent
+
+
+def export_dir(cwd: Path) -> Path:
+    """Where the Markdown projection lands.
+
+    Under the shared git dir, so it is neither project content nor version
+    controlled — it is a cache that can be rebuilt from SQLite at any time.
+    """
+    return agentkit_dir(cwd) / "export"

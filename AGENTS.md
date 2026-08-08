@@ -111,6 +111,7 @@ canonical source 為 `skills/<name>/`；`.claude/skills` 以 symlink 指向它�
 
 - 未安裝或索引失敗不得使主任務失敗，只回報「語意索引未更新」。
 - 不使用 SessionEnd hook 或 watch。語意層必須可拔除。
+- 對話投影與 `docs/` 不得共用同一個索引集合。對話的 chunk 數量會以純粹的量壓過文件，使檢索結果倒轉權威順序——問「為什麼這樣決定」拿回討論而非決策紀錄。
 
 ## 契約驅動
 

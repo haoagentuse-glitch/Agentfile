@@ -117,6 +117,26 @@ def search_messages(conn: sqlite3.Connection, query: str, limit: int = 20) -> li
     ).fetchall()
 
 
+def all_sessions(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    return conn.execute("SELECT * FROM sessions ORDER BY started_at").fetchall()
+
+
+def messages_of(conn: sqlite3.Connection, session_id: str) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT role, text, timestamp FROM messages WHERE session_id = ? ORDER BY seq",
+        (session_id,),
+    ).fetchall()
+
+
+def changed_files_of(conn: sqlite3.Connection, session_id: str) -> list[str]:
+    return [
+        r["path"]
+        for r in conn.execute(
+            "SELECT path FROM changed_files WHERE session_id = ? ORDER BY path", (session_id,)
+        )
+    ]
+
+
 def recent_sessions(conn: sqlite3.Connection, limit: int = 10) -> list[sqlite3.Row]:
     return conn.execute(
         """

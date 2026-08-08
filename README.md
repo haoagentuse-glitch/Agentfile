@@ -63,7 +63,28 @@ agentkit search "漂移檢查"
 agentkit doctor
 ```
 
-`search` 對說過的話做子字串比對，任何長度、任何語言都行。刻意不用 FTS5——它的分詞器搜不到中文兩字詞，而那是最常見的查詢形式。只索引實際說出口的文字，不含推理過程與工具輸出，那些留在封存的逐字稿裡。
+```bash
+agentkit export --markdown
+```
+
+agentkit 是**結構化歷史層**，不是搜尋工具。它把 Claude、Codex、不同 worktree 的 session 正規化成同一份可查詢的歷史，並提供兩種取用方式：
+
+| 取用方式 | 找什麼 |
+|---|---|
+| `search` | 精確字面。記得講過某個詞時用 |
+| `export --markdown` | 投影成 Markdown，交給任意語意工具索引 |
+
+`search` 刻意不用 FTS5——它的分詞器搜不到中文兩字詞，而那是最常見的查詢形式。只索引實際說出口的文字，推理過程與工具輸出留在封存的逐字稿裡。
+
+`export` 預設輸出到 `<git-common-dir>/agentkit/export/`，不進版控、不放 `docs/`——它是可重建的投影，手改沒有意義。agentkit 對語意後端零認知，換掉不用改它一行。
+
+```bash
+memsearch index .git/agentkit/export/ -c agentkit_sessions
+```
+
+**對話一定要進獨立的 collection。** 混在一起會倒轉權威順序——一次 session 是 69 個 chunk，`docs/` 只有 8 個，查「語意層必須可替換」時那份標題就是這句的 ADR 會掉到第 2 名，輸給一段引述它的閒聊。理由見 [ADR 0002](docs/adr/0002-conversation-needs-semantic-retrieval-too.md)。
+
+預設查詢只看文件；要翻對話才加 `-c agentkit_sessions`。
 
 紀錄放在 `<git-common-dir>/agentkit/`——主 worktree 與 linked worktree 解析到同一處，所以 Claude 與 Codex 跨 worktree 共用同一份歷史。在 `.git/` 底下，不進版控。
 
