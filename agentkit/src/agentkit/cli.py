@@ -45,7 +45,10 @@ def cmd_capture(args: argparse.Namespace) -> int:
 
     archive = transcripts_dir(cwd, parsed.session.agent) / f"{session_id}.jsonl"
     archive.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(transcript, archive)
+    # Re-ingesting from the archive is how a store gets rebuilt; then there is
+    # nothing to copy and the source is already where it belongs.
+    if not (archive.exists() and archive.samefile(transcript)):
+        shutil.copy2(transcript, archive)
 
     record = {
         "session_id": session_id,
@@ -61,10 +64,13 @@ def cmd_capture(args: argparse.Namespace) -> int:
         "commit_sha": head_commit(cwd),
     }
     with db.connect(store) as conn:
-        db.upsert_session(conn, record, parsed.tool_calls, parsed.changed_files)
+        db.upsert_session(conn, record, parsed.messages, parsed.tool_calls, parsed.changed_files)
 
     print(f"captured {session_id} from {transcript}")
-    print(f"  {len(parsed.tool_calls)} tool calls, {len(parsed.changed_files)} changed files")
+    print(
+        f"  {len(parsed.messages)} messages, {len(parsed.tool_calls)} tool calls, "
+        f"{len(parsed.changed_files)} changed files"
+    )
     print(f"  archived to {archive}")
     return 0
 
@@ -95,6 +101,32 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_search(args: argparse.Namespace) -> int:
+    cwd = Path.cwd()
+    store = db_path(cwd)
+    if not store.exists():
+        print(f"error: not initialised — run `agentkit init` (expected {store})", file=sys.stderr)
+        return 2
+
+    with db.connect(store) as conn:
+        rows = db.search_messages(conn, args.query, limit=args.limit)
+
+    print(f"store: {store}")
+    print(f"查詢: {args.query!r}")
+    if not rows:
+        print("沒有符合的訊息")
+        return 0
+
+    print(f"{len(rows)} 筆：")
+    for row in rows:
+        snippet = " ".join(row["text"].split())
+        if len(snippet) > 200:
+            snippet = snippet[:200] + "…"
+        print(f"\n  {row['session_id']}  {row['role']}  {row['timestamp']}")
+        print(f"  {snippet}")
+    return 0
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     """Check the things that silently break capture. Structured history only —
     the semantic layer is a separate, swappable concern and is not checked here."""
@@ -110,8 +142,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if store.exists():
         with db.connect(store) as conn:
             names = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master")}
-        missing = {"sessions", "tool_calls", "changed_files"} - names
-        detail = "schema complete" if not missing else f"schema incomplete — missing {missing}"
+        missing = {"sessions", "messages", "tool_calls", "changed_files"} - names
+        detail = (
+            "schema complete"
+            if not missing
+            else f"schema incomplete — missing {missing}; delete {store} and re-run `init`"
+        )
         checks.append((not missing, detail))
 
     settings = cwd / ".claude" / "settings.json"
@@ -141,6 +177,11 @@ def build_parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", help="what has been captured for this repo")
     status.add_argument("--limit", type=int, default=10, help="how many sessions to show")
     status.set_defaults(func=cmd_status)
+
+    search = sub.add_parser("search", help="substring search over what was said")
+    search.add_argument("query", help="text to look for; any length, any script")
+    search.add_argument("--limit", type=int, default=20, help="how many matches to show")
+    search.set_defaults(func=cmd_search)
 
     doctor = sub.add_parser("doctor", help="check the things that silently break capture")
     doctor.set_defaults(func=cmd_doctor)

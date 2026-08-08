@@ -18,6 +18,19 @@ def test_session_metadata_is_read_from_the_transcript():
     assert parsed.session.ended_at == "2026-08-06T16:32:10.000Z"
 
 
+def test_only_spoken_text_becomes_a_message():
+    parsed = parse_transcript(FIXTURE)
+
+    # thinking blocks and tool_result blocks are not conversation — storing them
+    # would duplicate the archived transcript instead of indexing it.
+    assert [(m.role, m.text) for m in parsed.messages] == [
+        ("user", "add a health endpoint"),
+        ("assistant", "Reading the router first."),
+        ("assistant", "Done."),
+    ]
+    assert parsed.messages[0].timestamp == "2026-08-06T16:30:55.819Z"
+
+
 def test_tool_calls_are_listed_in_order_and_only_writes_count_as_changes():
     parsed = parse_transcript(FIXTURE)
 

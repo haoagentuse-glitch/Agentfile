@@ -22,6 +22,13 @@ class Session:
 
 
 @dataclass(frozen=True)
+class Message:
+    role: str
+    text: str
+    timestamp: str | None
+
+
+@dataclass(frozen=True)
 class ToolCall:
     tool: str
     target: str | None
@@ -31,6 +38,7 @@ class ToolCall:
 @dataclass(frozen=True)
 class ParsedTranscript:
     session: Session
+    messages: list[Message]
     tool_calls: list[ToolCall]
     changed_files: list[str]
 
@@ -64,8 +72,29 @@ def _tool_uses(message: dict):
             yield block
 
 
+def _spoken_text(message: dict) -> str:
+    """What was actually said, joined.
+
+    Only `text` blocks count. `thinking` is reasoning, `tool_result` is machine
+    output, and both together are most of a transcript's bulk — indexing them
+    would duplicate the archive rather than give a way into it.
+    """
+    content = message.get("content")
+    if isinstance(content, str):
+        return content.strip()
+    if not isinstance(content, list):
+        return ""
+    parts = [
+        block.get("text", "")
+        for block in content
+        if isinstance(block, dict) and block.get("type") == "text"
+    ]
+    return "\n".join(p for p in parts if p).strip()
+
+
 def parse_transcript(path: Path) -> ParsedTranscript:
     session_id = model = branch = cwd = title = started_at = ended_at = None
+    messages: list[Message] = []
     tool_calls: list[ToolCall] = []
     changed_files: list[str] = []
 
@@ -84,6 +113,12 @@ def parse_transcript(path: Path) -> ParsedTranscript:
             cwd = record.get("cwd") or cwd
             model = message.get("model") or model
 
+            text = _spoken_text(message)
+            if text:
+                messages.append(
+                    Message(role=message.get("role", "?"), text=text, timestamp=timestamp)
+                )
+
             for block in _tool_uses(message):
                 tool = block.get("name") or "?"
                 target = (block.get("input") or {}).get("file_path")
@@ -92,6 +127,7 @@ def parse_transcript(path: Path) -> ParsedTranscript:
                     changed_files.append(target)
 
     return ParsedTranscript(
+        messages=messages,
         tool_calls=tool_calls,
         changed_files=changed_files,
         session=Session(

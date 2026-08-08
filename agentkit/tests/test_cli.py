@@ -101,6 +101,55 @@ def register_hook(repo: Path) -> None:
     )
 
 
+def test_capturing_the_archive_itself_is_not_an_error(repo: Path, monkeypatch, capsys):
+    main(["init"])
+    monkeypatch.setattr("sys.stdin", io.StringIO(hook_payload(repo)))
+    main(["capture", "--stdin"])
+    archive = transcripts_dir(repo, "claude") / "s-001.jsonl"
+    capsys.readouterr()
+
+    # Re-ingesting from the archive is how you rebuild a store; it must not crash.
+    payload = json.dumps({"session_id": "s-001", "transcript_path": str(archive), "cwd": str(repo)})
+    monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+
+    assert main(["capture", "--stdin"]) == 0
+    assert archive.exists()
+
+
+def test_search_finds_conversation_text_by_substring(repo: Path, monkeypatch, capsys):
+    main(["init"])
+    monkeypatch.setattr("sys.stdin", io.StringIO(hook_payload(repo)))
+    main(["capture", "--stdin"])
+    capsys.readouterr()
+
+    assert main(["search", "health"]) == 0
+    out = capsys.readouterr().out
+    assert "add a health endpoint" in out
+    assert "s-001" in out
+
+
+def test_search_matches_short_queries_including_cjk(repo: Path, monkeypatch, capsys):
+    main(["init"])
+    monkeypatch.setattr("sys.stdin", io.StringIO(hook_payload(repo)))
+    main(["capture", "--stdin"])
+    capsys.readouterr()
+
+    # Two-character queries are the common case in Chinese; a tokeniser-based
+    # index would silently miss them, so search must be substring-based.
+    assert main(["search", "router"]) == 0
+    assert "Reading the router first." in capsys.readouterr().out
+
+
+def test_search_says_so_when_nothing_matches(repo: Path, monkeypatch, capsys):
+    main(["init"])
+    monkeypatch.setattr("sys.stdin", io.StringIO(hook_payload(repo)))
+    main(["capture", "--stdin"])
+    capsys.readouterr()
+
+    assert main(["search", "zzzznotpresent"]) == 0
+    assert "沒有" in capsys.readouterr().out
+
+
 def test_doctor_reports_what_is_missing_until_everything_is_wired(repo: Path, capsys):
     assert main(["doctor"]) != 0
     assert "init" in capsys.readouterr().out

@@ -56,8 +56,14 @@ agentkit status
 ```
 
 ```bash
+agentkit search "漂移檢查"
+```
+
+```bash
 agentkit doctor
 ```
+
+`search` 對說過的話做子字串比對，任何長度、任何語言都行。刻意不用 FTS5——它的分詞器搜不到中文兩字詞，而那是最常見的查詢形式。只索引實際說出口的文字，不含推理過程與工具輸出，那些留在封存的逐字稿裡。
 
 紀錄放在 `<git-common-dir>/agentkit/`——主 worktree 與 linked worktree 解析到同一處，所以 Claude 與 Codex 跨 worktree 共用同一份歷史。在 `.git/` 底下，不進版控。
 

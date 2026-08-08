@@ -6,6 +6,8 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# 輸出是中文，全形標點是正確寫法，不是可疑字元。
+allowed-confusables = ["：", "，", "（", "）", "、", "；", "！", "？"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
