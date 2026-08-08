@@ -1,4 +1,17 @@
 {
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agentkit capture --stdin",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(git status:*)",

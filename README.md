@@ -35,6 +35,34 @@
 
 系統長相改變時另外跑 `/project-docs`；詞彙或架構決策改變時跑 `/domain-modeling`；HTTP API 動到契約時跑 `/api-contract`。
 
+## Session 紀錄（agentkit）
+
+安裝一次，所有專案共用：
+
+```bash
+uv tool install --editable ./agentkit
+```
+
+在專案裡：
+
+```bash
+agentkit init
+```
+
+之後每次 session 結束，`SessionEnd` hook 自動把逐字稿解析成結構化紀錄。
+
+```bash
+agentkit status
+```
+
+```bash
+agentkit doctor
+```
+
+紀錄放在 `<git-common-dir>/agentkit/`——主 worktree 與 linked worktree 解析到同一處，所以 Claude 與 Codex 跨 worktree 共用同一份歷史。在 `.git/` 底下，不進版控。
+
+agentkit 只管**結構化歷史**：哪個 agent、哪個 model、哪個分支、動了哪些檔案、當時的 commit。語意檢索是另一層，兩者不互相依賴——agentkit 的程式碼裡不會出現任何 semantic backend 的名字，換掉它不用動 agentkit 一行。
+
 ## 誰擁有什麼
 
 同一件事只有一個擁有者。這是整包的核心約束。

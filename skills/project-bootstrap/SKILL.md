@@ -43,7 +43,21 @@ gh label create ready-for-agent --description "Ready for an agent to pick up" --
 
 `ready-for-agent` 是 vendored skill 唯一使用的 triage 標籤。沒有它，`to-spec` 與 `to-tickets` 發 issue 時會失敗。
 
-### 3. Python 專案追加（技術棧選 Python 時）
+### 3. Session 紀錄
+
+```bash
+agentkit init
+```
+
+在 `<git-common-dir>/agentkit/` 建立 SQLite 與逐字稿封存目錄。`.claude/settings.json` 的 `SessionEnd` hook 已由 apply.sh 交付，每次 session 結束自動擷取。
+
+```bash
+agentkit doctor
+```
+
+四項檢查全綠才算接好。未安裝 agentkit 的話：`uv tool install --editable <隨身包路徑>/agentkit`。
+
+### 4. Python 專案追加（技術棧選 Python 時）
 
 ```bash
 cd <目標資料夾> && uv init --name <專案名> --python 3.12
@@ -62,12 +76,12 @@ uv add fastapi && uv add --dev schemathesis datamodel-code-generator
 然後把 `.claude/templates/python-pyproject.snippet.toml` 的設定段併進 `pyproject.toml`。
 版本一律釘選並提交鎖檔，禁 `latest`。
 
-### 4. 語言無關骨架
+### 5. 語言無關骨架
 
 只建立當下確實需要的目錄。**不要預建 `src/`、`lib/`、`utils/`、`tests/` 等空目錄** —— 違反 Structure Follows Need。
 需要時再建，建立時放進真實檔案。
 
-### 5. README
+### 6. README
 
 以 `.claude/templates/README.md` 為骨架寫 `README.md`，必填：
 
@@ -77,7 +91,7 @@ uv add fastapi && uv add --dev schemathesis datamodel-code-generator
 
 這三項的指令只寫在 README，別處引用。
 
-### 6. 首次 commit
+### 7. 首次 commit
 
 **要使用者明確指示才 commit。** 建議訊息：`chore: 專案骨架與開發規範`。
 
