@@ -12,9 +12,16 @@ testpaths = ["tests"]
 addopts = "-q --strict-markers"
 
 # HTTP API 專案才需要。openapi.yaml 是契約 SSoT，models 由它生成、禁手改。
-# 生成：uv run datamodel-codegen --input openapi.yaml --output src/<pkg>/models.py
-# 漂移檢查：生成後 git diff --exit-code src/<pkg>/models.py
+# 完整指令與漂移檢查見 api-contract skill。
+# disable-timestamp 是必要的：少了它每次生成都不同，漂移檢查永遠過不了。
 [tool.datamodel-codegen]
 input-file-type = "openapi"
 output-model-type = "pydantic_v2.BaseModel"
 target-python-version = "3.12"
+disable-timestamp = true
+
+# 產物不受專案 lint／format 規範管轄。它們不是手寫程式碼，
+# 而一條只能靠手改產物來滿足的規則，遲早會被手改產物來滿足。
+# 路徑依實際生成位置調整。
+# [tool.ruff]
+# extend-exclude = ["src/*/models.py"]
