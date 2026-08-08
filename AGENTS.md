@@ -105,6 +105,20 @@ Code / Tests → Current Docs / ADR → AGENTS.md → Handoff → Conversation M
 
 `docs/PROJECT.md` 是目的、範圍、系統概觀與穩定背景，不是 feature spec，不是 task list。不得把 issue 裡的 spec 抄一份進 `docs/`。
 
+## 語意索引
+
+`docs/` 是唯一來源，語意索引是從它衍生、可重建的快取。索引由文件工作流負責刷新，不由排程或監看程序負責。
+
+- 任何寫入 `docs/` 或 `CONTEXT.md` 的工作流（`project-docs`、`domain-modeling`，以及日後任何寫 durable docs 的 skill），在主任務**成功之後**刷新索引：
+
+```bash
+command -v memsearch >/dev/null && memsearch index docs/ || echo "語意索引未更新"
+```
+
+- 尾巴的 `|| echo` 不是裝飾：少了它，未安裝時短路的離開碼是 1，會被當成任務失敗。
+- 未安裝或索引失敗**不得**使主任務失敗。文件已經寫好就是成功，只在回報末尾補一句「語意索引未更新」。
+- 不掛 SessionEnd hook，不啟動 watch。索引是文件工作的收尾，不是常駐服務——語意層必須維持可拔除。
+
 ## 契約驅動
 
 HTTP API 以 `openapi.yaml` 為唯一來源，models 與契約測試由它生成，兩者皆為產物，禁手改。

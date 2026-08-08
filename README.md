@@ -84,12 +84,12 @@ memsearch config set embedding.provider onnx
 > 不想拉本機模型就跳過上面那步，改用 `openai`、`ollama`、`google`、`voyage`、`jina`、`mistral` 其中之一。
 
 ```bash
-memsearch index docs/
-```
-
-```bash
 memsearch search "為什麼契約用 spec-first"
 ```
+
+索引**不需要手動維護**。寫 `docs/` 的工作流（`project-docs`、`domain-modeling`）在文件寫完後自己刷新。沒裝 memsearch 或索引失敗都不會讓文件任務失敗，只會在回報末尾說一句索引未更新。
+
+不掛 SessionEnd、不跑 `memsearch watch`——索引是文件工作的收尾，不是常駐服務，語意層要隨時拔得掉。
 
 **只用 CLI，不要裝 memsearch 的 Claude Code 外掛**——它會自動擷取每輪對話寫進 `.memsearch/memory/`，與 agentkit 的職責重疊，而且裝在使用者層級、換機就散。理由見 [ADR 0001](docs/adr/0001-semantic-layer-is-cli-only-and-replaceable.md)。
 

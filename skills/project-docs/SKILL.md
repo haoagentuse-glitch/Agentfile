@@ -50,3 +50,15 @@ Run after the system changes shape, not after every ticket. Triggers: scope move
 Read `writing-for-agents` and apply it — these files are read by agents on every session, so their length is a recurring cost.
 
 Check what already answers the question. If `CONTEXT.md`, an ADR, or an issue already says it, link instead of restating.
+
+## After writing
+
+Once the docs are written and correct, refresh the semantic index:
+
+```bash
+command -v memsearch >/dev/null && memsearch index docs/ || echo "語意索引未更新"
+```
+
+The trailing `|| echo` is load-bearing: without it the short-circuit exits 1 when memsearch is absent, which reads as a failed task.
+
+The docs are the deliverable; the index is a cache of them. If memsearch is absent or the index fails, **the task still succeeded** — say "語意索引未更新" in your report and stop there. Never retry, never install anything, never let it turn a finished doc into a failure.
