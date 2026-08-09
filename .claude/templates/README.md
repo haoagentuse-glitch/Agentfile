@@ -24,9 +24,12 @@ uv run ruff format .     # 格式化
 ## 文件
 
 - 開發規範：[AGENTS.md](AGENTS.md)
-- 規格：[docs/SPEC.md](docs/SPEC.md)
-- 任務計畫：[docs/PLAN.md](docs/PLAN.md)
-- 架構決策：[docs/DECISIONS.md](docs/DECISIONS.md)
+- 專案是什麼、範圍與系統概觀：[docs/PROJECT.md](docs/PROJECT.md)
+- 詞彙表：[CONTEXT.md](CONTEXT.md)
+- 架構決策：[docs/adr/](docs/adr/)
+- 要做什麼：GitHub Issues
+
+> 這些檔案都是需要時才建立，不預先產生。
 
 ## 設定
 

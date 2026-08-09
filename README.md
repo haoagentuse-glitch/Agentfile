@@ -35,64 +35,15 @@
 
 系統長相改變時另外跑 `/project-docs`；詞彙或架構決策改變時跑 `/domain-modeling`；HTTP API 動到契約時跑 `/api-contract`。
 
-## Session 紀錄（agentkit）
+## 跨 session 記憶（memsearch）
 
-安裝一次，所有專案共用：
+跨 session 的對話記憶與檢索全部交給 memsearch 的原生流程，這包不自建。
 
-```bash
-uv tool install --editable ./agentkit
+```
+對話 → 摘要 → memory Markdown → embedding / BM25 / RRF → recall → 逐字稿 fallback
 ```
 
-在專案裡：
-
-```bash
-agentkit init
-```
-
-之後每次 session 結束，`SessionEnd` hook 自動把逐字稿解析成結構化紀錄。
-
-```bash
-agentkit status
-```
-
-```bash
-agentkit search "漂移檢查"
-```
-
-```bash
-agentkit doctor
-```
-
-```bash
-agentkit export --markdown
-```
-
-agentkit 是**結構化歷史層**，不是搜尋工具。它把 Claude、Codex、不同 worktree 的 session 正規化成同一份可查詢的歷史，並提供兩種取用方式：
-
-| 取用方式 | 找什麼 |
-|---|---|
-| `search` | 精確字面。記得講過某個詞時用 |
-| `export --markdown` | 投影成 Markdown，交給任意語意工具索引 |
-
-`search` 刻意不用 FTS5——它的分詞器搜不到中文兩字詞，而那是最常見的查詢形式。只索引實際說出口的文字，推理過程與工具輸出留在封存的逐字稿裡。
-
-`export` 預設輸出到 `<git-common-dir>/agentkit/export/`，不進版控、不放 `docs/`——它是可重建的投影，手改沒有意義。agentkit 對語意後端零認知，換掉不用改它一行。
-
-```bash
-memsearch index .git/agentkit/export/ -c agentkit_sessions
-```
-
-**對話一定要進獨立的 collection。** 混在一起會倒轉權威順序——一次 session 是 69 個 chunk，`docs/` 只有 8 個，查「語意層必須可替換」時那份標題就是這句的 ADR 會掉到第 2 名，輸給一段引述它的閒聊。理由見 [ADR 0002](docs/adr/0002-conversation-needs-semantic-retrieval-too.md)。
-
-預設查詢只看文件；要翻對話才加 `-c agentkit_sessions`。
-
-紀錄放在 `<git-common-dir>/agentkit/`——主 worktree 與 linked worktree 解析到同一處，所以 Claude 與 Codex 跨 worktree 共用同一份歷史。在 `.git/` 底下，不進版控。
-
-agentkit 只管**結構化歷史**：哪個 agent、哪個 model、哪個分支、動了哪些檔案、當時的 commit。語意檢索是另一層，兩者不互相依賴——agentkit 的程式碼裡不會出現任何 semantic backend 的名字，換掉它不用動 agentkit 一行。
-
-## 語意檢索（選用）
-
-`docs/` 底下的 markdown 是 durable knowledge 的唯一來源。語意索引是從它衍生、可重建的快取，隨時可以砍掉重建、也隨時可以換掉。
+不自行改 chunking、不加 reranker、不接 GPU。
 
 ```bash
 uv tool install "memsearch[onnx]"
@@ -114,13 +65,25 @@ memsearch config set embedding.provider onnx
 memsearch search "為什麼契約用 spec-first"
 ```
 
-索引**不需要手動維護**。寫 `docs/` 的工作流（`project-docs`、`domain-modeling`）在文件寫完後自己刷新。沒裝 memsearch 或索引失敗都不會讓文件任務失敗，只會在回報末尾說一句索引未更新。
+`docs/` 的索引**不需要手動維護**。寫 `docs/` 的工作流（`project-docs`、`domain-modeling`）在文件寫完後自己刷新。沒裝 memsearch 或索引失敗都不會讓文件任務失敗，只會在回報末尾說一句索引未更新。
 
-不掛 SessionEnd、不跑 `memsearch watch`——索引是文件工作的收尾，不是常駐服務，語意層要隨時拔得掉。
+### 已實測的成本
 
-**只用 CLI，不要裝 memsearch 的 Claude Code 外掛**——它會自動擷取每輪對話寫進 `.memsearch/memory/`，與 agentkit 的職責重疊，而且裝在使用者層級、換機就散。理由見 [ADR 0001](docs/adr/0001-semantic-layer-is-cli-only-and-replaceable.md)。
+| 情境 | 新增 chunk | 耗時 |
+|---|---|---|
+| 冷啟動全量 | 197 | 54–184 秒（波動大） |
+| 內容不變重跑 | 0 | 5.1 秒 |
+| 新增一塊後重跑 | 1 | 4.9 秒 |
 
-換成別的工具不用改這包任何東西——接軌只是「markdown 放在 `docs/`」這個慣例。
+增量更新的 5 秒幾乎全是模型載入，跟要 embed 幾塊無關。冷啟動慢一次即可，可接受。
+
+### 已知限制
+
+語意檢索對「用詞接近」有效，對「換完全不同的說法」不可靠。分數 0.5 附近是沒有好答案時的墊底值，不是命中——memsearch 不會說找不到，它照樣回傳最爛的那個。
+
+`docs/` 與對話記憶的資料量差距很大時，數量多的一方會壓過另一方，使檢索結果與權威順序相反。真的發生時用 `-c` 分開 collection。
+
+換成別的語意工具不用改這包任何東西——接軌只是「markdown 放在 `docs/`」這個慣例。
 
 ## 誰擁有什麼
 

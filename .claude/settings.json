@@ -1,17 +1,4 @@
 {
-  "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "agentkit capture --stdin",
-            "timeout": 60
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(git status:*)",
@@ -26,10 +13,9 @@
       "Bash(ruff check:*)",
       "Bash(ruff format:*)",
       "Bash(pytest:*)",
-      "Bash(agentkit status:*)",
-      "Bash(agentkit search:*)",
-      "Bash(agentkit doctor:*)",
-      "Bash(agentkit init:*)",
+      "Bash(memsearch search:*)",
+      "Bash(memsearch index:*)",
+      "Bash(memsearch stats:*)",
       "Bash(gh issue:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr diff:*)",

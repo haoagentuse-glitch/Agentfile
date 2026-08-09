@@ -43,19 +43,19 @@ gh label create ready-for-agent --description "Ready for an agent to pick up" --
 
 `ready-for-agent` 是 vendored skill 唯一使用的 triage 標籤。沒有它，`to-spec` 與 `to-tickets` 發 issue 時會失敗。
 
-### 3. Session 紀錄
+### 3. 跨 session 記憶
+
+memsearch 負責跨 session 記憶，不需要每個專案設定——它把對話摘要成 memory Markdown，再建索引供之後檢索。未安裝的話：
 
 ```bash
-agentkit init
+uv tool install "memsearch[onnx]"
 ```
-
-在 `<git-common-dir>/agentkit/` 建立 SQLite 與逐字稿封存目錄。`.claude/settings.json` 的 `SessionEnd` hook 已由 apply.sh 交付，每次 session 結束自動擷取。
 
 ```bash
-agentkit doctor
+memsearch index docs/
 ```
 
-四項檢查全綠才算接好。未安裝 agentkit 的話：`uv tool install --editable <隨身包路徑>/agentkit`。
+索引不是必要步驟；沒有 memsearch，其餘流程照常運作。
 
 ### 4. Python 專案追加（技術棧選 Python 時）
 

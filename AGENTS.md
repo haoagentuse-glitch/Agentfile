@@ -84,7 +84,7 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 | `docs/` | 系統現在是什麼、為什麼 |
 | AGENTS.md | Agent 必須怎麼做 |
 | Code / Tests | 系統實際做什麼 |
-| agentkit | 過去發生過什麼 |
+| memsearch memory | 過去發生過什麼 |
 
 `docs/PROJECT.md` 只記目的、範圍、系統概觀與穩定背景，不是 feature spec 或任務清單，不複製 issue 內容。
 
@@ -110,8 +110,9 @@ canonical source 為 `skills/<name>/`；`.claude/skills` 以 symlink 指向它�
 `docs/` 是唯一來源，語意索引只是可重建快取。任何寫入 `docs/` 或 `CONTEXT.md` 的工作流在主任務成功後刷新它，指令見 `project-docs` 技能。
 
 - 未安裝或索引失敗不得使主任務失敗，只回報「語意索引未更新」。
-- 不使用 SessionEnd hook 或 watch。語意層必須可拔除。
-- 對話投影與 `docs/` 不得共用同一個索引集合。對話的 chunk 數量會以純粹的量壓過文件，使檢索結果倒轉權威順序——問「為什麼這樣決定」拿回討論而非決策紀錄。
+- 本包不為索引加 hook 或 watch，也不自行改 chunking。語意工具自己的擷取機制是它自己的事。
+- 跨 session 記憶用語意工具的原生流程，不自建結構化歷史層。
+- 記憶與 `docs/` 的資料量差距大時，多的一方會以純粹的量壓過另一方，使檢索結果倒轉權威順序——問「為什麼這樣決定」拿回討論而非決策紀錄。發生時分開索引集合。
 
 ## 契約驅動
 
