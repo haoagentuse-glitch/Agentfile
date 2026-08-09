@@ -24,4 +24,9 @@ build/
 .claude/settings.local.json
 
 # 語意索引是從 docs/ 衍生的快取，可重建
-.memsearch/
+# memory Markdown 是可攜的 SSoT，進版控；其餘是衍生資料
+# 記憶內容不適合公開時，改放獨立的 private repo，不要跟公開 repo 一起提交
+.memsearch/*
+!.memsearch/memory/
+.memsearch/memory/*
+!.memsearch/memory/*.md

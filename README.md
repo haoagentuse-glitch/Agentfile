@@ -45,9 +45,42 @@
 
 不自行改 chunking、不加 reranker、不接 GPU。
 
+### 兩層，責任不同
+
+| 層 | 內容 | 誰帶著走 |
+|---|---|---|
+| 專案層 | `.memsearch/memory/*.md` 與專案設定 | 跟著 repo，進版控 |
+| 機器層 | memsearch CLI、embedding 模型、各 agent 的官方整合 | 外部開發環境依賴，`apply.sh` 不攜帶 |
+
+`.memsearch/memory/*.md` 是**可攜的記憶 SSoT**。Milvus 索引與模型快取都是衍生資料，`.gitignore` 已排除。
+
+記憶內容不適合公開時，放獨立的 private repo，不要跟公開的主 repo 一起提交。
+
+### 機器層安裝
+
+各機器裝一次，依執行環境而非帳號——同一個 WSL user 下切換帳號不必重裝。換 Desktop、OS 或 runtime 才需要各自再裝。
+
 ```bash
 uv tool install "memsearch[onnx]"
 ```
+
+Claude Code 的對話擷取整合（在 Claude Code 裡跑，沒有 CLI 方式）：
+
+```
+/plugin marketplace add zilliztech/memsearch-plugins
+```
+
+```
+/plugin install memsearch
+```
+
+Codex 的整合（需 codex v0.116.0+）：
+
+```bash
+git clone https://github.com/zilliztech/memsearch.git && bash memsearch/plugins/codex/scripts/install.sh
+```
+
+`apply.sh` **不會**碰使用者層的外掛或 hook，只在最後列出缺哪些 runtime 與安裝方式。
 
 memsearch 的**預設 embedding provider 是 OpenAI**，不設定的話第一次索引會因為缺 `OPENAI_API_KEY` 直接失敗。要用本機模型得裝 `[onnx]` extra 並切換：
 

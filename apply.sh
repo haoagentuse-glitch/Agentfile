@@ -98,6 +98,34 @@ else
   run cp "$PACK/.claude/templates/gitignore.base" "$TARGET/.gitignore"
 fi
 
+# 10. Runtime 檢查。只回報，不安裝、不修改使用者層設定。
+echo
+echo "外部 runtime（機器層依賴，不隨這包攜帶）："
+need() {
+  if command -v "$1" >/dev/null 2>&1; then
+    echo "  有   $1"
+  else
+    echo "  缺   $1 — $2"
+  fi
+}
+need gh "issue 流程需要它：https://cli.github.com"
+need uv "https://docs.astral.sh/uv"
+need memsearch '跨 session 記憶需要它：uv tool install "memsearch[onnx]"'
+
+if command -v memsearch >/dev/null 2>&1; then
+  provider=$(memsearch config get embedding.provider 2>/dev/null | tr -d '[:space:]')
+  if [[ "$provider" != "onnx" && "$provider" != "ollama" ]]; then
+    echo "  注意 memsearch embedding provider 是 '${provider:-未設定}'，需要 API key"
+    echo "       要用本機模型：memsearch config set embedding.provider onnx"
+  fi
+fi
+
+echo
+echo "對話擷取需要各 agent 的官方整合，各機器裝一次，本腳本不代勞："
+echo "  Claude Code  /plugin marketplace add zilliztech/memsearch-plugins"
+echo "               /plugin install memsearch"
+echo "  Codex        bash <memsearch repo>/plugins/codex/scripts/install.sh"
+
 echo
 echo "完成。下一步：在 $TARGET 開 Claude Code，跑 /kickoff 完成 GitHub 與標籤設定。"
 echo "（尚未 commit —— 依 AGENTS.md，commit 需明確指示。）"
