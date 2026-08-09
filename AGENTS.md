@@ -6,7 +6,7 @@
 
 ## 核心原則
 
-- **KISS / YAGNI**：只做當下所需，選能完全滿足現況的最簡實作。禁推測性抽象、設定與過度間接轉介。
+- **KISS / YAGNI**：禁推測性抽象、設定與過度間接轉介。
 - **Optimize for Comprehension**：降低理解成本優先於降低操作成本。
   - 順向：公開入口到實際邏輯 ≤ 2 跳，不需追 registry／factory／dispatcher。僅轉呼叫的層直接折疊，禁 wrapper chain。第三方庫不計跳數。
   - 逆向（Glass Box）：任何結果可回溯至命令、設定、輸入與 commit。入口預設輸出這四項摘要，不得只回 `Done.`；禁未述副作用。
@@ -71,8 +71,6 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 - 有通行中文譯名就用中文；無譯名或翻譯妨礙查找則保留原文（frontmatter、OpenAPI、embedding）。
 - 套件、指令、檔名、技術與模型名稱、程式碼識別符一律保留原文。
 - vendored 檔案不翻譯。
-
-**形狀**：每個 session 自動套用 `i-have-adhd`，無須 `/i-have-adhd`。該技能是唯一來源，改規則去改它，或說「stop adhd mode」停用。「無開場與收尾寒暄」不豁免 Glass Box。
 
 ## 職責邊界
 
