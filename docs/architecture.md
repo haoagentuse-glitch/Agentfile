@@ -8,11 +8,12 @@
 | `skills/<name>/` | 技能 canonical source | `.claude/skills` symlink 指過去；投影後目標專案的 `.agents/skills/` 也指過去 |
 | `.claude/` | Claude Code 設定與 command | Claude Code |
 | `apply.sh` | 把整包投影到目標資料夾，已存在檔案一律跳過 | 人工執行，一次性、可重跑 |
-| `.memsearch/memory/*.md` | 跨 session 記憶 SSoT，可攜 | memsearch CLI（機器層依賴，見下） |
+| `.memsearch/memory/*.md` | 跨 session 記憶 SSoT，預設本機、不進版控 | memsearch CLI（機器層依賴，見下） |
 
 ## 邊界
 
 - `apply.sh` 只複製檔案與建 symlink，不安裝、不修改使用者層外掛設定——理由見 [ADR 0001](adr/0001-memsearch-two-layer-memory.md)。
+- 跨 session 記憶預設不進版控，需要攜帶時使用者手動選擇追蹤——理由見 [ADR 0002](adr/0002-memsearch-memory-not-tracked-by-default.md)。
 - `.claude/skills` 與（投影後的）`.agents/skills` 都是 symlink 指回 `skills/`，不是第二份拷貝；改 skill 只改一處。
 
 ## 已知限制（新人不知道就會誤判）

@@ -1,12 +1,9 @@
 # 本機覆寫，不進版控
 .claude/settings.local.json
 
-# 語意索引是從 docs/ 衍生的快取，可重建
-# memory Markdown 是可攜的 SSoT，進版控；其餘是衍生資料
-.memsearch/*
-!.memsearch/memory/
-.memsearch/memory/*
-!.memsearch/memory/*.md
+# 跨 session 記憶預設不進版控（機器層本機資料）——見 docs/adr/0002
+# 需要記憶跨機器帶著走時，手動改回 !.memsearch/memory/*.md
+.memsearch/
 
 # Python
 .venv/

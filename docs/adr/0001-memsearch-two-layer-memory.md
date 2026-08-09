@@ -7,5 +7,6 @@
 ## Consequences
 
 - 換掉 memsearch 不需要改這包任何一行——接軌只是「markdown 放 `.memsearch/memory/`」這個慣例。
-- `.gitignore` 只能忽略衍生資料（Milvus 索引、模型快取），不可整個忽略 `.memsearch/`，否則會把可攜 SSoT 一併排除——過去踩過這個坑，已在同一次改動修掉。
 - 已知限制與部件關係見 [architecture.md](../architecture.md)。
+
+**「memory/\*.md 預設進版控」這條已被 [ADR 0002](0002-memsearch-memory-not-tracked-by-default.md) 取代**：預設改為不進版控，需要跨機器攜帶記憶時使用者手動選擇追蹤。本 ADR 其餘結論（機器層／專案層分工、`apply.sh` 不碰使用者層外掛設定）仍然有效。

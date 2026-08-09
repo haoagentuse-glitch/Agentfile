@@ -45,9 +45,7 @@
 
 不自行改 chunking、不加 reranker、不接 GPU。
 
-專案層（`.memsearch/memory/*.md`，可攜 SSoT，跟著 repo 進版控）與機器層（memsearch CLI、embedding 模型、各 agent 官方整合）分開，`apply.sh` 只檢查後者是否存在，不攜帶也不修改。決策理由見 [ADR 0001](docs/adr/0001-memsearch-two-layer-memory.md)；部件關係與已知限制見 [architecture.md](docs/architecture.md)。
-
-記憶內容不適合公開時，放獨立的 private repo，不要跟公開的主 repo 一起提交。
+專案層（`.memsearch/memory/*.md`）與機器層（memsearch CLI、embedding 模型、各 agent 官方整合）分開，`apply.sh` 只檢查後者是否存在，不攜帶也不修改。`.memsearch/` **預設不進版控**，記憶留在本機；要跨機器帶著走，自行在 `.gitignore` 加回 `!.memsearch/memory/*.md`。決策理由見 [ADR 0001](docs/adr/0001-memsearch-two-layer-memory.md)、[ADR 0002](docs/adr/0002-memsearch-memory-not-tracked-by-default.md)；部件關係與已知限制見 [architecture.md](docs/architecture.md)。
 
 ### 機器層安裝
 
