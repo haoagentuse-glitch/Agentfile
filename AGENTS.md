@@ -85,6 +85,7 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 | AGENTS.md | Agent 必須怎麼做 |
 | Code / Tests | 系統實際做什麼 |
 | memsearch memory | 過去發生過什麼 |
+| `CLAUDE.local.md`（Claude Code 原生機制，不進版控） | 這台機器、這個人專屬的規範覆寫 |
 
 `docs/PROJECT.md` 只記目的、範圍、系統概觀與穩定背景，不是 feature spec 或任務清單，不複製 issue 內容。
 

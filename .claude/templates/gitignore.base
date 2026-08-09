@@ -22,6 +22,7 @@ build/
 
 # Claude Code 本機覆寫
 .claude/settings.local.json
+CLAUDE.local.md
 
 # 跨 session 記憶預設不進版控（機器層本機資料）——見 docs/adr/0002
 # 需要記憶跨機器帶著走時，手動改回 !.memsearch/memory/*.md

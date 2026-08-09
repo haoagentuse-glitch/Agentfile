@@ -146,8 +146,9 @@ diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/
 - **加能力** → 在 `skills/<name>/SKILL.md` 新增。先確認沒有既有 skill 已經涵蓋——同一能力不得存在兩份。
 - **從別處借 skill** → vendor 進 `skills/`，出處寫進 `metadata`，授權放 `LICENSES/`。
 - **加文件骨架** → 放 `.claude/templates/`。
+- **這台機器/這個人專屬的規範覆寫** → 專案根目錄 `CLAUDE.local.md`，Claude Code 原生機制，已在 `.gitignore` 排除。Codex 目前沒有對應機制。
 
-`apply.sh` 是整棵樹複製，加東西不用改它。既有專案要拿到更新，重跑 `apply.sh` 只補新檔；覆蓋舊檔請手動處理（腳本刻意不覆寫）。
+`apply.sh` 是整棵樹複製，不 symlink 指回這包本身——理由見 [ADR 0003](docs/adr/0003-apply-copies-not-symlinks-to-dotfiles.md)。加東西不用改它。既有專案要拿到更新，重跑 `apply.sh` 只補新檔；覆蓋舊檔請手動處理（腳本刻意不覆寫）。
 
 ## 規範
 
