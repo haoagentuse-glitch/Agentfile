@@ -45,14 +45,7 @@
 
 不自行改 chunking、不加 reranker、不接 GPU。
 
-### 兩層，責任不同
-
-| 層 | 內容 | 誰帶著走 |
-|---|---|---|
-| 專案層 | `.memsearch/memory/*.md` 與專案設定 | 跟著 repo，進版控 |
-| 機器層 | memsearch CLI、embedding 模型、各 agent 的官方整合 | 外部開發環境依賴，`apply.sh` 不攜帶 |
-
-`.memsearch/memory/*.md` 是**可攜的記憶 SSoT**。Milvus 索引與模型快取都是衍生資料，`.gitignore` 已排除。
+專案層（`.memsearch/memory/*.md`，可攜 SSoT，跟著 repo 進版控）與機器層（memsearch CLI、embedding 模型、各 agent 官方整合）分開，`apply.sh` 只檢查後者是否存在，不攜帶也不修改。決策理由見 [ADR 0001](docs/adr/0001-memsearch-two-layer-memory.md)；部件關係與已知限制見 [architecture.md](docs/architecture.md)。
 
 記憶內容不適合公開時，放獨立的 private repo，不要跟公開的主 repo 一起提交。
 
@@ -100,38 +93,11 @@ memsearch search "為什麼契約用 spec-first"
 
 `docs/` 的索引**不需要手動維護**。寫 `docs/` 的工作流（`project-docs`、`domain-modeling`）在文件寫完後自己刷新。沒裝 memsearch 或索引失敗都不會讓文件任務失敗，只會在回報末尾說一句索引未更新。
 
-### 已實測的成本
-
-| 情境 | 新增 chunk | 耗時 |
-|---|---|---|
-| 冷啟動全量 | 197 | 54–184 秒（波動大） |
-| 內容不變重跑 | 0 | 5.1 秒 |
-| 新增一塊後重跑 | 1 | 4.9 秒 |
-
-增量更新的 5 秒幾乎全是模型載入，跟要 embed 幾塊無關。冷啟動慢一次即可，可接受。
-
-### 已知限制
-
-語意檢索對「用詞接近」有效，對「換完全不同的說法」不可靠。分數 0.5 附近是沒有好答案時的墊底值，不是命中——memsearch 不會說找不到，它照樣回傳最爛的那個。
-
-`docs/` 與對話記憶的資料量差距很大時，數量多的一方會壓過另一方，使檢索結果與權威順序相反。真的發生時用 `-c` 分開 collection。
-
-換成別的語意工具不用改這包任何東西——接軌只是「markdown 放在 `docs/`」這個慣例。
+換成別的語意工具不用改這包任何東西——接軌只是「markdown 放在 `docs/`」這個慣例。已實測的成本與已知限制見 [architecture.md](docs/architecture.md)。
 
 ## 誰擁有什麼
 
-同一件事只有一個擁有者。這是整包的核心約束。
-
-| 來源 | 回答什麼 | 誰維護 |
-|---|---|---|
-| GitHub Issues | 要做什麼 | `to-spec` / `to-tickets` |
-| `docs/PROJECT.md`、`docs/architecture.md` | 系統是什麼、怎麼組起來 | `project-docs` |
-| `CONTEXT.md`、`docs/adr/` | 詞彙、為什麼這樣決定 | `domain-modeling` |
-| `openapi.yaml` | API 契約 | `api-contract` |
-| `AGENTS.md` | 做事必須遵守什麼 | 你 |
-| Code / Tests | 系統實際做什麼 | `implement` / `tdd` |
-
-`docs/PROJECT.md` 不是 feature spec，也不是 task list。Issue 裡的規格不抄進 `docs/`。
+同一件事只有一個擁有者，完整清單見 [AGENTS.md 職責邊界](AGENTS.md#職責邊界)。
 
 ## skill 放在哪
 
