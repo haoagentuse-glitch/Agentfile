@@ -50,6 +50,8 @@ profiles/experimental/ 實驗型專案（RAG、agent 架構、ML/DL、模擬、�
 
 系統長相改變時另外跑 `/project-docs`；詞彙或架構決策改變時跑 `/domain-modeling`；HTTP API 動到契約時跑 `/api-contract`。
 
+要圖形化看 `records/experiments/` 裡的實驗、run、比較結果，用 `viewer/experiment-viewer/`（Tauri + Vue + TypeScript + ECharts，只讀不寫，不維護第二份權威副本）。設計與工具鏈取捨見該目錄 README 與 [ADR 0012](docs/adr/0012-experiment-viewer-toolchain.md)。
+
 ## 跨 session 記憶（memsearch）
 
 跨 session 的對話記憶與檢索全部交給 memsearch 的原生流程，這包不自建。

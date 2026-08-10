@@ -1,0 +1,115 @@
+// Schema Adapter — 把 records/experiments/ 底下目前這包定義的 schema 轉成 canonical model。
+// 只認 profiles/experimental/records/experiments/schemas/ 現有的欄位；schema 改版時只改這個檔案。
+
+import type {
+  CanonicalComparison,
+  CanonicalExperiment,
+  CanonicalMetricDiff,
+  CanonicalRun,
+  RunStatus,
+} from "./canonical";
+
+export class SchemaAdapterError extends Error {
+  readonly sourcePath: string;
+
+  constructor(message: string, sourcePath: string) {
+    super(`${sourcePath}: ${message}`);
+    this.name = "SchemaAdapterError";
+    this.sourcePath = sourcePath;
+  }
+}
+
+function requireField(obj: Record<string, unknown>, field: string, sourcePath: string): unknown {
+  if (!(field in obj) || obj[field] === undefined) {
+    throw new SchemaAdapterError(`缺少必填欄位 "${field}"`, sourcePath);
+  }
+  return obj[field];
+}
+
+// experiment-contract.schema.json → CanonicalExperiment（runs 欄位留空，由 storage-adapter 填入）
+export function adaptExperimentContract(
+  raw: Record<string, unknown>,
+  sourcePath: string
+): Omit<CanonicalExperiment, "runs"> {
+  const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
+  const question = requireField(raw, "question", sourcePath) as string;
+  const hypothesis = requireField(raw, "hypothesis", sourcePath) as string;
+  const status = requireField(raw, "status", sourcePath) as "draft" | "locked";
+  const primaryMetric = requireField(raw, "primary_metric", sourcePath) as string;
+
+  return {
+    experimentId,
+    question,
+    hypothesis,
+    status,
+    contractHash: raw.contract_hash as string | undefined,
+    primaryMetric,
+    secondaryMetrics: (raw.secondary_metrics as string[]) ?? [],
+    sourcePath,
+  };
+}
+
+// run-envelope.schema.json → CanonicalRun
+export function adaptRunEnvelope(raw: Record<string, unknown>, sourcePath: string): CanonicalRun {
+  const runId = requireField(raw, "run_id", sourcePath) as string;
+  const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
+  const experimentType = requireField(raw, "experiment_type", sourcePath) as string;
+  const createdAt = requireField(raw, "created_at", sourcePath) as string;
+  const configHash = requireField(raw, "config_hash", sourcePath) as string;
+  const status = requireField(raw, "status", sourcePath) as RunStatus;
+
+  if (status === "invalid" && !raw.invalid_reason) {
+    throw new SchemaAdapterError('status 為 "invalid" 時必須有 invalid_reason', sourcePath);
+  }
+
+  return {
+    runId,
+    experimentId,
+    experimentType,
+    status,
+    createdAt,
+    baselineRun: (raw.baseline_run as string | null) ?? null,
+    treatment: raw.treatment as string | undefined,
+    configHash,
+    metrics: (raw.metrics as Record<string, number>) ?? {},
+    invalidReason: raw.invalid_reason as string | undefined,
+    sourcePath,
+  };
+}
+
+// comparison-result.schema.json（compare-runs 的輸出）→ CanonicalComparison
+export function adaptComparisonResult(
+  raw: Record<string, unknown>,
+  sourcePath: string
+): CanonicalComparison {
+  const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
+  const runA = requireField(raw, "run_a", sourcePath) as string;
+  const runB = requireField(raw, "run_b", sourcePath) as string;
+  const comparisonValid = requireField(raw, "comparison_valid", sourcePath) as boolean;
+  const confounded = requireField(raw, "confounded", sourcePath) as boolean;
+  const rawMetrics = (requireField(raw, "metrics", sourcePath) as Record<
+    string,
+    Record<string, unknown>
+  >) ?? {};
+
+  const metrics: CanonicalMetricDiff[] = Object.entries(rawMetrics).map(([metric, m]) => ({
+    metric,
+    definitionConsistent: Boolean(m.definition_consistent),
+    computed: Boolean(m.computed),
+    baseline: (m.baseline as number | null) ?? null,
+    treatment: (m.treatment as number | null) ?? null,
+    absoluteDiff: (m.absolute_diff as number | null) ?? null,
+    relativeDiff: (m.relative_diff as number | null) ?? null,
+  }));
+
+  return {
+    experimentId,
+    runA,
+    runB,
+    comparisonValid,
+    confounded,
+    confoundedReasons: (raw.confounded_reasons as string[]) ?? [],
+    metrics,
+    sourcePath,
+  };
+}
