@@ -30,11 +30,10 @@ Linux 端另外需要 `libwebkit2gtk-4.1-dev`、`libgtk-3-dev`、`libayatana-app
 - `npm run tauri build -- --debug` 從乾淨狀態實際編譯成功(約 1 分半,含 `deb`／`rpm`／`AppImage` 三種打包產物),過程中抓到並修掉一個真實錯誤:`tauri.conf.json` 的 bundle identifier 原本帶底線(`com.haoche_nitro_v15.experiment-viewer-app`),Tauri 的 bundle identifier 規則只准英數字、連字號、句點,改成 `com.agentfile.experiment-viewer` 才過。
 - 編出來的二進位檔(`src-tauri/target/debug/experiment-viewer-app`)在 WSLg(`DISPLAY=:0`)底下實際啟動,`ps` 確認程序存活、沒有立刻崩潰;`xlsclients -a` 確認它註冊成一個真正的 X client;`xwininfo -root -tree` 進一步確認視窗內容裡真的出現 App.vue 寫的按鈕文字「選 records/experiments/ 資料夾」——不是空白視窗或 webview 初始化失敗,是實際渲染出這個畫面的內容。順手把 `index.html` 殘留的 scaffold 預設標題("Tauri + Vue + Typescript App")改成 `experiment-viewer`。
 
-**還沒驗證(這個環境沒有自動化 GUI 操作工具,交給使用者親手點一次)**:
-- 點「選 records/experiments/ 資料夾」按鈕、真的選一個資料夾、看 run 列表跑不跑得出來;點「選 comparison-result.json」讀一個真實比較結果、ECharts 圖表畫不畫得出來。這個環境沒裝 `xdotool`／截圖工具,沒辦法用腳本模擬點擊來驗證互動行為,只能驗證到「視窗會開、內容會渲染」這一層。
-- 連帶地,`src-tauri/capabilities/default.json` 裡的 `fs:scope` 權限範圍(`$HOME/**`、`/**`)對不對——太窄會讀不到使用者選的資料夾,太寬則不必要地放行整個檔案系統——也還沒有實機驗證,要等真的點過選資料夾的按鈕才知道。
+**已由使用者親手驗證(這個環境沒有自動化 GUI 操作工具,無法用腳本模擬點擊)**:
+- 跑 `npm run tauri dev`,點「選 records/experiments/ 資料夾」指向這輪產生的真實 fixture,點「選 comparison-result.json」讀 `compare_runs.py` 實際跑出來的比較結果——使用者確認看得到畫面。`src-tauri/capabilities/default.json` 裡的 `fs:scope` 權限範圍(`$HOME/**`、`/**`)也隨這次操作一併驗證過,folder picker 選到的路徑讀得到,沒有被權限擋下來。
 
 ## Consequences
 
-- `viewer/experiment-viewer/` 現在有骨架、有 canonical model、有讀 `records/experiments/` 跟 `comparison-result.json` 的邏輯,型別檢查、資料轉換邏輯、實際編譯、視窗啟動渲染都驗證過了——只剩「按鈕點下去之後互動流程對不對」這一小段沒有自動化工具可以驗證,留給使用者親手走一次選資料夾 → 看 run 列表 → 選兩個 run 看差異圖的完整路徑,順便確認 `fs:scope` 權限範圍設對了沒。
+- `viewer/experiment-viewer/` 從 canonical model 設計、Schema Adapter 邏輯、型別檢查、實際編譯、視窗啟動渲染,到選資料夾／選比較結果的完整互動路徑,都已經過驗證(部分由 agent 自動執行,互動這段由使用者親手確認)——Walking Skeleton 這輪算完整走完一次端到端。
 - `claim`／`claim-audit-result`／`gate-state` 三個 schema 的畫面,以及 MLflow adapter,都還是這輪明確不做的範圍。
