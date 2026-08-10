@@ -7,16 +7,19 @@
 ## 核心原則
 
 - **KISS / YAGNI**：禁推測性抽象、設定與過度間接轉介。
+- **Context Budget**：AGENTS.md、skills、docs、memory、（未來可能的）graph 一律按需揭露，不預載。本檔只放不變量與導航；機制細節、已知限制留給各自的擁有文件，不重述。
 - **Optimize for Comprehension**：降低理解成本優先於降低操作成本。
   - 順向：公開入口到實際邏輯 ≤ 2 跳，不需追 registry／factory／dispatcher。僅轉呼叫的層直接折疊，禁 wrapper chain。第三方庫不計跳數。
-  - 逆向（Glass Box）：任何結果可回溯至命令、設定、輸入與 commit。入口預設輸出這四項摘要，不得只回 `Done.`；禁未述副作用。
+  - 逆向（Glass Box）：任何結果可回溯至命令、設定、輸入與 commit。入口預設輸出這四項摘要，不得只回 `Done.`；禁未述副作用。完成與否以 test/lint/build/contract 等實際證據為準，不採自述完成。
 - **Walking Skeleton**：先端到端最小可運行版本，新能力疊在已可運作的產品上；不為未完成的複雜度犧牲可運作狀態。
 - **Structure Follows Need**：結構隨實際需求生長。無空目錄、無單路徑巢狀、無預建技術分層。模組邊界依「會一起改變的理由」切，不依技術類型切。
 - **One Obvious Way**：每種操作單一公開入口，並依「執行面」規範的入口交付。
-- **Single Source of Truth**：依賴、設定、schema、文件各有唯一來源，其餘以連結引用。
+- **Single Source of Truth**：依賴、設定、schema、文件各有唯一來源，其餘以連結引用。衍生產物（索引、快取、摘要、generated models、graph）永遠可刪除重建，不得凌駕權威來源。
+- **Cheapest Correct Retrieval Primitive**：能用 `rg` 精確比對就不用 embedding；能由程式結構（AST/graph）得到就不讓 LLM 猜；只有語意與歷史問題才查 memsearch。細節見「檢索」一節。
 - **Borrow Before Building**：先研究成熟產品與既有依賴的既定解法，不從零發明。沿用順序：既有依賴 → 標準庫 → 成熟函式庫 → 自寫；判準是整體複雜度，非依賴數量。斷言函式庫做不到之前，先查文件與型別。
 - **Delete, Don't Deprecate**：過時路徑直接移除，不加相容層、fallback、遷移邏輯。移除對外契約屬難逆決定，依優先序另判。
 - **Small Reversible Changes**：一次一事。重構、依賴升級各自獨立成一次變更；變更含清理，殘留即未完成。
+- **Parallelism Requires Isolation**：v1 不做 orchestrator。真正開始多 Agent／多帳號平行改同一 repo 時，用 git worktree 隔離，屆時再評估 vendor `using-git-worktrees`；現在不預建。
 - **Explicit Over Implicit**：無隱藏依賴、臨時路徑、未述副作用。
 - **Measure Before Optimizing**。
 
@@ -27,6 +30,7 @@
 - 可逆決定走 YAGNI，取當下最簡。
 - 難逆決定（對外契約、資料 schema、持久化格式、儲存選型）依長期考量，不接受「先這樣之後再換」。
 - 分不清 → 當難逆處理。
+- 新增規則、skill 或工具的門檻：同類失敗反覆發生且有具體證據，才升格為 test／CI gate／AGENTS 規則／skill／工具。「之後可能會用到」不構成理由。
 
 偏離規則不禁止，但須在對應位置留下一行；靜默偏離視為違規。盤點：`rg -n 'EXCEPTION:' --hidden --glob '!.git'`
 
@@ -37,6 +41,14 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 ## 專案結構與依賴
 
 - 專案啟動第一件事是 `git init`，不必詢問。commit 與 push 仍需明確指示。
+
+  ```
+  EXCEPTION: agentfile 自身 commit/push 不用每次明確指示——使用者已多次明確授權「這個
+  repo 改完直接 commit + push」 | 回收條件: 使用者收回這個授權時
+  EXCEPTION: vendored `implement` skill 最後一步寫死「commit your work」，與本條衝突，
+  vendored 檔案保留上游正文不能改字 | 回收條件: 上游改版拿掉這行，或這包不再 vendor 這份技能
+  ```
+
 - 每個 Python 專案獨立 `.venv`，禁全域依賴。
 - 遵循 Python 3.12+ 最新 PEP。嚴格禁止（不可 EXCEPTION 豁免）：舊版專案配置、已廢棄型態寫法、SQL/Shell 的 f-string 拼接、過時併發模式。
 - 版本釘選並提交鎖檔，禁以 latest 作為穩定策略。新增依賴須在 commit 訊息寫理由。
@@ -84,6 +96,7 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 | Code / Tests | 系統實際做什麼 |
 | memsearch memory | 過去發生過什麼 |
 | `CLAUDE.local.md`（Claude Code 原生機制，不進版控） | 這台機器、這個人專屬的規範覆寫 |
+| `docs/eval/` | 這包的能力有沒有變好變壞，怎麼量 |
 
 `docs/PROJECT.md` 只記目的、範圍、系統概觀與穩定背景，不是 feature spec 或任務清單，不複製 issue 內容。
 
@@ -104,15 +117,21 @@ Code / Tests → Current Docs / ADR → AGENTS.md → Handoff → Conversation M
 
 canonical source 為 `skills/<name>/`；`.claude/skills` 以 symlink 指向它；Codex 直接掃 `.agents/skills`。
 
-## 語意索引
+## 檢索
 
-`docs/` 是唯一來源，語意索引只是可重建快取。任何寫入 `docs/` 或 `CONTEXT.md` 的工作流在主任務成功後刷新它，指令見 `project-docs` 技能。
+三種檢索各司其職，選最便宜、夠精確的那個：
 
-- 未安裝或索引失敗不得使主任務失敗，只回報「語意索引未更新」。
-- 本包不為索引加 hook 或 watch，也不自行改 chunking。語意工具自己的擷取機制是它自己的事。
-- 跨 session 記憶用語意工具的原生流程，不自建結構化歷史層，不改寫或 vendor 它的官方擷取流程。
-- 記憶分兩層：`.memsearch/memory/*.md` 預設不進版控，視為機器層本機資料；CLI、模型與各 agent 的官方整合同樣屬機器層外部依賴，`apply.sh` 不攜帶也不修改使用者層設定，只檢查並提示。索引與模型快取是衍生資料，同樣不進版控。要讓記憶跟著 repo 走，使用者自行在 `.gitignore` 加回追蹤——這是選用，不是預設。
-- 記憶與 `docs/` 的資料量差距大時，多的一方會以純粹的量壓過另一方，使檢索結果倒轉權威順序——問「為什麼這樣決定」拿回討論而非決策紀錄。發生時分開索引集合。
+| 工具 | 職責 |
+|---|---|
+| `rg` | 字面／精確比對 |
+| Graphify（deferred，見 [ADR 0004](docs/adr/0004-graphify-optional-structural-layer.md)） | 現行程式碼的結構：symbol、import、call、dependency、影響範圍 |
+| memsearch | 語意與歷史：`docs/` 的語意索引、跨 session 記憶 |
+
+Graphify 職責僅限現行程式碼結構，不得碰 conversation memory、Issue、ADR 或 task state——一旦這些邊界混進同一個檢索工具，「檢索結果」會悄悄變成「決策依據」。v1 不安裝，啟用門檻與範圍限制見 ADR 0004。
+
+`docs/` 是唯一來源，語意索引只是可重建快取，指令見 `project-docs` 技能。未安裝或索引失敗不得使主任務失敗，只回報「語意索引未更新」。本包不為索引加 hook 或 watch，不自行改 chunking，不改寫或 vendor 語意工具的官方擷取流程。
+
+跨 session 記憶預設不進版控，細節見 [ADR 0001](docs/adr/0001-memsearch-two-layer-memory.md)、[ADR 0002](docs/adr/0002-memsearch-memory-not-tracked-by-default.md)。記憶與 `docs/` 資料量差距過大時的檢索反轉問題，記在 [architecture.md](docs/architecture.md)，不重述。
 
 ## 契約驅動
 
