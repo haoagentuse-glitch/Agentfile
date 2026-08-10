@@ -2,8 +2,6 @@
 
 唯一規範來源。CLAUDE.md 僅以一行引用本檔。專案特化章節只追加於末尾，不改寫上游條文。
 
-本檔只放不變量。做法與步驟放技能裡，此處不複述。
-
 ## 核心原則
 
 - **KISS / YAGNI**：禁推測性抽象、設定與過度間接轉介。
@@ -40,15 +38,7 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 
 ## 專案結構與依賴
 
-- 專案啟動第一件事是 `git init`，不必詢問。commit 與 push 仍需明確指示。
-
-  ```
-  EXCEPTION: agentfile 自身 commit/push 不用每次明確指示——使用者已多次明確授權「這個
-  repo 改完直接 commit + push」 | 回收條件: 使用者收回這個授權時
-  EXCEPTION: vendored `implement` skill 最後一步寫死「commit your work」，與本條衝突，
-  vendored 檔案保留上游正文不能改字 | 回收條件: 上游改版拿掉這行，或這包不再 vendor 這份技能
-  ```
-
+- 專案啟動第一件事是 `git init`，每個改動後自動 commit/push，不必詢問。
 - 每個 Python 專案獨立 `.venv`，禁全域依賴。
 - 遵循 Python 3.12+ 最新 PEP。嚴格禁止（不可 EXCEPTION 豁免）：舊版專案配置、已廢棄型態寫法、SQL/Shell 的 f-string 拼接、過時併發模式。
 - 版本釘選並提交鎖檔，禁以 latest 作為穩定策略。新增依賴須在 commit 訊息寫理由。

@@ -43,7 +43,7 @@
 對話 → 摘要 → memory Markdown → embedding / BM25 / RRF → recall → 逐字稿 fallback
 ```
 
-不自行改 chunking、不加 reranker、不接 GPU。
+不加 reranker、不接 GPU（不自行改 chunking 等既有規則見 [AGENTS.md「檢索」](AGENTS.md#檢索)）。
 
 專案層（`.memsearch/memory/*.md`）與機器層（memsearch CLI、embedding 模型、各 agent 官方整合）分開，`apply.sh` 只檢查後者是否存在，不攜帶也不修改。`.memsearch/` **預設不進版控**，記憶留在本機；要跨機器帶著走，自行在 `.gitignore` 加回 `!.memsearch/memory/*.md`。決策理由見 [ADR 0001](docs/adr/0001-memsearch-two-layer-memory.md)、[ADR 0002](docs/adr/0002-memsearch-memory-not-tracked-by-default.md)；部件關係與已知限制見 [architecture.md](docs/architecture.md)。
 
@@ -89,7 +89,7 @@ memsearch config set embedding.provider onnx
 memsearch search "為什麼契約用 spec-first"
 ```
 
-`docs/` 的索引**不需要手動維護**。寫 `docs/` 的工作流（`project-docs`、`domain-modeling`）在文件寫完後自己刷新。沒裝 memsearch 或索引失敗都不會讓文件任務失敗，只會在回報末尾說一句索引未更新。
+`docs/` 的索引**不需要手動維護**。寫 `docs/` 的工作流（`project-docs`、`domain-modeling`）在文件寫完後自己刷新；沒裝 memsearch 或索引失敗時的處理方式見 [AGENTS.md「檢索」](AGENTS.md#檢索)。
 
 換成別的語意工具不用改這包任何東西——接軌只是「markdown 放在 `docs/`」這個慣例。已實測的成本與已知限制見 [architecture.md](docs/architecture.md)。
 
