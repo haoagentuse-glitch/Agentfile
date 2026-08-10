@@ -26,6 +26,64 @@ export interface CanonicalExperiment {
   primaryMetric: string;
   secondaryMetrics: string[];
   runs: CanonicalRun[];
+  claims: CanonicalClaim[];
+  gateState: CanonicalGateState | null;
+  sourcePath: string;
+}
+
+export interface CanonicalClaim {
+  claimId: string;
+  statement: string;
+  experimentId: string;
+  comparisonRef: string;
+  metric: string;
+  expectedDirection: "increase" | "decrease" | "no_change";
+  statedMagnitude?: number;
+  magnitudeType?: "absolute" | "relative";
+  scope: string;
+  createdAt: string;
+  sourcePath: string;
+}
+
+export type ClaimVerdict =
+  | "fully_supported"
+  | "partially_supported"
+  | "overreaching"
+  | "unsupported"
+  | "unauditable"
+  | "pending";
+
+export interface CanonicalClaimAuditResult {
+  claimId: string;
+  auditedAt: string;
+  mechanicalPass: boolean;
+  referenceExists: boolean;
+  comparisonValid: boolean | null;
+  metricExists: boolean | null;
+  directionMatches: boolean | null;
+  magnitudeMatches: boolean | null;
+  mechanicalReasons: string[];
+  scopeVerdict: ClaimVerdict;
+  scopeReasoning?: string;
+  finalVerdict: Exclude<ClaimVerdict, "pending">;
+  sourcePath: string;
+}
+
+export type GateLevel = "L0" | "L1" | "L2" | "L3" | "L4" | "L5";
+
+export interface CanonicalGateHistoryEntry {
+  level: GateLevel;
+  status: "passed" | "failed" | "aborted";
+  decidedAt: string;
+  reason: string;
+  runIds: string[];
+}
+
+export interface CanonicalGateState {
+  experimentId: string;
+  currentLevel: GateLevel | null;
+  history: CanonicalGateHistoryEntry[];
+  updatedAt: string;
   sourcePath: string;
 }
 

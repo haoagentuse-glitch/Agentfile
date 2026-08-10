@@ -3,8 +3,8 @@ import { computed, ref } from "vue";
 import { open } from "@tauri-apps/plugin-dialog";
 import VChart from "vue-echarts";
 import "echarts";
-import type { CanonicalComparison, CanonicalExperiment } from "./lib/canonical";
-import { loadComparisonFile, loadRecordsRoot } from "./lib/storage-adapter";
+import type { CanonicalClaimAuditResult, CanonicalComparison, CanonicalExperiment } from "./lib/canonical";
+import { loadClaimAuditFile, loadComparisonFile, loadRecordsRoot } from "./lib/storage-adapter";
 
 const recordsRoot = ref<string | null>(null);
 const experiments = ref<CanonicalExperiment[]>([]);
@@ -12,6 +12,8 @@ const loadErrors = ref<string[]>([]);
 const selectedExperimentId = ref<string | null>(null);
 const comparison = ref<CanonicalComparison | null>(null);
 const comparisonError = ref<string | null>(null);
+const claimAudit = ref<CanonicalClaimAuditResult | null>(null);
+const claimAuditError = ref<string | null>(null);
 
 const selectedExperiment = computed(() =>
   experiments.value.find((e) => e.experimentId === selectedExperimentId.value) ?? null
@@ -43,6 +45,31 @@ async function pickComparisonFile() {
     comparisonError.value = String(e);
   }
 }
+
+async function pickClaimAuditFile() {
+  const file = await open({
+    multiple: false,
+    title: "選 claim-audit 產生的 claim-audit-result.json",
+    filters: [{ name: "JSON", extensions: ["json"] }],
+  });
+  if (!file || Array.isArray(file)) return;
+  claimAuditError.value = null;
+  try {
+    claimAudit.value = await loadClaimAuditFile(file);
+  } catch (e) {
+    claimAudit.value = null;
+    claimAuditError.value = String(e);
+  }
+}
+
+const verdictLabel: Record<string, string> = {
+  fully_supported: "完全支持",
+  partially_supported: "部分支持",
+  overreaching: "超出證據範圍",
+  unsupported: "不支持",
+  unauditable: "無法稽核",
+  pending: "待 agent 判斷",
+};
 
 const chartOption = computed(() => {
   if (!comparison.value) return null;
@@ -115,6 +142,57 @@ const chartOption = computed(() => {
           </tr>
         </tbody>
       </table>
+
+      <h3>Claims（{{ selectedExperiment.claims.length }}）</h3>
+      <table v-if="selectedExperiment.claims.length > 0">
+        <thead>
+          <tr>
+            <th>claim_id</th>
+            <th>statement</th>
+            <th>metric</th>
+            <th>expected_direction</th>
+            <th>scope</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="claim in selectedExperiment.claims" :key="claim.claimId">
+            <td>{{ claim.claimId }}</td>
+            <td>{{ claim.statement }}</td>
+            <td>{{ claim.metric }}</td>
+            <td>{{ claim.expectedDirection }}</td>
+            <td>{{ claim.scope }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="hint">這個 experiment 底下 <code>claims/</code> 還沒有任何 claim。</p>
+
+      <h3>Compute Gate</h3>
+      <div v-if="selectedExperiment.gateState">
+        <p>目前等級：<strong>{{ selectedExperiment.gateState.currentLevel ?? "尚未申請過任何等級" }}</strong></p>
+        <table v-if="selectedExperiment.gateState.history.length > 0">
+          <thead>
+            <tr>
+              <th>level</th>
+              <th>status</th>
+              <th>decided_at</th>
+              <th>reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(entry, i) in selectedExperiment.gateState.history"
+              :key="i"
+              :class="{ 'gate-aborted': entry.status === 'aborted', 'gate-failed': entry.status === 'failed' }"
+            >
+              <td>{{ entry.level }}</td>
+              <td>{{ entry.status }}</td>
+              <td>{{ entry.decidedAt }}</td>
+              <td>{{ entry.reason }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-else class="hint">這個 experiment 底下 <code>gates/{{ selectedExperiment.experimentId }}.json</code> 還不存在，代表還沒申請過任何 Compute Gate 等級。</p>
     </section>
 
     <section>
@@ -133,6 +211,37 @@ const chartOption = computed(() => {
           </ul>
         </p>
         <v-chart v-else-if="chartOption" :option="chartOption" style="height: 360px" />
+      </div>
+    </section>
+
+    <section>
+      <h2>Claim Audit</h2>
+      <p class="hint">要先用 <code>claim-audit</code> skill 產生 <code>claim-audit-result.json</code>——機械段（引用是否存在、方向與數值對不對）由 <code>claim_audit.py</code> 判定，<code>scope_verdict</code> 這一段是 agent 的語意判斷，這裡只負責讀跟顯示，不重新判定。</p>
+      <button @click="pickClaimAuditFile">選 claim-audit-result.json</button>
+
+      <div v-if="claimAuditError" class="errors">{{ claimAuditError }}</div>
+
+      <div v-if="claimAudit">
+        <p>claim_id：<code>{{ claimAudit.claimId }}</code></p>
+        <p>
+          結論：
+          <strong :class="{ overreach: claimAudit.finalVerdict === 'overreaching' || claimAudit.finalVerdict === 'unsupported' }">
+            {{ verdictLabel[claimAudit.finalVerdict] }}
+          </strong>
+        </p>
+        <table>
+          <tbody>
+            <tr><th>reference_exists</th><td>{{ claimAudit.referenceExists }}</td></tr>
+            <tr><th>comparison_valid</th><td>{{ claimAudit.comparisonValid ?? "（未檢查）" }}</td></tr>
+            <tr><th>metric_exists</th><td>{{ claimAudit.metricExists ?? "（未檢查）" }}</td></tr>
+            <tr><th>direction_matches</th><td>{{ claimAudit.directionMatches ?? "（未檢查）" }}</td></tr>
+            <tr><th>magnitude_matches</th><td>{{ claimAudit.magnitudeMatches ?? "（未填 stated_magnitude，不檢查）" }}</td></tr>
+          </tbody>
+        </table>
+        <ul v-if="claimAudit.mechanicalReasons.length > 0">
+          <li v-for="reason in claimAudit.mechanicalReasons" :key="reason">{{ reason }}</li>
+        </ul>
+        <p v-if="claimAudit.scopeReasoning" class="hint">{{ claimAudit.scopeReasoning }}</p>
       </div>
     </section>
   </main>
@@ -181,5 +290,14 @@ th, td {
 .confounded {
   color: #a00;
   font-weight: bold;
+}
+.overreach {
+  color: #a00;
+}
+.gate-aborted {
+  background: #fdecea;
+}
+.gate-failed {
+  background: #fff6e0;
 }
 </style>

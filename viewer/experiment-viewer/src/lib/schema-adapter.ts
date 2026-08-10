@@ -2,10 +2,16 @@
 // 只認 profiles/experimental/records/experiments/schemas/ 現有的欄位；schema 改版時只改這個檔案。
 
 import type {
+  CanonicalClaim,
+  CanonicalClaimAuditResult,
   CanonicalComparison,
   CanonicalExperiment,
+  CanonicalGateHistoryEntry,
+  CanonicalGateState,
   CanonicalMetricDiff,
   CanonicalRun,
+  ClaimVerdict,
+  GateLevel,
   RunStatus,
 } from "./canonical";
 
@@ -26,11 +32,11 @@ function requireField(obj: Record<string, unknown>, field: string, sourcePath: s
   return obj[field];
 }
 
-// experiment-contract.schema.json → CanonicalExperiment（runs 欄位留空，由 storage-adapter 填入）
+// experiment-contract.schema.json → CanonicalExperiment（runs／claims／gateState 留空，由 storage-adapter 填入）
 export function adaptExperimentContract(
   raw: Record<string, unknown>,
   sourcePath: string
-): Omit<CanonicalExperiment, "runs"> {
+): Omit<CanonicalExperiment, "runs" | "claims" | "gateState"> {
   const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
   const question = requireField(raw, "question", sourcePath) as string;
   const hypothesis = requireField(raw, "hypothesis", sourcePath) as string;
@@ -110,6 +116,92 @@ export function adaptComparisonResult(
     confounded,
     confoundedReasons: (raw.confounded_reasons as string[]) ?? [],
     metrics,
+    sourcePath,
+  };
+}
+
+// claim.schema.json → CanonicalClaim
+export function adaptClaim(raw: Record<string, unknown>, sourcePath: string): CanonicalClaim {
+  const claimId = requireField(raw, "claim_id", sourcePath) as string;
+  const statement = requireField(raw, "statement", sourcePath) as string;
+  const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
+  const comparisonRef = requireField(raw, "comparison_ref", sourcePath) as string;
+  const metric = requireField(raw, "metric", sourcePath) as string;
+  const expectedDirection = requireField(raw, "expected_direction", sourcePath) as
+    | "increase"
+    | "decrease"
+    | "no_change";
+  const scope = requireField(raw, "scope", sourcePath) as string;
+  const createdAt = requireField(raw, "created_at", sourcePath) as string;
+
+  return {
+    claimId,
+    statement,
+    experimentId,
+    comparisonRef,
+    metric,
+    expectedDirection,
+    statedMagnitude: raw.stated_magnitude as number | undefined,
+    magnitudeType: raw.magnitude_type as "absolute" | "relative" | undefined,
+    scope,
+    createdAt,
+    sourcePath,
+  };
+}
+
+// claim-audit-result.schema.json（claim_audit.py 的機械段輸出 + agent 填的語意段）→ CanonicalClaimAuditResult
+export function adaptClaimAuditResult(
+  raw: Record<string, unknown>,
+  sourcePath: string
+): CanonicalClaimAuditResult {
+  const claimId = requireField(raw, "claim_id", sourcePath) as string;
+  const auditedAt = requireField(raw, "audited_at", sourcePath) as string;
+  const mechanical = requireField(raw, "mechanical", sourcePath) as Record<string, unknown>;
+  const finalVerdict = requireField(raw, "final_verdict", sourcePath) as Exclude<
+    ClaimVerdict,
+    "pending"
+  >;
+
+  if (!("mechanical_pass" in mechanical)) {
+    throw new SchemaAdapterError('mechanical 底下缺少 "mechanical_pass"', sourcePath);
+  }
+
+  return {
+    claimId,
+    auditedAt,
+    mechanicalPass: Boolean(mechanical.mechanical_pass),
+    referenceExists: Boolean(mechanical.reference_exists),
+    comparisonValid: (mechanical.comparison_valid as boolean | null) ?? null,
+    metricExists: (mechanical.metric_exists as boolean | null) ?? null,
+    directionMatches: (mechanical.direction_matches as boolean | null) ?? null,
+    magnitudeMatches: (mechanical.magnitude_matches as boolean | null) ?? null,
+    mechanicalReasons: (raw.mechanical_reasons as string[]) ?? [],
+    scopeVerdict: (raw.scope_verdict as ClaimVerdict) ?? "pending",
+    scopeReasoning: raw.scope_reasoning as string | undefined,
+    finalVerdict,
+    sourcePath,
+  };
+}
+
+// gate-state.schema.json（compute_gate.py 維護的單一、append-only 檔案）→ CanonicalGateState
+export function adaptGateState(raw: Record<string, unknown>, sourcePath: string): CanonicalGateState {
+  const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
+  const history = requireField(raw, "history", sourcePath) as Array<Record<string, unknown>>;
+  const updatedAt = requireField(raw, "updated_at", sourcePath) as string;
+
+  const canonicalHistory: CanonicalGateHistoryEntry[] = history.map((entry) => ({
+    level: entry.level as GateLevel,
+    status: entry.status as "passed" | "failed" | "aborted",
+    decidedAt: entry.decided_at as string,
+    reason: entry.reason as string,
+    runIds: (entry.run_ids as string[]) ?? [],
+  }));
+
+  return {
+    experimentId,
+    currentLevel: (raw.current_level as GateLevel | null) ?? null,
+    history: canonicalHistory,
+    updatedAt,
     sourcePath,
   };
 }

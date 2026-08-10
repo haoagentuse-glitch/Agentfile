@@ -14,7 +14,7 @@ Linux 端另外需要 `libwebkit2gtk-4.1-dev`、`libgtk-3-dev`、`libayatana-app
 
 原始需求要求「schema-agnostic,透過 adapter 支援其他格式」。這包目前只有自己定義的一種 schema,真的做一套可插拔的 adapter plugin 系統(動態載入、外部註冊)是預測性抽象,先寫死一份 Schema Adapter,只在「資料放哪裡」(Storage)跟「資料長什麼樣」(Schema)兩個維度上留分層邊界,不做成外掛系統。以後真的出現第二種資料來源,優先用 YAML manifest 做欄位對應(宣告式,不用重新編譯),而不是每次寫一個新的 TypeScript class——這個決定跟理由寫在 README,不是這裡重複的部分。
 
-`CanonicalRun`／`CanonicalExperiment`／`CanonicalComparison` 三個型別直接對應 `run-envelope`／`experiment-contract`／`comparison-result` 三份 schema 目前有的欄位,沒有多加「以後可能用到」的欄位——`claim`／`claim-audit-result`／`gate-state` 這三份 schema 目前這輪的 UI 沒有消費,留到有具體畫面需求時再加對應的 canonical 型別跟 adapter 函式。
+`CanonicalRun`／`CanonicalExperiment`／`CanonicalComparison` 三個型別直接對應 `run-envelope`／`experiment-contract`／`comparison-result` 三份 schema 目前有的欄位,沒有多加「以後可能用到」的欄位。`claim`／`claim-audit-result`／`gate-state` 三份 schema 第一輪沒做對應畫面,第二輪(見下方「補做的部分」)補上——不是回頭違反 YAGNI,是使用者明確要求擴充,不是我自己預先猜的。
 
 ## comparison-result 沒有固定目錄慣例,所以是單檔挑選
 
@@ -35,5 +35,16 @@ Linux 端另外需要 `libwebkit2gtk-4.1-dev`、`libgtk-3-dev`、`libayatana-app
 
 ## Consequences
 
-- `viewer/experiment-viewer/` 從 canonical model 設計、Schema Adapter 邏輯、型別檢查、實際編譯、視窗啟動渲染,到選資料夾／選比較結果的完整互動路徑,都已經過驗證(部分由 agent 自動執行,互動這段由使用者親手確認)——Walking Skeleton 這輪算完整走完一次端到端。
-- `claim`／`claim-audit-result`／`gate-state` 三個 schema 的畫面,以及 MLflow adapter,都還是這輪明確不做的範圍。
+- `viewer/experiment-viewer/` 從 canonical model 設計、Schema Adapter 邏輯、型別檢查、實際編譯、視窗啟動渲染,到選資料夾／選比較結果的完整互動路徑,都已經過驗證(部分由 agent 自動執行,互動這段由使用者親手確認)——Walking Skeleton 第一輪算完整走完一次端到端。
+- MLflow adapter 還是明確不做的範圍。
+
+## 補做的部分:claim／gate-state 畫面
+
+第一輪刻意不做 `claim`／`claim-audit-result`／`gate-state` 三份 schema 的畫面,理由是「沒有具體畫面需求就不預先加」。這輪使用者明確選擇擴充這塊,於是補上:
+
+- `CanonicalClaim`／`CanonicalClaimAuditResult`／`CanonicalGateState` 三個型別,對應方式跟第一輪的三個型別一致——直接照 schema 現有欄位定,不多加。
+- Storage Adapter 新增 `claims/<claim_id>.json`（claim 輸入,固定目錄慣例,跟 `definitions/`／`runs/` 一樣掃資料夾)與 `gates/<experiment_id>.json`（gate state,同樣固定目錄慣例,一個 experiment 一份)兩種讀取路徑;`claim-audit-result.json` 跟 `comparison-result.json` 一樣沒有固定輸出路徑,維持單檔挑選。
+- 測試方式跟第一輪一致:用 `claim_audit.py`／`compute_gate.py` 實際跑出真實的 `claim-audit-result.json`（含機械段自動判定跟 agent 補的語意段 `scope_verdict`)與 `gate-state.json`（L0→L1→L2 三筆真實升級歷史,`run_ids` 帶真實 run_id),再用同一支 Node 測試腳本驗證 canonical 物件正確,新增 7 個斷言全部通過。
+- 過程中發現一個值得記的細節:`claim_audit.py` 機械段跑完、agent 還沒填語意段之前,`final_verdict` 欄位的值是 `"pending"`——但 `claim-audit-result.schema.json` 的 `final_verdict` enum 並不包含 `"pending"`(只有 `scope_verdict` 允許)。這代表機械段剛跑完、語意段還沒補上的那份檔案,嚴格來說**還不是** schema-valid 的終態,是 claim-audit 技能流程裡刻意存在的中繼狀態(SKILL.md 講得很清楚:機械段過了要「換你判斷」,不是直接可用)。Schema Adapter 沒有加執行期 enum 檢查去擋這個中繼狀態——驗證 schema 合不合法是 `experiment-lint` 的職責範圍,不該在 viewer 裡重做一份,這裡維持只做「讀不讀得出來」的檢查,讀到不合法的終態值也不會噴錯,只會忠實顯示出來。
+
+編譯與視窗渲染驗證跟第一輪同樣的方式又走了一次(`npm run tauri build -- --debug --no-bundle`,`xwininfo` 確認新視窗啟動不崩潰),互動點擊部分留給使用者用這輪新增的 claims／gate-state fixture 親手確認。

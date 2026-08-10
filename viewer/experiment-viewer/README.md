@@ -24,10 +24,10 @@ Viewer（Vue 元件 + ECharts）
 
 ## v1 Walking Skeleton 只做的部分
 
-- **Storage Adapter**：只有一種，讀本機檔案系統的 `records/experiments/{definitions,runs}/`。不做遠端 API adapter——沒有第二個資料來源之前先做抽象是預測性設計,違反 YAGNI。
-- **Schema Adapter**：只認目前這包定義的 schema（`experiment-contract` / `run-envelope` / `comparison-result` / `claim` / `claim-audit-result` / `gate-state`,見 `profiles/experimental/records/experiments/schemas/`),依 `schema_version` 挑對應解析邏輯。
+- **Storage Adapter**：只有一種，讀本機檔案系統的 `records/experiments/{definitions,runs,claims,gates}/`。不做遠端 API adapter——沒有第二個資料來源之前先做抽象是預測性設計,違反 YAGNI。
+- **Schema Adapter**：認這包目前定義的六份 schema（`experiment-contract` / `run-envelope` / `comparison-result` / `claim` / `claim-audit-result` / `gate-state`,見 `profiles/experimental/records/experiments/schemas/`),依 `schema_version` 挑對應解析邏輯。
 - **Canonical Model**：見下方型別定義,直接對應這幾份 schema 目前有的欄位,不預先多加「以後可能需要」的欄位。
-- **Viewer**:一個畫面——選一個 experiment,列出底下的 run,選兩個 run 顯示 `compare-runs` 產出的 `comparison-result.json`(指標差異用 ECharts 長條圖,`comparison_valid=false` 時不畫圖只顯示 confounded 原因,不得暗示可比較)。
+- **Viewer**:一個畫面——選一個 experiment,列出底下的 run、claim、Compute Gate 歷史;選兩個 run 顯示 `compare-runs` 產出的 `comparison-result.json`(指標差異用 ECharts 長條圖,`comparison_valid=false` 時不畫圖只顯示 confounded 原因,不得暗示可比較);選一份 `claim-audit-result.json` 顯示機械核對結果與 `final_verdict`。
 
 ## 明確不做的部分(YAML manifest mapping,先寫這裡不寫程式)
 
