@@ -26,11 +26,15 @@ Linux 端另外需要 `libwebkit2gtk-4.1-dev`、`libgtk-3-dev`、`libayatana-app
 - `npx vue-tsc --noEmit` 跟 `npm run build` 都乾淨通過(純前端 build,不需要 Rust/webkit)。
 - Schema Adapter(`src/lib/schema-adapter.ts`)的三個轉換函式,對著**真實跑出來的資料**做過測試:用 `compare_runs.py` 實際跑一組 fixture run(baseline `recall_at_10=0.72` vs treatment `recall_at_10=0.79`,`top_k` 為宣告變因,其餘控制維度一致)產生真實的 `comparison-result.json`,再用 Node 的 `--experimental-strip-types` 直接跑 TS 測試腳本驗證 canonical 物件的數字、狀態跟原始腳本輸出完全對得上,包括缺必填欄位時正確丟出 `SchemaAdapterError`——不是手造一份符合預期的假資料倒著寫測試。
 
-**還沒驗證(卡在系統套件,交給使用者)**:
-- Tauri 桌面應用實際跑起來(`npm run tauri dev`)、GUI 畫面渲染、`@tauri-apps/plugin-dialog`／`@tauri-apps/plugin-fs` 的檔案選擇跟讀檔在真實 webview 裡能不能動——這些都需要 `libwebkit2gtk-4.1-dev` 等套件裝好才能編譯,目前環境還沒裝。`src-tauri/capabilities/default.json` 裡的 `fs:scope` 權限設定是依 Tauri v2 文件寫的,還沒有實機驗證,系統套件裝好、能跑 `tauri dev` 之後要先確認這個範圍是否正確(太窄會讀不到使用者選的資料夾,太寬則不必要地放行整個檔案系統)。
+**已驗證(系統套件裝好之後,第二輪)**:
+- `npm run tauri build -- --debug` 從乾淨狀態實際編譯成功(約 1 分半,含 `deb`／`rpm`／`AppImage` 三種打包產物),過程中抓到並修掉一個真實錯誤:`tauri.conf.json` 的 bundle identifier 原本帶底線(`com.haoche_nitro_v15.experiment-viewer-app`),Tauri 的 bundle identifier 規則只准英數字、連字號、句點,改成 `com.agentfile.experiment-viewer` 才過。
+- 編出來的二進位檔(`src-tauri/target/debug/experiment-viewer-app`)在 WSLg(`DISPLAY=:0`)底下實際啟動,`ps` 確認程序存活、沒有立刻崩潰;`xlsclients -a` 確認它註冊成一個真正的 X client;`xwininfo -root -tree` 進一步確認視窗內容裡真的出現 App.vue 寫的按鈕文字「選 records/experiments/ 資料夾」——不是空白視窗或 webview 初始化失敗,是實際渲染出這個畫面的內容。順手把 `index.html` 殘留的 scaffold 預設標題("Tauri + Vue + Typescript App")改成 `experiment-viewer`。
+
+**還沒驗證(這個環境沒有自動化 GUI 操作工具,交給使用者親手點一次)**:
+- 點「選 records/experiments/ 資料夾」按鈕、真的選一個資料夾、看 run 列表跑不跑得出來;點「選 comparison-result.json」讀一個真實比較結果、ECharts 圖表畫不畫得出來。這個環境沒裝 `xdotool`／截圖工具,沒辦法用腳本模擬點擊來驗證互動行為,只能驗證到「視窗會開、內容會渲染」這一層。
+- 連帶地,`src-tauri/capabilities/default.json` 裡的 `fs:scope` 權限範圍(`$HOME/**`、`/**`)對不對——太窄會讀不到使用者選的資料夾,太寬則不必要地放行整個檔案系統——也還沒有實機驗證,要等真的點過選資料夾的按鈕才知道。
 
 ## Consequences
 
-- `viewer/experiment-viewer/` 現在有骨架、有 canonical model、有讀 `records/experiments/` 跟 `comparison-result.json` 的邏輯,型別檢查跟資料轉換邏輯都過了,但還沒有人真的按過這個 app 的按鈕——不算「做完」,算「資料層邏輯做完、GUI 待實機驗證」。
-- 系統套件裝好之後,下一步是實際跑 `npm run tauri dev`,對著這輪產生的 fixture 資料(暫存在 scratchpad,沒有進版控)走一次選資料夾 → 看 run 列表 → 選兩個 run 看差異圖的完整路徑,再回來更新這份 ADR 的驗證狀態。
+- `viewer/experiment-viewer/` 現在有骨架、有 canonical model、有讀 `records/experiments/` 跟 `comparison-result.json` 的邏輯,型別檢查、資料轉換邏輯、實際編譯、視窗啟動渲染都驗證過了——只剩「按鈕點下去之後互動流程對不對」這一小段沒有自動化工具可以驗證,留給使用者親手走一次選資料夾 → 看 run 列表 → 選兩個 run 看差異圖的完整路徑,順便確認 `fs:scope` 權限範圍設對了沒。
 - `claim`／`claim-audit-result`／`gate-state` 三個 schema 的畫面,以及 MLflow adapter,都還是這輪明確不做的範圍。
