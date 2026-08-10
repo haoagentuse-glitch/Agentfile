@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claim-audit-result.schema.json",
+  "title": "Claim Audit Result",
+  "description": "claim_audit.py 產生機械檢查的部分（mechanical.*），scope_verdict／scope_reasoning 留給呼叫的 agent 依 claim-audit 技能的判準填寫，兩段合起來才是 final_verdict。mechanical_pass 為 false 時 scope_verdict 固定是 unauditable 或 unsupported，不需要、也不該再做語意判斷。",
+  "type": "object",
+  "required": ["claim_id", "audited_at", "mechanical", "final_verdict"],
+  "properties": {
+    "claim_id": { "type": "string" },
+    "audited_at": { "type": "string", "format": "date-time" },
+    "mechanical": {
+      "type": "object",
+      "required": [
+        "reference_exists", "comparison_valid", "metric_exists",
+        "direction_matches", "magnitude_matches", "mechanical_pass"
+      ],
+      "properties": {
+        "reference_exists": { "type": "boolean", "description": "comparison_ref 指到的檔案存在、載得進來" },
+        "comparison_valid": { "type": ["boolean", "null"], "description": "引用的 comparison-result 的 comparison_valid 欄位；null 代表 reference_exists 為 false，沒得檢查" },
+        "metric_exists": { "type": ["boolean", "null"], "description": "claim 引用的 metric 在 comparison-result 裡有沒有被計算出來" },
+        "direction_matches": { "type": ["boolean", "null"], "description": "claim 宣稱的 expected_direction 是否符合 comparison-result 裡該 metric 的實際差異方向" },
+        "magnitude_matches": { "type": ["boolean", "null"], "description": "沒填 stated_magnitude 時為 null（不檢查）；有填則核對是否落在容許誤差內" },
+        "mechanical_pass": { "type": "boolean" }
+      }
+    },
+    "mechanical_reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "scope_verdict": {
+      "type": "string",
+      "enum": ["fully_supported", "partially_supported", "overreaching", "unsupported", "unauditable", "pending"],
+      "description": "pending 代表機械檢查已過、等待 agent 填語意判斷；unauditable／unsupported 通常是機械檢查沒過，不需要語意判斷"
+    },
+    "scope_reasoning": {
+      "type": "string",
+      "description": "agent 填：為什麼判定這個 scope_verdict，特別是「證據實際涵蓋什麼」跟「claim 宣稱涵蓋什麼」之間的落差"
+    },
+    "final_verdict": {
+      "type": "string",
+      "enum": ["fully_supported", "partially_supported", "overreaching", "unsupported", "unauditable"]
+    }
+  },
+  "additionalProperties": false
+}

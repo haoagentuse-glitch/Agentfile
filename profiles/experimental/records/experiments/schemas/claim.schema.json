@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claim.schema.json",
+  "title": "Claim",
+  "description": "一個可稽核的結論陳述，最小欄位——只放 claim-audit 這條證據鏈真正需要的東西，不是完整的研究知識圖譜。statement 是給人讀的自然語言；其餘欄位是給 claim_audit.py 機械核對用的結構化陳述，兩者必須一致，這正是稽核在檢查的事。",
+  "type": "object",
+  "required": [
+    "claim_id", "statement", "experiment_id", "comparison_ref",
+    "metric", "expected_direction", "scope", "created_at"
+  ],
+  "properties": {
+    "claim_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "statement": {
+      "type": "string",
+      "description": "人類可讀的結論陳述，例如「top_k 從 5 提高到 10 讓 recall_at_k 提升約 12 個百分點」"
+    },
+    "experiment_id": { "type": "string" },
+    "comparison_ref": {
+      "type": "string",
+      "description": "指向支撐這個 claim 的 comparison-result.json 路徑"
+    },
+    "metric": { "type": "string", "description": "這個 claim 引用的是哪個 metric" },
+    "expected_direction": {
+      "type": "string",
+      "enum": ["increase", "decrease", "no_change"],
+      "description": "claim 宣稱這個 metric 的原始數值該往哪個方向動——不是「有沒有變好」（那要看 metric 的 direction 是 higher/lower_is_better，屬於語意判斷），純粹是可驗證的數字方向"
+    },
+    "stated_magnitude": {
+      "type": "number",
+      "description": "claim 宣稱的差異幅度，選填。搭配 magnitude_type 判斷這是絕對差異還是相對差異"
+    },
+    "magnitude_type": {
+      "type": "string",
+      "enum": ["absolute", "relative"],
+      "description": "stated_magnitude 對應 comparison-result 裡的 absolute_diff 還是 relative_diff"
+    },
+    "scope": {
+      "type": "string",
+      "description": "這個 claim 宣稱的適用範圍，例如「僅限這個資料集與這個 model」或「所有 retrieval 任務都適用」——scope audit 就是在檢查這句話有沒有超出證據實際涵蓋的範圍"
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
