@@ -20,15 +20,7 @@
       "Bash(ls:*)",
       "Bash(rg:*)",
       "Bash(fd:*)",
-      "Bash(tree:*)",
-      "Bash(uv sync:*)",
-      "Bash(uv run:*)",
-      "Bash(uv lock:*)",
-      "Bash(ruff check:*)",
-      "Bash(ruff format:*)",
-      "Bash(pytest:*)",
-      "Bash(schemathesis run:*)",
-      "Bash(datamodel-codegen:*)"
+      "Bash(tree:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",

@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # 把隨身包套進目標資料夾。固定多步驟流程：
-#   git init → skills 投影 → .claude/ 設定 → 規範文件 → tracker 設定 → 授權 → .gitignore
+#   git init → skills 投影（core+profile 聯集）→ .claude/ 設定（core+profile 合併）
+#   → 規範文件（core+profile 串接）→ tracker 設定 → 授權 → .gitignore（core+profile 串接）
 # 已存在的檔案一律跳過，不覆寫、不刪除。
 set -euo pipefail
 
 PACK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
-  echo "用法: $(basename "$0") <目標資料夾> [--dry-run]"
+  echo "用法: $(basename "$0") <目標資料夾> [--profile software|experimental] [--dry-run]"
+  echo "  --profile  啟用哪個 profile，預設 software"
   echo "  --dry-run  只印出會做什麼，不實際動作"
   exit 1
 }
@@ -15,16 +17,30 @@ usage() {
 [[ $# -ge 1 ]] || usage
 TARGET="$1"; shift
 DRY=0
-[[ "${1:-}" == "--dry-run" ]] && DRY=1
+PROFILE="software"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY=1; shift ;;
+    --profile) PROFILE="${2:?--profile 需要值}"; shift 2 ;;
+    *) usage ;;
+  esac
+done
+
+[[ "$PROFILE" == "software" || "$PROFILE" == "experimental" ]] || {
+  echo "錯誤：--profile 只接受 software 或 experimental，收到 '$PROFILE'"; exit 1; }
+
+[[ -d "$PACK/profiles/$PROFILE" ]] || {
+  echo "錯誤：profiles/$PROFILE 尚未建立（experimental profile 還在 walking skeleton 階段）"; exit 1; }
 
 [[ "$(cd "$TARGET" 2>/dev/null && pwd || echo "")" != "$PACK" ]] || {
   echo "錯誤：目標不能是隨身包自己"; exit 1; }
 
 run() { if (( DRY )); then echo "  [dry-run] $*"; else "$@"; fi; }
 
-# 逐檔複製一棵樹，已存在者跳過
+# 逐檔複製一棵樹，已存在者跳過；可對同一個 dstroot 呼叫多次做聯集（core 一次、profile 一次）
 copy_tree() {
   local src="$1" dstroot="$2" label="$3"
+  [[ -d "$src" ]] || return 0
   echo "複製 $label"
   while IFS= read -r rel; do
     local dst="$dstroot/$rel"
@@ -35,7 +51,29 @@ copy_tree() {
       run mkdir -p "$(dirname "$dst")"
       run cp "$src/$rel" "$dst"
     fi
-  done < <(cd "$src" && find . -type f ! -name 'settings.local.json' -printf '%P\n' | sort)
+  done < <(cd "$src" && find . -type f ! -name 'settings.local.json' ! -name 'settings.json' ! -name 'gitignore.base' -printf '%P\n' | sort)
+}
+
+# 串接兩個文字檔（core 在前，profile 追加於末尾），已存在則跳過，不覆寫
+concat_file() {
+  local core_src="$1" profile_src="$2" dst="$3" label="$4"
+  if [[ -e "$dst" ]]; then
+    echo "跳過（已存在）：$label"
+    return 0
+  fi
+  echo "組裝：$label（core"
+  if [[ -f "$profile_src" ]]; then echo -n " + $PROFILE"; fi
+  echo "）"
+  if (( DRY )); then
+    echo "  [dry-run] 串接 $core_src${profile_src:+ + $profile_src} -> $dst"
+    return 0
+  fi
+  mkdir -p "$(dirname "$dst")"
+  cat "$core_src" > "$dst"
+  if [[ -f "$profile_src" ]]; then
+    echo "" >> "$dst"
+    cat "$profile_src" >> "$dst"
+  fi
 }
 
 # 1. 目標資料夾
@@ -51,6 +89,8 @@ else
 fi
 (( DRY )) || TARGET="$(cd "$TARGET" && pwd)"
 
+echo "啟用 profile：$PROFILE"
+
 # 2. git init
 if [[ -d "$TARGET/.git" ]]; then
   echo "跳過 git init（已是 repo）"
@@ -59,8 +99,9 @@ else
   run git -C "$TARGET" init -q
 fi
 
-# 3. skills：真實檔案落在 .agents/skills/，Codex 直接掃這裡
-copy_tree "$PACK/skills" "$TARGET/.agents/skills" ".agents/skills/"
+# 3. skills：core + profile 聯集，真實檔案落在 .agents/skills/，Codex 直接掃這裡
+copy_tree "$PACK/core/skills" "$TARGET/.agents/skills" ".agents/skills/"
+copy_tree "$PACK/profiles/$PROFILE/skills" "$TARGET/.agents/skills" ".agents/skills/"
 
 # 4. Claude 讀 .claude/skills，指向同一份，不做第二次複製
 if [[ -e "$TARGET/.claude/skills" ]]; then
@@ -71,32 +112,46 @@ else
   run ln -s ../.agents/skills "$TARGET/.claude/skills"
 fi
 
-# 5. .claude/ 其餘內容。.claude/skills 在包內是 symlink，find -type f 不會下探，故不重複
-copy_tree "$PACK/.claude" "$TARGET/.claude" ".claude/"
+# 5. .claude/ 其餘內容：core + profile 聯集。.claude/skills 在包內是 symlink，find -type f 不會下探，故不重複
+copy_tree "$PACK/core/.claude" "$TARGET/.claude" ".claude/"
+copy_tree "$PACK/profiles/$PROFILE/.claude" "$TARGET/.claude" ".claude/"
 
-# 6. 規範文件
-for f in AGENTS.md CLAUDE.md; do
-  if [[ -e "$TARGET/$f" ]]; then
-    echo "跳過（已存在）：$f"
+# 5b. settings.json 不是「先到先贏」的檔案複製，是內容合併（core 的允許清單 + profile 的允許清單）
+if [[ -e "$TARGET/.claude/settings.json" ]]; then
+  echo "跳過（已存在）：.claude/settings.json"
+else
+  echo "合併：.claude/settings.json（core + $PROFILE）"
+  if (( DRY )); then
+    echo "  [dry-run] jq 合併 core/.claude/settings.json + profiles/$PROFILE/.claude/settings.json"
   else
-    echo "複製：$f"
-    run cp "$PACK/$f" "$TARGET/$f"
+    run mkdir -p "$TARGET/.claude"
+    profile_settings="$PACK/profiles/$PROFILE/.claude/settings.json"
+    if [[ -f "$profile_settings" ]]; then
+      jq -s '.[0].permissions.allow += .[1].permissions.allow | .[0].permissions.deny += (.[1].permissions.deny // []) | .[0]' \
+        "$PACK/core/.claude/settings.json" "$profile_settings" > "$TARGET/.claude/settings.json"
+    else
+      cp "$PACK/core/.claude/settings.json" "$TARGET/.claude/settings.json"
+    fi
   fi
-done
+fi
 
-# 7. tracker 與 domain 設定：vendored skill 讀這兩個檔，取代上游的 per-repo setup 步驟
-copy_tree "$PACK/.claude/templates/agents" "$TARGET/docs/agents" "docs/agents/"
+# 6. 規範文件：AGENTS.md 由 core + profile 串接組裝；CLAUDE.md 只有一份，直接複製
+concat_file "$PACK/core/AGENTS.md" "$PACK/profiles/$PROFILE/AGENTS.md" "$TARGET/AGENTS.md" "AGENTS.md"
+if [[ -e "$TARGET/CLAUDE.md" ]]; then
+  echo "跳過（已存在）：CLAUDE.md"
+else
+  echo "複製：CLAUDE.md"
+  run cp "$PACK/CLAUDE.md" "$TARGET/CLAUDE.md"
+fi
+
+# 7. tracker 設定：vendored skill 讀這個檔，取代上游的 per-repo setup 步驟（profile 無關，core 擁有）
+copy_tree "$PACK/core/.claude/templates/agents" "$TARGET/docs/agents" "docs/agents/"
 
 # 8. 授權：vendored skill 為 MIT，需隨行
 copy_tree "$PACK/LICENSES" "$TARGET/LICENSES" "LICENSES/"
 
-# 9. .gitignore
-if [[ -e "$TARGET/.gitignore" ]]; then
-  echo "跳過（已存在）：.gitignore"
-else
-  echo "複製：.gitignore"
-  run cp "$PACK/.claude/templates/gitignore.base" "$TARGET/.gitignore"
-fi
+# 9. .gitignore：core + profile 串接組裝
+concat_file "$PACK/core/.claude/templates/gitignore.base" "$PACK/profiles/$PROFILE/.claude/templates/gitignore.base" "$TARGET/.gitignore" ".gitignore"
 
 # 10. Runtime 檢查。只回報，不安裝、不修改使用者層設定。
 echo
@@ -127,5 +182,5 @@ echo "               /plugin install memsearch"
 echo "  Codex        bash <memsearch repo>/plugins/codex/scripts/install.sh"
 
 echo
-echo "完成。下一步：在 $TARGET 開 Claude Code，跑 /kickoff 完成 GitHub 與標籤設定。"
+echo "完成（profile：$PROFILE）。下一步：在 $TARGET 開 Claude Code，跑 /kickoff 完成 GitHub 與標籤設定。"
 echo "（尚未 commit——這支腳本本身不 commit；後續改動依 AGENTS.md 會自動 commit，不用手動先 commit。）"

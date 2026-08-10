@@ -4,15 +4,27 @@
 
 自包含：不需要安裝任何外掛。所有 skill 都是本包內的檔案，`apply.sh` 複製過去就能用。
 
+## core + profile
+
+規則與 skill 分兩層，只有 active profile 的內容會進到目標專案，不會的東西 agent 讀不到，也就不可能誤用：
+
+```
+core/                 永遠啟用的共通能力（不變量、通用 skill）
+profiles/software/     一般軟體工程專案特化規則與 skill
+profiles/experimental/ 實驗型專案特化規則與 skill（walking skeleton 中，見 ADR 0005）
+```
+
+`core/AGENTS.md` + `profiles/<active>/AGENTS.md` 串接成目標專案唯一一份 `AGENTS.md`；`.claude/settings.json` 同樣是 core + profile 合併。細節見 [ADR 0005](docs/adr/0005-core-profile-isolation.md)。
+
 ## 套用
 
 ```bash
-./apply.sh <目標資料夾>
+./apply.sh <目標資料夾> [--profile software|experimental]
 ```
 
-加 `--dry-run` 先看會做什麼。已存在的檔案一律跳過，可重複執行。
+不帶 `--profile` 預設 `software`。加 `--dry-run` 先看會做什麼。已存在的檔案一律跳過，可重複執行。
 
-它做的事：`git init` → skills 投影 → `.claude/` 設定 → `AGENTS.md` / `CLAUDE.md` → `docs/agents/` tracker 設定 → `LICENSES/` → `.gitignore`。
+它做的事：`git init` → skills 投影（core + profile 聯集）→ `.claude/` 設定（core + profile 合併）→ `AGENTS.md`（core + profile 串接）/ `CLAUDE.md` → `docs/agents/` tracker 設定 → `LICENSES/` → `.gitignore`（core + profile 串接）。
 
 也可以用來把既有專案納入本規範。
 
@@ -96,14 +108,15 @@ memsearch search "為什麼契約用 spec-first"
 ## skill 放在哪
 
 ```
-skills/<name>/        canonical source（本包唯一真本）
-.claude/skills        → ../skills（symlink）
+core/skills/<name>/              core skill canonical source
+profiles/<name>/skills/<name>/   該 profile 特化 skill canonical source
+.claude/skills                   → ../.agents/skills（symlink，聯集後的投影，這包自己也吃這套機制）
 ```
 
 套用到目標專案後：
 
 ```
-.agents/skills/       真實檔案，Codex 直接掃這裡
+.agents/skills/       真實檔案（core + active profile 聯集），Codex 直接掃這裡
 .claude/skills        → ../.agents/skills（symlink）
 ```
 
@@ -115,36 +128,37 @@ symlink 在 Windows 原生環境不可靠；WSL、macOS、Linux 正常。
 
 以下取自 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT，授權全文在 `LICENSES/`），逐字保留：
 
-`grilling` `grill-me` `grill-with-docs` `writing-for-agents` `domain-modeling` `codebase-design` `to-spec` `to-tickets` `tdd` `implement` `code-review` `handoff`
+- **core**（`core/skills/`）：`grilling` `grill-me` `grill-with-docs` `writing-for-agents` `domain-modeling` `handoff`
+- **software profile**（`profiles/software/skills/`）：`codebase-design` `to-spec` `to-tickets` `tdd` `implement` `code-review`
 
-另取自 [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd)（MIT）：`i-have-adhd`。它是輸出形狀的唯一來源，規則不複製到別的檔案。手動輸入 `/i-have-adhd` 啟用；要關掉就說「stop adhd mode」。
+另取自 [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd)（MIT）：`i-have-adhd`（core）。它是輸出形狀的唯一來源，規則不複製到別的檔案。手動輸入 `/i-have-adhd` 啟用；要關掉就說「stop adhd mode」。
 
 每份的 frontmatter `metadata` 記著來源 commit。改動只有兩處，都不碰 workflow：
 
 - 注入 `metadata.source` / `metadata.license`
 - 上游要求跑 `/setup-matt-pocock-skills` 的地方，改指向本包交付的 `docs/agents/issue-tracker.md`
 
-本包自有：`project-bootstrap` `rule-check` `project-docs` `api-contract`
+本包自有：`project-docs` `rule-check`（core）、`project-bootstrap` `api-contract`（software profile）
 
 ### 更新 vendored skill
 
 刻意行為，不自動同步。比對上游後決定是否採納：
 
 ```bash
-diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/tdd/SKILL.md) skills/tdd/SKILL.md
+diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/tdd/SKILL.md) profiles/software/skills/tdd/SKILL.md
 ```
 
 採納後記得更新 `metadata.source` 的 commit。
 
 ## 怎麼擴充
 
-- **加規則** → 改 `AGENTS.md`。不要複製到別的檔案。
-- **加能力** → 在 `skills/<name>/SKILL.md` 新增。先確認沒有既有 skill 已經涵蓋——同一能力不得存在兩份。
-- **從別處借 skill** → vendor 進 `skills/`，出處寫進 `metadata`，授權放 `LICENSES/`。
-- **加文件骨架** → 放 `.claude/templates/`。
+- **加規則** → 跨所有 profile 都成立就改 `core/AGENTS.md`；只有某個 profile 需要就改 `profiles/<name>/AGENTS.md`。不要複製到別的檔案。
+- **加能力** → 通用就在 `core/skills/<name>/SKILL.md` 新增，某個 profile 特有就放 `profiles/<name>/skills/<name>/SKILL.md`。先確認沒有既有 skill 已經涵蓋——同一能力不得存在兩份，也不得同一份重複出現在 core 跟某個 profile 裡。
+- **從別處借 skill** → vendor 進對應層的 `skills/`，出處寫進 `metadata`，授權放 `LICENSES/`。
+- **加文件骨架** → 通用放 `core/.claude/templates/`，profile 特化放 `profiles/<name>/.claude/templates/`。
 - **這台機器/這個人專屬的規範覆寫** → 專案根目錄 `CLAUDE.local.md`，Claude Code 原生機制，已在 `.gitignore` 排除。Codex 目前沒有對應機制。
 
-`apply.sh` 是整棵樹複製，不 symlink 指回這包本身——理由見 [ADR 0003](docs/adr/0003-apply-copies-not-symlinks-to-dotfiles.md)。加東西不用改它。既有專案要拿到更新，重跑 `apply.sh` 只補新檔；覆蓋舊檔請手動處理（腳本刻意不覆寫）。
+`apply.sh` 對 `core/skills/`、`profiles/<active>/skills/`、`.claude/` 都是整棵樹複製，不 symlink 指回這包本身——理由見 [ADR 0003](docs/adr/0003-apply-copies-not-symlinks-to-dotfiles.md)。加 skill、加文件骨架不用改 `apply.sh`；新增一個 profile（目前只有 `software`／`experimental` 兩個）才要改腳本裡的合法值檢查。既有專案要拿到更新，重跑 `apply.sh` 只補新檔；覆蓋舊檔請手動處理（腳本刻意不覆寫）。
 
 ## 規範
 
