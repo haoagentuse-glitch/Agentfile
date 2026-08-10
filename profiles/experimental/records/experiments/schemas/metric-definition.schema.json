@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "metric-definition.schema.json",
+  "title": "Metric Definition",
+  "description": "Metric 名稱背後的實際算法要版本化，避免同名 metric 在不同 run 之間悄悄漂移。一個 metric 改了 numerator/denominator/aggregation/implementation 任何一項，就是新 metric，換名字或加版本後綴，不得沿用舊名。",
+  "type": "object",
+  "required": ["name", "type", "direction", "aggregation", "implementation"],
+  "properties": {
+    "name": { "type": "string" },
+    "type": {
+      "type": "string",
+      "enum": ["ratio", "count", "duration", "score", "cost"]
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["higher_is_better", "lower_is_better"]
+    },
+    "numerator": { "type": "string" },
+    "denominator": { "type": "string" },
+    "aggregation": {
+      "type": "string",
+      "enum": ["mean", "median", "sum", "max", "min", "p50", "p95", "p99"]
+    },
+    "implementation": {
+      "type": "string",
+      "description": "程式碼路徑或公式描述，讓 metric 的算法可回溯、可覆核"
+    }
+  },
+  "additionalProperties": false
+}

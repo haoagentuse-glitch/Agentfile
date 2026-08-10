@@ -17,7 +17,9 @@ Retrieval scope 用 memsearch 原生的 `search --source-prefix` 隔離，不需
 ## 範圍界定
 
 - `records/conversations/` 刻意不建。對話記憶已經有唯一擁有者（`.memsearch/memory/*.md`，由 memsearch 官方擷取流程決定寫哪），[ADR 0001](0001-memsearch-two-layer-memory.md) 明講不改寫它的官方流程。`records/` 只放這包目前真的沒有擁有者的新記錄類型（`research/`、`experiments/`），conversations 概念仍在，物理位置留在原處。
-- Walking Skeleton 分階段：這一輪（Phase A）只做結構搬遷——把現有內容依分類搬進 `core/` 跟 `profiles/software/`，改 `apply.sh` 支援 `--profile`，零新能力，先求跟改動前行為零回歸。`profiles/experimental/` 的實際內容（Experiment Contract、experiment-lint 等 skill、`records/experiments/` schema）留給下一輪；`apply.sh` 目前對 `--profile experimental` 會明確報「尚未建立」而不是靜默失敗或產生半殘缺的專案。
+- Walking Skeleton 分階段：Phase A（本 ADR 記錄的這輪）只做結構搬遷——把現有內容依分類搬進 `core/` 跟 `profiles/software/`，改 `apply.sh` 支援 `--profile`，零新能力，先求跟改動前行為零回歸。`profiles/experimental/` 的實際內容留給下一輪；`apply.sh` 當時對 `--profile experimental` 會明確報「尚未建立」而不是靜默失敗或產生半殘缺的專案。
+
+**Phase B 已完成**（見 [ADR 0006](0006-experimental-profile-upstream-evaluation.md)）：`profiles/experimental/` 現在有 `evidence-review`／`experiment-design`／`experiment-lint` 三個 skill、`records/experiments/` 的三份 schema、`profiles/experimental/AGENTS.md`。`records/` 的 schema 來源實際放在各 profile 自己底下（`profiles/<name>/records/`），部署時才投影成目標專案的頂層 `records/`——這點原本沒有明講，補在這裡：跟 skill／`.claude/` 同一套「來源分層、部署時聯集/投影」的機制，不是新規則。
 
 ## Consequences
 

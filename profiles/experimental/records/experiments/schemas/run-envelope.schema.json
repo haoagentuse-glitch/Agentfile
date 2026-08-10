@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "run-envelope.schema.json",
+  "title": "Run Envelope",
+  "description": "所有 run 共同固定的欄位。experiment type 特有的量測值放 metrics 底下，格式由 metric-definition.schema.json 描述的各個 metric 自行決定。Append-only：跑錯了標 invalid，不刪除、不改寫既有 run。",
+  "type": "object",
+  "required": [
+    "run_id", "experiment_id", "experiment_type", "created_at",
+    "config_hash", "schema_version", "status"
+  ],
+  "properties": {
+    "run_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "experiment_id": { "type": "string" },
+    "experiment_type": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "code_commit": { "type": "string" },
+    "dataset_version": { "type": "string" },
+    "config_hash": {
+      "type": "string",
+      "description": "這次 run 實際用的設定內容 hash，用來偵測跟 Contract 裡的 baseline/treatment config 是否一致"
+    },
+    "schema_version": { "type": "string" },
+    "baseline_run": {
+      "type": ["string", "null"],
+      "description": "指向另一個 run_id；這個 run 本身就是 baseline 則為 null"
+    },
+    "treatment": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "invalid"]
+    },
+    "invalid_reason": {
+      "type": "string",
+      "description": "status 為 invalid 時必填——記錄 dead end 的原因，不是刪掉重跑"
+    },
+    "duration_seconds": { "type": "number", "minimum": 0 },
+    "metrics": {
+      "type": "object",
+      "description": "key 是 metric name，須對應到已定義的 metric-definition"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "notes": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "invalid" } } },
+      "then": { "required": ["invalid_reason"] }
+    }
+  ],
+  "additionalProperties": false
+}

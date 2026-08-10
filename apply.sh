@@ -147,6 +147,10 @@ fi
 # 7. tracker 設定：vendored skill 讀這個檔，取代上游的 per-repo setup 步驟（profile 無關，core 擁有）
 copy_tree "$PACK/core/.claude/templates/agents" "$TARGET/docs/agents" "docs/agents/"
 
+# 7b. records：profile 擁有的 canonical schema（例如 experimental 的 experiment schema）。
+# definitions/runs 這類使用者產生的內容不預建，只投影 schema 這種本包自己 authored 的固定參照。
+copy_tree "$PACK/profiles/$PROFILE/records" "$TARGET/records" "records/"
+
 # 8. 授權：vendored skill 為 MIT，需隨行
 copy_tree "$PACK/LICENSES" "$TARGET/LICENSES" "LICENSES/"
 

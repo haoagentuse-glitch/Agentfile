@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "experiment-contract.schema.json",
+  "title": "Experiment Contract",
+  "description": "凍結一個 experiment 的假設、控制條件與決策規則。Lock 後計算 contract_hash；任何 controlled_variables 之外的欄位改動都必須開新 condition 或新 experiment，不得原地改寫。",
+  "type": "object",
+  "required": [
+    "experiment_id", "question", "hypothesis", "baseline", "treatment",
+    "controlled_variables", "primary_metric", "decision_rule",
+    "compute_budget", "abort_rule", "status", "created_at"
+  ],
+  "properties": {
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "唯一識別碼，kebab-case"
+    },
+    "question": { "type": "string", "minLength": 1 },
+    "hypothesis": { "type": "string", "minLength": 1 },
+    "baseline": {
+      "type": "object",
+      "required": ["description", "config_ref"],
+      "properties": {
+        "description": { "type": "string" },
+        "config_ref": { "type": "string", "description": "指向 baseline 設定檔的路徑" }
+      }
+    },
+    "treatment": {
+      "type": "object",
+      "required": ["description", "config_ref", "variable"],
+      "properties": {
+        "description": { "type": "string" },
+        "config_ref": { "type": "string" },
+        "variable": {
+          "type": "string",
+          "description": "相對 baseline 改了什麼——單一主要變因；多因素實驗改用陣列並在 controlled_variables 聲明"
+        }
+      }
+    },
+    "controlled_variables": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "刻意保持一致、不隨 treatment 變動的條件（dataset、model、seed、budget……）"
+    },
+    "primary_metric": { "type": "string" },
+    "secondary_metrics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "expected_failure_modes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "decision_rule": {
+      "type": "string",
+      "description": "看到結果前定義：什麼結果算成功、什麼算失敗"
+    },
+    "compute_budget": {
+      "type": "object",
+      "required": ["pilot_max_minutes", "pilot_max_samples"],
+      "properties": {
+        "pilot_max_minutes": { "type": "number", "exclusiveMinimum": 0 },
+        "pilot_max_samples": { "type": "integer", "exclusiveMinimum": 0 }
+      }
+    },
+    "abort_rule": { "type": "string" },
+    "scale_up_rule": {
+      "type": "string",
+      "description": "從 pilot 升級到下一個 Compute Gate 等級的條件；不存在代表停在 pilot"
+    },
+    "status": { "type": "string", "enum": ["draft", "locked"] },
+    "contract_hash": {
+      "type": "string",
+      "description": "lock 後才有值：對 lock 當下的 JSON（不含此欄位本身）算 sha256"
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
