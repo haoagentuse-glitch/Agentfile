@@ -17,7 +17,7 @@
 - **Borrow Before Building**：先研究成熟產品與既有依賴的既定解法，不從零發明。沿用順序：既有依賴 → 標準庫 → 成熟函式庫 → 自寫；判準是整體複雜度，非依賴數量。斷言函式庫做不到之前，先查文件與型別。
 - **Delete, Don't Deprecate**：過時路徑直接移除，不加相容層、fallback、遷移邏輯。移除對外契約屬難逆決定，依優先序另判。
 - **Small Reversible Changes**：一次一事。重構、依賴升級各自獨立成一次變更；變更含清理，殘留即未完成。
-- **Parallelism Requires Isolation**：v1 不做 orchestrator。真正開始多 Agent／多帳號平行改同一 repo 時，用 git worktree 隔離，屆時再評估 vendor `using-git-worktrees`；現在不預建。
+- **Parallelism Requires Isolation**：v1 不做協調器。真正開始多 Agent／多帳號平行改同一 repo 時，用 git worktree 隔離，屆時再評估 vendor `using-git-worktrees`；現在不預建。
 - **Explicit Over Implicit**：無隱藏依賴、臨時路徑、未述副作用。
 - **Measure Before Optimizing**。
 

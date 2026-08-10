@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "comparison-result.schema.json",
+  "title": "Comparison Result",
+  "description": "compare-runs 的固定輸出格式，供未來的 claim-audit 與 UI 直接讀取，不必各自重新解析兩個 Run Envelope。只有 comparison_valid 為 true 時，metrics 底下的差異才算數；為 false 時不得據此產生因果性結論。",
+  "type": "object",
+  "required": [
+    "experiment_id", "run_a", "run_b", "generated_at",
+    "comparability", "comparison_valid", "confounded", "metrics"
+  ],
+  "properties": {
+    "experiment_id": { "type": "string" },
+    "run_a": { "type": "string" },
+    "run_b": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "comparability": {
+      "type": "object",
+      "required": ["dimensions", "declared_variable", "other_differences"],
+      "properties": {
+        "dimensions": {
+          "type": "object",
+          "description": "key 是檢查維度（dataset/evaluation_set/model/budget/controlled_variables 裡的每一項），value 是判定",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": { "type": "string", "enum": ["PASS", "DIFF", "SKIPPED"] },
+              "run_a_value": {},
+              "run_b_value": {}
+            }
+          }
+        },
+        "declared_variable": {
+          "type": "object",
+          "description": "Contract 裡宣告的 treatment.variable 實際比對結果",
+          "properties": {
+            "name": { "type": ["string", "null"] },
+            "run_a_value": {},
+            "run_b_value": {},
+            "changed": { "type": "boolean" }
+          }
+        },
+        "other_differences": {
+          "type": "array",
+          "description": "未宣告、不在檢查維度清單裡，但兩邊設定確實不同的欄位——未預期差異",
+          "items": {
+            "type": "object",
+            "required": ["key", "run_a_value", "run_b_value"],
+            "properties": {
+              "key": { "type": "string" },
+              "run_a_value": {},
+              "run_b_value": {}
+            }
+          }
+        }
+      }
+    },
+    "comparison_valid": {
+      "type": "boolean",
+      "description": "false 時，metrics 底下的 computed 一律為 false，不得引用這次比較下因果性結論"
+    },
+    "confounded": { "type": "boolean" },
+    "confounded_reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["definition_consistent", "computed"],
+        "properties": {
+          "definition_consistent": { "type": "boolean" },
+          "computed": { "type": "boolean" },
+          "baseline": { "type": ["number", "null"] },
+          "treatment": { "type": ["number", "null"] },
+          "absolute_diff": { "type": ["number", "null"] },
+          "relative_diff": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}

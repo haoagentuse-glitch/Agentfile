@@ -8,7 +8,7 @@
 | `profiles/<name>/AGENTS.md` | active profile 特化規則，追加於 core 之後 | 同上，只有 active profile 那份會被串接 |
 | `core/skills/<name>/`、`profiles/<name>/skills/<name>/` | 技能 canonical source，依 core／profile 分層 | `apply.sh` 聯集複製進目標的 `.agents/skills/` |
 | `core/.claude/`、`profiles/<name>/.claude/` | Claude Code 設定與 command 的 core／profile 來源 | `apply.sh` 合併（`settings.json` 用 `jq`，其餘用檔案聯集）|
-| `profiles/<name>/records/` | 該 profile 擁有的 canonical schema（例如 experimental 的 experiment/run/metric schema） | `apply.sh` 複製進目標的 `records/`；`definitions/`／`runs/` 這類使用者產生的內容不預建，用到才生 |
+| `profiles/<name>/records/` | 該 profile 擁有的權威 schema（例如 experimental 的實驗、run、指標三份 schema） | `apply.sh` 複製進目標的 `records/`；`definitions/`／`runs/` 這類使用者產生的內容不預建，用到才生 |
 | `apply.sh` | 依 `--profile` 把 core + active profile 組裝進目標資料夾，已存在檔案一律跳過 | 人工執行，一次性、可重跑 |
 | `.memsearch/memory/*.md` | 跨 session 記憶 SSoT，預設本機、不進版控 | memsearch CLI（機器層依賴，見下） |
 
@@ -22,8 +22,8 @@ agentfile 自己的根目錄 `AGENTS.md`／`.gitignore`／`.claude/settings.json
 - `.claude/skills` 與（投影後的）`.agents/skills` 都是 symlink 指回 core／profile 的 `skills/`，不是第二份拷貝；改 skill 只改一處。
 - 記憶與文件都要主動策展，不是無限堆積——context 越大越雜，agent 表現越差。`docs/` 只在系統長相改變時才寫（不是每張票都跑），語意索引只收 `docs/`，不收整個對話逐字稿，都是把這個邊界落實成具體規則，而非一次性宣告。
 - Graphify 是列為 optional 的未來結構檢索層，v1 未安裝——見 [ADR 0004](adr/0004-graphify-optional-structural-layer.md)。啟用門檻與範圍限制都在那裡，不要因為看到別人在用就直接開。
-- 只有 active profile 的規則、skill、設定會出現在目標專案裡；未啟用 profile 的東西實體上不存在，不是靠文件告誡 agent 不要用——理由見 [ADR 0005](adr/0005-core-profile-isolation.md)。`profiles/experimental/` 已有 Walking Skeleton 內容（`evidence-review`／`experiment-design`／`experiment-lint` 三個 skill、experiment schema），三個 skill 的取捨依據見 [ADR 0006](adr/0006-experimental-profile-upstream-evaluation.md)。`records/experiments/definitions/`、`records/experiments/runs/` 等使用者資料還不存在——那是用到才建立的東西，不是這輪範圍。
-- `experiment-lint` 的檢查邏輯是 deterministic script（`experiment_lint.py`），不是 prompt——能機械判定的規則（必填欄位、baseline/treatment 有沒有未宣告差異）不交給 LLM 自由判斷，同一份 Contract 兩次檢查必須給出同樣結果。
+- 只有 active profile 的規則、skill、設定會出現在目標專案裡；未啟用 profile 的東西實體上不存在，不是靠文件告誡 agent 不要用——理由見 [ADR 0005](adr/0005-core-profile-isolation.md)。`profiles/experimental/` 已有 Walking Skeleton 內容（`evidence-review`／`experiment-design`／`experiment-lint`／`compare-runs` 四個 skill、實驗 schema），前三個的取捨依據見 [ADR 0006](adr/0006-experimental-profile-upstream-evaluation.md)，`compare-runs` 見 [ADR 0007](adr/0007-compare-runs-design.md)。`records/experiments/definitions/`、`records/experiments/runs/` 等使用者資料還不存在——那是用到才建立的東西。
+- `experiment-lint`、`compare-runs` 的檢查邏輯都是確定性腳本（`experiment_lint.py`、`compare_runs.py`），不是純 prompt——能機械判定的規則（必填欄位、baseline/treatment 有沒有未宣告差異、可比較性）不交給 LLM 自由判斷，同樣的輸入兩次檢查必須給出同樣結果。
 
 ## 已知限制（新人不知道就會誤判）
 

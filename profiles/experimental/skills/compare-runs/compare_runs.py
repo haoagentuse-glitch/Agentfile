@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+"""比較兩個 run，先判可比較性、確認的話才算指標差異。deterministic，不靠 LLM 判斷。
+
+用法：
+  python3 compare_runs.py <run_a.json> <run_b.json> [--contract PATH] [--metrics-dir DIR] [--output PATH] [--json]
+
+只用標準函式庫。流程：
+  1. 載入兩個 Run Envelope，確認屬於同一個 experiment。
+  2. 載入對應的 Experiment Contract，取得宣告的實驗變因與控制條件。
+  3. 用 config_ref 載入兩邊實際用的設定，逐欄位比對：
+     相同條件 / 已宣告差異（declared variable）/ 未預期差異。
+  4. 有未預期差異、或宣告要控制的欄位實際卻不同、或宣告的變因根本沒變 → confounded，
+     comparison_valid 設 false，不計算指標差異。
+  5. metric 層級另外檢查兩邊是不是用同一套 metric definition 算出來的——不一致的
+     metric 個別跳過，不影響其他 metric。
+
+exit code：0 = 可比較（可能仍有 metric 被跳過），1 = confounded（整體不可信）。
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+def load_json(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def find_records_root(start: Path) -> Path:
+    """從 start 往上找到含 records/experiments/schemas 的目錄，回傳 records/experiments/ 本身。"""
+    for candidate in [start, *start.parents]:
+        probe = candidate / "records" / "experiments"
+        if (probe / "schemas").is_dir():
+            return probe
+    raise FileNotFoundError("找不到 records/experiments/——確認在專案內執行")
+
+
+def check_schema(instance: dict, schema: dict, path: str, results: list[tuple[str, str]]) -> None:
+    """遞迴檢查 required 欄位與 enum 限制，複用 experiment-lint 的作法。"""
+    for key in schema.get("required", []):
+        label = f"{path}.{key}" if path else key
+        if key not in instance or instance[key] in (None, "", []):
+            results.append(("ERROR", f"missing required field: {label}"))
+
+    for key, subschema in schema.get("properties", {}).items():
+        if key not in instance:
+            continue
+        value = instance[key]
+        label = f"{path}.{key}" if path else key
+        enum = subschema.get("enum")
+        if enum is not None and value not in enum:
+            results.append(("ERROR", f"{label} = {value!r} not in allowed values {enum}"))
+        if subschema.get("type") == "object" and isinstance(value, dict):
+            check_schema(value, subschema, label, results)
+
+
+# 固定要檢查的維度：欄位候選名稱（設定檔命名習慣不同專案不一樣，這裡列常見別名；
+# 專案用了別的名稱就把它加進 Contract 的 controlled_variables，一樣會被抓到）
+NAMED_DIMENSIONS: dict[str, list[str]] = {
+    "dataset": ["dataset", "dataset_name", "dataset_version"],
+    "evaluation_set": ["evaluation_set", "eval_set", "eval_dataset"],
+    "model": ["model", "model_name"],
+}
+
+
+def resolve_config(run: dict, records_root: Path, run_path: Path) -> dict | None:
+    ref = run.get("config_ref")
+    if not ref:
+        return None
+    p = (run_path.parent / ref).resolve()
+    if not p.is_file():
+        return None
+    return load_json(p)
+
+
+def diff_dimension(name: str, candidates: list[str], cfg_a: dict, cfg_b: dict) -> dict[str, Any] | None:
+    for key in candidates:
+        if key in cfg_a or key in cfg_b:
+            va, vb = cfg_a.get(key, "<absent>"), cfg_b.get(key, "<absent>")
+            return {"status": "PASS" if va == vb else "DIFF", "run_a_value": va, "run_b_value": vb, "_key": key}
+    return None
+
+
+def resolve_roles(run_a: dict, run_b: dict) -> tuple[dict, dict]:
+    """回傳 (baseline_run, treatment_run)。用 baseline_run 欄位判斷；判斷不出來就假設
+    傳入順序就是 (baseline, treatment)。"""
+    if run_a.get("baseline_run") is None and run_b.get("baseline_run") == run_a["run_id"]:
+        return run_a, run_b
+    if run_b.get("baseline_run") is None and run_a.get("baseline_run") == run_b["run_id"]:
+        return run_b, run_a
+    return run_a, run_b
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("run_a")
+    ap.add_argument("run_b")
+    ap.add_argument("--contract")
+    ap.add_argument("--metrics-dir")
+    ap.add_argument("--output")
+    ap.add_argument("--json", action="store_true")
+    args = ap.parse_args()
+
+    run_a_path = Path(args.run_a).resolve()
+    run_b_path = Path(args.run_b).resolve()
+    run_a = load_json(run_a_path)
+    run_b = load_json(run_b_path)
+
+    records_root = find_records_root(run_a_path.parent)
+    schemas = records_root / "schemas"
+    envelope_schema = load_json(schemas / "run-envelope.schema.json")
+
+    lint: list[tuple[str, str]] = []
+    check_schema(run_a, envelope_schema, f"run_a({run_a.get('run_id')})", lint)
+    check_schema(run_b, envelope_schema, f"run_b({run_b.get('run_id')})", lint)
+    if run_a.get("experiment_id") != run_b.get("experiment_id"):
+        lint.append(("ERROR", f"run_a.experiment_id={run_a.get('experiment_id')!r} != run_b.experiment_id={run_b.get('experiment_id')!r}——不同 experiment 無法比較"))
+    errors = [m for lvl, m in lint if lvl == "ERROR"]
+    if errors:
+        for lvl, msg in lint:
+            print(f"{lvl:5s} {msg}")
+        print(f"\n{len(errors)} error(s). Cannot compare.")
+        return 2
+
+    experiment_id = run_a["experiment_id"]
+    contract_path = Path(args.contract) if args.contract else records_root / "definitions" / f"{experiment_id}.json"
+    contract = load_json(contract_path) if contract_path.is_file() else None
+
+    controlled_variables: list[str] = contract.get("controlled_variables", []) if contract else []
+    declared_variable_name = contract.get("treatment", {}).get("variable") if contract else None
+
+    baseline_run, treatment_run = resolve_roles(run_a, run_b)
+    cfg_a = resolve_config(baseline_run, records_root, run_a_path if baseline_run is run_a else run_b_path)
+    cfg_b = resolve_config(treatment_run, records_root, run_b_path if treatment_run is run_b else run_a_path)
+
+    dimensions: dict[str, Any] = {}
+    other_differences: list[dict[str, Any]] = []
+    declared_variable: dict[str, Any] = {"name": declared_variable_name, "run_a_value": None, "run_b_value": None, "changed": False}
+    notes: list[str] = []
+
+    if cfg_a is None or cfg_b is None:
+        notes.append("baseline 或 treatment 的 config_ref 缺失或指到不存在的檔案，只能用 config_hash 判斷有沒有差異，無法逐欄位比對")
+        for name in NAMED_DIMENSIONS:
+            dimensions[name] = {"status": "SKIPPED"}
+        for name in controlled_variables:
+            dimensions[name] = {"status": "SKIPPED"}
+        confounded = baseline_run.get("config_hash") != treatment_run.get("config_hash")
+        confounded_reasons = ["config_ref 缺失，config_hash 不同但無法指出差在哪個欄位"] if confounded else []
+    else:
+        accounted_keys: set[str] = set()
+        for name, candidates in NAMED_DIMENSIONS.items():
+            result = diff_dimension(name, candidates, cfg_a, cfg_b)
+            if result is None:
+                dimensions[name] = {"status": "SKIPPED"}
+                continue
+            accounted_keys.add(result.pop("_key"))
+            dimensions[name] = result
+
+        for name in controlled_variables:
+            if name in dimensions:
+                continue
+            va, vb = cfg_a.get(name, "<absent>"), cfg_b.get(name, "<absent>")
+            dimensions[name] = {"status": "PASS" if va == vb else "DIFF", "run_a_value": va, "run_b_value": vb}
+            accounted_keys.add(name)
+
+        if declared_variable_name:
+            va = cfg_a.get(declared_variable_name, "<absent>")
+            vb = cfg_b.get(declared_variable_name, "<absent>")
+            declared_variable = {"name": declared_variable_name, "run_a_value": va, "run_b_value": vb, "changed": va != vb}
+            accounted_keys.add(declared_variable_name)
+
+        all_keys = set(cfg_a) | set(cfg_b)
+        for key in sorted(all_keys - accounted_keys):
+            va, vb = cfg_a.get(key, "<absent>"), cfg_b.get(key, "<absent>")
+            if va != vb:
+                other_differences.append({"key": key, "run_a_value": va, "run_b_value": vb})
+
+        confounded_reasons = []
+        for name, d in dimensions.items():
+            if d["status"] == "DIFF":
+                confounded_reasons.append(f"維度 '{name}' 應該一致卻不同：{d['run_a_value']!r} vs {d['run_b_value']!r}")
+        if other_differences:
+            confounded_reasons.append(f"{len(other_differences)} 個未宣告的欄位差異：{', '.join(d['key'] for d in other_differences)}")
+        if declared_variable_name and not declared_variable["changed"]:
+            confounded_reasons.append(f"宣告的實驗變因 '{declared_variable_name}' 實際上兩邊相同，沒有有效的處理效應可以歸因")
+        confounded = bool(confounded_reasons)
+
+    comparison_valid = not confounded
+
+    # metric 層級：definition 是否一致，一致且整體 comparison_valid 才計算差異
+    metric_names = sorted(set(baseline_run.get("metrics", {})) | set(treatment_run.get("metrics", {})))
+    if contract:
+        metric_names = sorted(set(metric_names) | {contract.get("primary_metric")} | set(contract.get("secondary_metrics", [])) - {None})
+    metrics_out: dict[str, Any] = {}
+    for name in metric_names:
+        def_a = baseline_run.get("metric_definitions", {}).get(name)
+        def_b = treatment_run.get("metric_definitions", {}).get(name)
+        definition_consistent = True
+        if def_a is not None and def_b is not None and def_a != def_b:
+            definition_consistent = False
+            notes.append(f"metric '{name}' 的定義不一致：baseline 用 {def_a!r}，treatment 用 {def_b!r}")
+        elif def_a is None or def_b is None:
+            notes.append(f"metric '{name}' 至少一邊沒記錄 metric_definitions，無法驗證是否同一套算法")
+
+        can_compute = comparison_valid and definition_consistent and name in baseline_run.get("metrics", {}) and name in treatment_run.get("metrics", {})
+        entry: dict[str, Any] = {"definition_consistent": definition_consistent, "computed": can_compute}
+        if can_compute:
+            b = baseline_run["metrics"][name]
+            t = treatment_run["metrics"][name]
+            entry["baseline"] = b
+            entry["treatment"] = t
+            entry["absolute_diff"] = t - b
+            entry["relative_diff"] = (t - b) / b if b else None
+        else:
+            entry["baseline"] = entry["treatment"] = entry["absolute_diff"] = entry["relative_diff"] = None
+        metrics_out[name] = entry
+
+    result = {
+        "experiment_id": experiment_id,
+        "run_a": baseline_run["run_id"],
+        "run_b": treatment_run["run_id"],
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "comparability": {
+            "dimensions": dimensions,
+            "declared_variable": declared_variable,
+            "other_differences": other_differences,
+        },
+        "comparison_valid": comparison_valid,
+        "confounded": confounded,
+        "confounded_reasons": confounded_reasons,
+        "metrics": metrics_out,
+        "notes": notes,
+    }
+
+    if args.output:
+        Path(args.output).write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print("COMPARABILITY\n")
+        for name, d in dimensions.items():
+            print(f"{d['status']:8s} {name}")
+        if declared_variable_name:
+            tag = "CHANGED" if declared_variable["changed"] else "UNCHANGED"
+            print(f"{tag:8s} {declared_variable_name}（宣告變因）")
+        for d in other_differences:
+            print(f"UNDECLARED {d['key']}")
+        print()
+        if confounded:
+            print("CONFOUNDED COMPARISON")
+            for reason in confounded_reasons:
+                print(f"  - {reason}")
+            print("\n不得據此產生因果性結論。")
+        else:
+            print(f"Comparable: YES")
+            print(f"Changed variable: {declared_variable_name}")
+        print()
+        for name, m in metrics_out.items():
+            if m["computed"]:
+                print(f"{name}: baseline={m['baseline']} treatment={m['treatment']} Δ={m['absolute_diff']:+g} ({m['relative_diff']:+.1%})" if m["relative_diff"] is not None else f"{name}: baseline={m['baseline']} treatment={m['treatment']} Δ={m['absolute_diff']:+g}")
+            else:
+                print(f"{name}: 未計算（{'comparison invalid' if not comparison_valid else 'definition 不一致或資料缺失'}）")
+        for note in notes:
+            print(f"note: {note}")
+
+    return 1 if confounded else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
