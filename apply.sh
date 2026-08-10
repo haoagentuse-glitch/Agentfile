@@ -128,4 +128,4 @@ echo "  Codex        bash <memsearch repo>/plugins/codex/scripts/install.sh"
 
 echo
 echo "完成。下一步：在 $TARGET 開 Claude Code，跑 /kickoff 完成 GitHub 與標籤設定。"
-echo "（尚未 commit —— 依 AGENTS.md，commit 需明確指示。）"
+echo "（尚未 commit——這支腳本本身不 commit；後續改動依 AGENTS.md 會自動 commit，不用手動先 commit。）"

@@ -93,7 +93,7 @@ uv add fastapi && uv add --dev schemathesis datamodel-code-generator
 
 ### 7. 首次 commit
 
-**要使用者明確指示才 commit。** 建議訊息：`chore: 專案骨架與開發規範`。
+依 AGENTS.md，改動後自動 commit，不用等使用者指示。建議訊息：`chore: 專案骨架與開發規範`。
 
 ## 完成後
 
