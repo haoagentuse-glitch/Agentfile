@@ -46,7 +46,7 @@ profiles/experimental/ 實驗型專案（RAG、agent 架構、ML/DL、模擬、�
 /handoff      交接給下一個 session      寫在 OS 暫存目錄
 ```
 
-`experimental` profile 的日常換成：`/evidence-review`（重大選型前先看證據）→ `/experiment-design`（凍結 Experiment Contract）→ `experiment-lint`（確定性檢查 Contract 可不可識別，通過才 lock）→ 跑 → 記錄進 `records/experiments/runs/` → `compare-runs`（確定性判定可比較性，再算指標差異，取捨依據見 [ADR 0007](docs/adr/0007-compare-runs-design.md)）→ `claim-audit`（機械核對數字跟引用，agent 判斷結論有沒有超出證據範圍，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)）。要不要升到下一個 Compute Gate 等級（L0-L5）用 `compute-gate` 技能機械判定，規則怎麼翻成可比對的參數見 [ADR 0009](docs/adr/0009-compute-gate-design.md)。細節見 `profiles/experimental/AGENTS.md`。
+`experimental` profile 的日常換成：`/evidence-review`（重大選型前先看證據）→ `/experiment-design`（凍結 Experiment Contract）→ `experiment-lint`（確定性檢查 Contract 可不可識別，通過才 lock）→ 跑 → 記錄進 `records/experiments/runs/` → `compare-runs`（確定性判定可比較性，再算指標差異，取捨依據見 [ADR 0007](docs/adr/0007-compare-runs-design.md)）→ `claim-audit`（機械核對數字跟引用，agent 判斷結論有沒有超出證據範圍，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)）。要不要升到下一個 Compute Gate 等級（L0-L5）用 `compute-gate` 技能機械判定，規則怎麼翻成可比對的參數見 [ADR 0009](docs/adr/0009-compute-gate-design.md)。結果不好時先用 `diagnose-experiment`（探測 → 假設 → smoke → 控制變因 → 下結論，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)），不得直接調參。細節見 `profiles/experimental/AGENTS.md`。
 
 系統長相改變時另外跑 `/project-docs`；詞彙或架構決策改變時跑 `/domain-modeling`；HTTP API 動到契約時跑 `/api-contract`。
 
@@ -143,7 +143,7 @@ symlink 在 Windows 原生環境不可靠；WSL、macOS、Linux 正常。
 
 本包自有：`project-docs` `rule-check` `zh-lint`（core）、`project-bootstrap` `api-contract`（software profile）
 
-另從 [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT，授權全文在 `LICENSES/`）**裁切改編**（不是逐字保留）兩個技能到 `profiles/experimental/skills/`：`experiment-design`（最小修改）、`evidence-review`（裁自上游 `literature-research`，砍掉找論文缺口的部分，換成本包的 Research Gate 輸出格式）。取捨依據跟哪些段落改了什麼，記在 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)，不在這裡重述。`experiment-lint`、`compare-runs`、`claim-audit`、`compute-gate` 是本包自寫的，不是 vendor 來的——`compare-runs` 只借了 phd-skills/compare 兩條規則的精神（見 [ADR 0007](docs/adr/0007-compare-runs-design.md)），`claim-audit` 只借了 ARA 論文的 claim→experiment→evidence 綁定概念（ARA 本身沒有可 vendor 的實作，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)），`compute-gate` 只借了 Scholar Loop 的分級漏斗形狀（不碰它的自動決策機制，見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)、[ADR 0009](docs/adr/0009-compute-gate-design.md)）。判定邏輯與輸出格式都是自己設計。
+另從 [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT，授權全文在 `LICENSES/`）**裁切改編**（不是逐字保留）三個技能到 `profiles/experimental/skills/`：`experiment-design`（最小修改）、`evidence-review`（裁自上游 `literature-research`，砍掉找論文缺口的部分，換成本包的 Research Gate 輸出格式）、`diagnose-experiment`（裁自上游 `debug`，五步紀律整段保留，探測清單跟 smoke 對照表從 ML 訓練專屬泛化成 RAG／agent 架構／模擬／最佳化與演算法比較都適用的 failure taxonomy，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)）。取捨依據跟哪些段落改了什麼，記在 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)，不在這裡重述。`experiment-lint`、`compare-runs`、`claim-audit`、`compute-gate` 是本包自寫的，不是 vendor 來的——`compare-runs` 只借了 phd-skills/compare 兩條規則的精神（見 [ADR 0007](docs/adr/0007-compare-runs-design.md)），`claim-audit` 只借了 ARA 論文的 claim→experiment→evidence 綁定概念（ARA 本身沒有可 vendor 的實作，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)），`compute-gate` 只借了 Scholar Loop 的分級漏斗形狀（不碰它的自動決策機制，見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)、[ADR 0009](docs/adr/0009-compute-gate-design.md)）。判定邏輯與輸出格式都是自己設計。
 
 ### 更新 vendored skill
 
