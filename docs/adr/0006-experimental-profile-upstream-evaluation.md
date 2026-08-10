@@ -38,6 +38,6 @@ Phase B 要做 evidence-review、experiment-design、experiment-lint 三個 skil
 |---|---|
 | `experiment-design` | vendor `phd-skills/experiment-design`，加輸出 Contract 檔案 + 串 lint |
 | `evidence-review` | vendor `phd-skills/literature-research` 的搜尋方法論 + citation integrity，砍掉缺口分析部分，換成 Research Gate 輸出格式 |
-| `experiment-lint` | 自寫，deterministic script + JSON Schema，不是 prompt skill——能機械判定的規則（必填欄位、baseline／treatment 是否有未宣告的差異）不交給 LLM 自由判斷，SKILL.md 只負責觸發跟解釋結果 |
+| `experiment-lint` | 自寫，確定性 script + JSON Schema，不是 prompt skill——能機械判定的規則（必填欄位、baseline／treatment 是否有未宣告的差異）不交給 LLM 自由判斷，SKILL.md 只負責觸發跟解釋結果 |
 
 `compare-runs`（Phase C）借 `compare` 的同一 epoch 對齊規則；`pilot-planning`／`compute-gate`（Phase C）借 `launch` 的執行前檢查清單跟 Scholar Loop 的初篩→驗證→完整輪形狀。都不是這輪的範圍。

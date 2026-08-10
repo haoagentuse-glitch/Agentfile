@@ -30,13 +30,13 @@ exit code 0：機械段過了，`scope_verdict` 是 `pending`，換你判斷。e
 
 ## 機械段過了之後，怎麼判斷 scope
 
-讀 claim 的 `scope` 欄位（宣稱的適用範圍）跟它實際引用的 comparison 涵蓋了什麼（哪個 dataset、哪個 model、哪個條件——回頭看 comparison-result 跟它引用的 Experiment Contract），四選一：
+讀 claim 的 `scope` 欄位（宣稱的適用範圍）跟它實際引用的 comparison 涵蓋了什麼（哪個 `dataset`、哪個 `model`、哪個條件——回頭看 comparison-result 跟它引用的 Experiment Contract），四選一：
 
 | 判定 | 什麼情況 |
 |---|---|
 | `fully_supported` | claim 宣稱的範圍跟證據實際涵蓋的範圍一致，沒有多講 |
-| `partially_supported` | 核心數字陳述正確，但宣稱的範圍比證據涵蓋的稍寬，不過還算合理延伸（例如同一個 model 家族的其他版本） |
-| `overreaching` | 把單一 dataset／單一 model／單一條件下的結果講成「一般都適用」「大部分情況」這類無保留的通用結論，證據完全沒涵蓋那個範圍 |
+| `partially_supported` | 核心數字陳述正確，但宣稱的範圍比證據涵蓋的稍寬，不過還算合理延伸（例如同一個 `model` 家族的其他版本） |
+| `overreaching` | 把單一 `dataset`／單一 `model`／單一條件下的結果講成「一般都適用」「大部分情況」這類無保留的通用結論，證據完全沒涵蓋那個範圍 |
 | `unsupported` | scope 本身沒問題，但機械段已經判定數字或方向對不上（理論上不會走到這裡才發現，機械段會先擋） |
 
 判斷完把 `scope_reasoning` 寫清楚「證據實際涵蓋什麼」跟「claim 宣稱涵蓋什麼」之間的落差，`final_verdict` 抄 `scope_verdict` 的值，存回同一份 audit result 檔案（或用 `--output` 產生的檔案，讀出來改這兩欄再存回去）。

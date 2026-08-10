@@ -25,7 +25,7 @@ profiles/experimental/ 實驗型專案（RAG、agent 架構、ML/DL、模擬、�
 
 不帶 `--profile` 預設 `software`。加 `--dry-run` 先看會做什麼。已存在的檔案一律跳過，可重複執行。
 
-它做的事：`git init` → skills 投影（core + profile 聯集）→ `.claude/` 設定（core + profile 合併）→ `AGENTS.md`（core + profile 串接）/ `CLAUDE.md` → `docs/agents/` tracker 設定 → `records/`（profile 擁有的 schema，沒有就跳過）→ `LICENSES/` → `.gitignore`（core + profile 串接）。
+它做的事：`git init` → skills 投影（core + profile 聯集）→ `.claude/` 設定（core + profile 合併）→ `AGENTS.md`（core + profile 串接）/ `CLAUDE.md` → `docs/agents/` 議題追蹤設定 → `records/`（profile 擁有的 schema，沒有就跳過）→ `LICENSES/` → `.gitignore`（core + profile 串接）。
 
 也可以用來把既有專案納入本規範。
 
@@ -141,7 +141,7 @@ symlink 在 Windows 原生環境不可靠；WSL、macOS、Linux 正常。
 - 注入 `metadata.source` / `metadata.license`
 - 上游要求跑 `/setup-matt-pocock-skills` 的地方，改指向本包交付的 `docs/agents/issue-tracker.md`
 
-本包自有：`project-docs` `rule-check`（core）、`project-bootstrap` `api-contract`（software profile）
+本包自有：`project-docs` `rule-check` `zh-lint`（core）、`project-bootstrap` `api-contract`（software profile）
 
 另從 [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT，授權全文在 `LICENSES/`）**裁切改編**（不是逐字保留）兩個技能到 `profiles/experimental/skills/`：`experiment-design`（最小修改）、`evidence-review`（裁自上游 `literature-research`，砍掉找論文缺口的部分，換成本包的 Research Gate 輸出格式）。取捨依據跟哪些段落改了什麼，記在 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)，不在這裡重述。`experiment-lint`、`compare-runs`、`claim-audit`、`compute-gate` 是本包自寫的，不是 vendor 來的——`compare-runs` 只借了 phd-skills/compare 兩條規則的精神（見 [ADR 0007](docs/adr/0007-compare-runs-design.md)），`claim-audit` 只借了 ARA 論文的 claim→experiment→evidence 綁定概念（ARA 本身沒有可 vendor 的實作，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)），`compute-gate` 只借了 Scholar Loop 的分級漏斗形狀（不碰它的自動決策機制，見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)、[ADR 0009](docs/adr/0009-compute-gate-design.md)）。判定邏輯與輸出格式都是自己設計。
 

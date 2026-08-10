@@ -39,7 +39,7 @@ python3 profiles/experimental/skills/compute-gate/compute_gate.py \
 
 - `--abort-*` 系列：任何等級都可以帶，abort_rule 觸發直接判 `aborted`，這條實驗路線視為終止，不是「這次沒過，改天再試」。
 - `--contract` + `--pilot-run`：只在 `--request-level L3` 時生效，檢查 pilot 實際耗時有沒有超過 Contract 的 `compute_budget.pilot_max_minutes`。
-- 都不帶（只有 `--request-level`）：只做序列檢查，沒有 abort／scale-up／budget 條件——適合 L0（理論檢查本來就不需要跑數字）或你已經在別處確認過條件、只是要記一筆升級。
+- 都不帶（只有 `--request-level`）：只做序列檢查，沒有 abort／scale-up／預算條件——適合 L0（理論檢查本來就不需要跑數字）或你已經在別處確認過條件、只是要記一筆升級。
 
 ## 讀結果
 

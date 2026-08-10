@@ -10,7 +10,7 @@ description: >
 
 # Experiment Lint
 
-這個技能不判斷任何事，只負責觸發跟解釋結果。真正的檢查是 `experiment_lint.py`——一支只用標準函式庫的 deterministic script，不是 prompt。能機械判定的規則（必填欄位齊不齊、baseline/treatment 的設定有沒有未宣告的差異）不交給 LLM 自由判斷，因為那樣同一份 Contract 不同次檢查可能給出不同結果，而這正是這個技能要防的事。
+這個技能不判斷任何事，只負責觸發跟解釋結果。真正的檢查是 `experiment_lint.py`——一支只用標準函式庫的確定性 script，不是 prompt。能機械判定的規則（必填欄位齊不齊、baseline/treatment 的設定有沒有未宣告的差異）不交給 LLM 自由判斷，因為那樣同一份 Contract 不同次檢查可能給出不同結果，而這正是這個技能要防的事。
 
 ## 用法
 
