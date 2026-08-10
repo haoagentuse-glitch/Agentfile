@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gate-state.schema.json",
+  "title": "Compute Gate State",
+  "description": "追蹤一個 experiment 目前停在 Compute Gate 的哪一級、怎麼走到這裡的。每次 compute_gate.py 判定完都要更新這份檔案，append 一筆到 history，不覆寫舊紀錄——跟 run 一樣是可稽核的軌跡，不是暫存狀態。",
+  "type": "object",
+  "required": ["experiment_id", "current_level", "history", "updated_at"],
+  "properties": {
+    "experiment_id": { "type": "string" },
+    "current_level": {
+      "type": ["string", "null"],
+      "enum": ["L0", "L1", "L2", "L3", "L4", "L5", null],
+      "description": "null 代表這個 experiment 還沒申請過任何等級，下一次必須申請 L0"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["level", "status", "decided_at", "reason"],
+        "properties": {
+          "level": { "type": "string", "enum": ["L0", "L1", "L2", "L3", "L4", "L5"] },
+          "status": {
+            "type": "string",
+            "enum": ["passed", "failed", "aborted"],
+            "description": "failed：這次沒過，可以帶更多證據重新申請同一級；aborted：abort_rule 觸發，這條路線視為終止，不是叫你重試"
+          },
+          "decided_at": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string" },
+          "run_ids": { "type": "array", "items": { "type": "string" }, "default": [] }
+        }
+      }
+    },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
