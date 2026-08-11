@@ -23,7 +23,13 @@ python3 profiles/experimental/skills/compare-runs/compare_runs.py \
   records/experiments/runs/<run-a>.json records/experiments/runs/<run-b>.json
 ```
 
-加 `--contract <path>` 明確指定 Experiment Contract（預設從 run 的 `experiment_id` 自動找 `records/experiments/definitions/<experiment_id>.json`）。加 `--output <path>` 存一份符合 `comparison-result.schema.json` 的 JSON，給未來的 claim-audit 或 UI 讀。
+加 `--contract <path>` 明確指定 Experiment Contract（預設從 run 的 `experiment_id` 自動找 `records/experiments/definitions/<experiment_id>.json`）。加 `--output <path>` 存一份符合 `comparison-result.schema.json` 的 JSON，給未來的 claim-audit 或 UI 讀——固定慣例存到 `records/experiments/comparisons/<run-a>__<run-b>.json`，例如：
+
+```bash
+--output records/experiments/comparisons/<run-a>__<run-b>.json
+```
+
+experiment-viewer 只會自動掃描這個固定路徑；存在別處的話 viewer 看不到。
 
 ## 檢查什麼、怎麼判定
 

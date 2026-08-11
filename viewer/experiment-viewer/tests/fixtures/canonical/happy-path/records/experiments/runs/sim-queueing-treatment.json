@@ -1,0 +1,15 @@
+{
+  "run_id": "sim-queueing-treatment",
+  "experiment_id": "sim-queueing",
+  "experiment_type": "simulation",
+  "created_at": "2026-01-07T02:00:00Z",
+  "config_hash": "sha256:fff666",
+  "config_ref": "configs/queue-treatment.yaml",
+  "schema_version": "1",
+  "baseline_run": "sim-queueing-baseline",
+  "treatment": "server_count",
+  "status": "completed",
+  "metrics": { "avg_wait_time_ms": 48.0 },
+  "metric_definitions": { "avg_wait_time_ms": "metrics/avg_wait_time_ms.json" },
+  "artifacts": []
+}

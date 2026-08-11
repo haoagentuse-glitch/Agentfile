@@ -1,0 +1,12 @@
+{
+  "run_id": "edge-orphan-run",
+  "experiment_id": "does-not-exist",
+  "experiment_type": "misc",
+  "created_at": "2026-01-08T03:00:00Z",
+  "config_hash": "sha256:orphan333",
+  "schema_version": "1",
+  "baseline_run": null,
+  "status": "completed",
+  "metrics": { "score": 0.5 },
+  "artifacts": []
+}

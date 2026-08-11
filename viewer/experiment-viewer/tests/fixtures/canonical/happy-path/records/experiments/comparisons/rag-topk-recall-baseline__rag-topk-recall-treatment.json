@@ -1,0 +1,23 @@
+{
+  "experiment_id": "rag-topk-recall",
+  "run_a": "rag-topk-recall-baseline",
+  "run_b": "rag-topk-recall-treatment",
+  "generated_at": "2026-01-05T03:00:00Z",
+  "comparability": {
+    "dimensions": {
+      "dataset": { "status": "PASS" },
+      "evaluation_set": { "status": "PASS" },
+      "model": { "status": "PASS" }
+    },
+    "declared_variable": { "name": "top_k", "run_a_value": 20, "run_b_value": 50, "changed": true },
+    "other_differences": []
+  },
+  "comparison_valid": true,
+  "confounded": false,
+  "confounded_reasons": [],
+  "metrics": {
+    "recall_at_10": { "definition_consistent": true, "computed": true, "baseline": 0.62, "treatment": 0.71, "absolute_diff": 0.09, "relative_diff": 0.145 },
+    "latency_ms": { "definition_consistent": true, "computed": true, "baseline": 180, "treatment": 210, "absolute_diff": 30, "relative_diff": 0.167 }
+  },
+  "notes": []
+}

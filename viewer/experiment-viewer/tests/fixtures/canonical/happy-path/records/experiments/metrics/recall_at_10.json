@@ -1,0 +1,9 @@
+{
+  "name": "recall_at_10",
+  "type": "ratio",
+  "direction": "higher_is_better",
+  "numerator": "relevant_docs_in_top_10",
+  "denominator": "total_relevant_docs",
+  "aggregation": "mean",
+  "implementation": "eval/recall.py:recall_at_k"
+}

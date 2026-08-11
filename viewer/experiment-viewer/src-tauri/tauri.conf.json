@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "experiment-viewer-app",
+  "productName": "Experiment Viewer",
   "version": "0.1.0",
   "identifier": "com.agentfile.experiment-viewer",
   "build": {
@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "experiment-viewer-app",
-        "width": 800,
-        "height": 600
+        "title": "Experiment Viewer",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 760,
+        "minHeight": 520,
+        "resizable": true,
+        "center": true
       }
     ],
     "security": {

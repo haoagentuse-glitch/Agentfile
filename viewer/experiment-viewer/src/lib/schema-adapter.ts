@@ -8,10 +8,12 @@ import type {
   CanonicalExperiment,
   CanonicalGateHistoryEntry,
   CanonicalGateState,
+  CanonicalMetricDefinition,
   CanonicalMetricDiff,
   CanonicalRun,
   ClaimVerdict,
   GateLevel,
+  MetricDirection,
   RunStatus,
 } from "./canonical";
 
@@ -32,7 +34,7 @@ function requireField(obj: Record<string, unknown>, field: string, sourcePath: s
   return obj[field];
 }
 
-// experiment-contract.schema.json → CanonicalExperiment（runs／claims／gateState 留空，由 storage-adapter 填入）
+// experiment-contract.schema.json → CanonicalExperiment（runs／claims／gateState 留空，由 canonical-adapter 填入）
 export function adaptExperimentContract(
   raw: Record<string, unknown>,
   sourcePath: string
@@ -78,6 +80,7 @@ export function adaptRunEnvelope(raw: Record<string, unknown>, sourcePath: strin
     treatment: raw.treatment as string | undefined,
     configHash,
     metrics: (raw.metrics as Record<string, number>) ?? {},
+    artifacts: (raw.artifacts as string[]) ?? [],
     invalidReason: raw.invalid_reason as string | undefined,
     sourcePath,
   };
@@ -115,6 +118,7 @@ export function adaptComparisonResult(
     comparisonValid,
     confounded,
     confoundedReasons: (raw.confounded_reasons as string[]) ?? [],
+    notes: (raw.notes as string[]) ?? [],
     metrics,
     sourcePath,
   };
@@ -146,6 +150,7 @@ export function adaptClaim(raw: Record<string, unknown>, sourcePath: string): Ca
     scope,
     createdAt,
     sourcePath,
+    auditResult: null,
   };
 }
 
@@ -204,4 +209,20 @@ export function adaptGateState(raw: Record<string, unknown>, sourcePath: string)
     updatedAt,
     sourcePath,
   };
+}
+
+// metric-definition.schema.json → CanonicalMetricDefinition
+// direction 是「只有 comparison_valid=true 且 metric 有方向定義才顯示 improvement/regression」
+// 這條規則唯一的資料來源——沒有這份定義就只能顯示中性的 change。
+export function adaptMetricDefinition(
+  raw: Record<string, unknown>,
+  sourcePath: string
+): CanonicalMetricDefinition {
+  const name = requireField(raw, "name", sourcePath) as string;
+  const type = requireField(raw, "type", sourcePath) as CanonicalMetricDefinition["type"];
+  const direction = requireField(raw, "direction", sourcePath) as MetricDirection;
+  const aggregation = requireField(raw, "aggregation", sourcePath) as string;
+  const implementation = requireField(raw, "implementation", sourcePath) as string;
+
+  return { name, type, direction, aggregation, implementation, sourcePath };
 }

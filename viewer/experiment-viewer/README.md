@@ -1,115 +1,156 @@
-# experiment-viewer — canonical model 設計
+# Experiment Viewer
 
-`records/experiments/` 是 experimental profile 的權威來源（見 `profiles/experimental/AGENTS.md` 的 Canonical Records 一節）。這個 viewer 只是消費者，不維護另一份權威副本——讀出來畫圖，不寫回、不快取成第二個真相。
+Windows 原生、完全本機、唯讀的實驗瀏覽器。它把一個 project 的 JSON 實驗紀錄投影成 Overview、experiment workspace、Compare、Records、Artifacts、Claims 與 Diagnostics；不寫回、不刪除、不重跑實驗，也不維護第二份權威資料。
 
-## 四層架構
+## 啟動
 
-```
-Raw Records (JSON, 依 schemas/*.schema.json)
-      │
-      ▼
-Storage Adapter        ← 決定「資料放哪裡」：本機檔案系統、之後可能是遠端 API
-      │
-      ▼
-Schema Adapter          ← 決定「怎麼解析」：認 schema_version，把已知欄位轉成 canonical 型別
-      │
-      ▼
-Canonical Experiment Model   ← 跟原始 JSON 結構脫鉤的固定 TS 型別，UI 只認這層
-      │
-      ▼
-Viewer（Vue 元件 + ECharts）
+```powershell
+experiment-viewer.exe C:\path\to\project
 ```
 
-分四層是因為兩個變動來源要各自隔離：**資料放哪裡**（本機 vs 之後可能的遠端）跟**資料長什麼樣**（schema 版本升級）不該互相牽動，也不該讓 UI 元件直接綁定 JSON 檔案的實體欄位名——schema 加欄位或改名時,只改 Schema Adapter,UI 不用動。
-
-## v1 Walking Skeleton 只做的部分
-
-- **Storage Adapter**：只有一種，讀本機檔案系統的 `records/experiments/{definitions,runs,claims,gates}/`。不做遠端 API adapter——沒有第二個資料來源之前先做抽象是預測性設計,違反 YAGNI。
-- **Schema Adapter**：認這包目前定義的六份 schema（`experiment-contract` / `run-envelope` / `comparison-result` / `claim` / `claim-audit-result` / `gate-state`,見 `profiles/experimental/records/experiments/schemas/`),依 `schema_version` 挑對應解析邏輯。
-- **Canonical Model**：見下方型別定義,直接對應這幾份 schema 目前有的欄位,不預先多加「以後可能需要」的欄位。
-- **Viewer**:一個畫面——選一個 experiment,列出底下的 run、claim、Compute Gate 歷史;選兩個 run 顯示 `compare-runs` 產出的 `comparison-result.json`(指標差異用 ECharts 長條圖,`comparison_valid=false` 時不畫圖只顯示 confounded 原因,不得暗示可比較);選一份 `claim-audit-result.json` 顯示機械核對結果與 `final_verdict`。
-
-## 明確不做的部分(YAML manifest mapping,先寫這裡不寫程式)
-
-原規格要求「schema-agnostic,透過 adapter 支援其他實驗紀錄格式」。v1 只有這包自己定義的一種格式,寫一個真正可插拔的 adapter plugin 系統是預測性抽象。等真的出現第二種來源(例如要吃別人專案的 MLflow 匯出、或這包的 schema 大改版又要同時相容舊資料)時,新來源的欄位對應優先用 **YAML manifest** 描述(來源欄位 → canonical 欄位的宣告式映射),不是寫一個新的 TypeScript adapter class:
-
-```yaml
-# 未來範例,v1 不存在這個檔案
-source: mlflow-export
-version: 1
-mapping:
-  run_id: info.run_id
-  status: info.status
-  metrics: data.metrics
-```
-
-理由:宣告式映射能用 schema 驗證、能被非工程背景的人讀懂改動;寫一支新 adapter class 要重新編譯、重新測試,對「換一種資料來源」這種相對常見的變動來說成本過高。只有 manifest 映射不了的情況(例如來源需要跑一段轉換邏輯,不是單純欄位改名)才落到寫 adapter plugin。
-
-## Canonical Model(TypeScript,對應目前 schema 版本)
-
-```ts
-export type RunStatus = "pending" | "running" | "completed" | "invalid";
-
-export interface CanonicalRun {
-  runId: string;
-  experimentId: string;
-  experimentType: string;
-  status: RunStatus;
-  createdAt: string;
-  baselineRun: string | null;
-  treatment?: string;
-  configHash: string;
-  metrics: Record<string, number>;
-  invalidReason?: string;
-}
-
-export interface CanonicalExperiment {
-  experimentId: string;
-  question: string;
-  hypothesis: string;
-  status: "draft" | "locked";
-  contractHash?: string;
-  primaryMetric: string;
-  secondaryMetrics: string[];
-  runs: CanonicalRun[];
-}
-
-export interface CanonicalMetricDiff {
-  metric: string;
-  definitionConsistent: boolean;
-  computed: boolean;
-  baseline: number | null;
-  treatment: number | null;
-  absoluteDiff: number | null;
-  relativeDiff: number | null;
-}
-
-export interface CanonicalComparison {
-  experimentId: string;
-  runA: string;
-  runB: string;
-  comparisonValid: boolean;
-  confounded: boolean;
-  confoundedReasons: string[];
-  metrics: CanonicalMetricDiff[];
-}
-```
-
-`comparison_valid=false` 或 `confounded=true` 是一等公民狀態,不是錯誤——UI 一定要能呈現這個狀態本身,不能只在「有效比較」時才有畫面(見 `profiles/experimental/AGENTS.md` 規則 10:混雜比較不得下因果性結論,viewer 不能繞過這條)。
-
-## 技術選型與理由
-
-- **Tauri**:本機優先、免安裝執行環境依賴(不像 Electron 要另外包 Chromium)、跟這包「不需要外掛、複製檔案就能用」的定位一致。
-- **Vue + TypeScript**:型別對齊 canonical model,編譯期擋住欄位改名漏改的錯誤。
-- **ECharts**:圖表庫夠成熟,不用自己刻畫圖邏輯(Borrow Before Building)。
-- 不接 MLflow/W&B 等 tracking 工具——理由與先前 Phase A 的評估一致,`records/` 本身已是權威來源,tracking 工具只會是以後可選的 storage adapter,不是必要依賴。
-
-## 開發
+直接開啟指定 project；相對路徑以啟動當下的工作目錄解析。不帶參數時顯示資料夾選擇器。
 
 ```bash
-cd viewer/experiment-viewer
-npm install
-npm run tauri dev
+experiment-viewer.exe "$(wslpath -w "$PWD")"
 ```
 
-需要本機 Rust 工具鏈(`rustup`)與 Node.js;Linux 端另需 `libwebkit2gtk-4.1-dev` 等系統套件,見 [ADR 0012](../../docs/adr/0012-experiment-viewer-toolchain.md)。
+從 WSL 啟動 Windows 程式時，由 shell 把目前目錄轉成 Windows 路徑。程式本身不 hardcode Windows、Linux 或使用者絕對路徑。
+
+可選 project root，也可直接選 `<projectRoot>/records/experiments/`；兩者會解析成同一個 project。正式程式是 Tauri WebView 桌面 app，不啟動 localhost。
+
+## 資料契約
+
+### Canonical records
+
+未提供 manifest 時，Viewer 讀取固定的唯讀目錄慣例：
+
+```text
+<projectRoot>/records/experiments/
+├── definitions/<experiment_id>.json
+├── runs/<run_id>.json
+├── comparisons/<run-a>__<run-b>.json
+├── claims/<claim_id>.json
+├── audits/<claim_id>.json
+├── gates/<experiment_id>.json
+├── metrics/<metric_name>.json
+└── artifacts/                         # 實際 artifact 可位於 projectRoot 內其他相對路徑
+```
+
+目錄不存在代表該類資料尚未產生，是空狀態；權限錯誤、路徑跳脫或無法讀取則是錯誤。單一 JSON 壞掉只產生一筆 diagnostic，不阻斷其他檔案。
+
+### Manifest-driven generic JSON
+
+自訂 schema 的 manifest 固定放在：
+
+```text
+<projectRoot>/records/experiments/viewer.json
+```
+
+manifest 中的 `dir` 全部相對 `<projectRoot>`，不得用絕對路徑或 `..` 跳脫。第一版只支援 JSON 與受限 dot-path；不支援 JSONPath、萬用字元或腳本表達式。
+
+```json
+{
+  "version": 1,
+  "experiments": {
+    "dir": "experiments",
+    "id": "meta.id",
+    "displayName": "meta.title",
+    "status": "meta.status"
+  },
+  "runs": {
+    "dir": "runs",
+    "id": "meta.id",
+    "experimentId": "meta.experiment",
+    "status": "meta.status",
+    "createdAt": "meta.created_at",
+    "metricsPath": "results.metrics",
+    "artifactsPath": "results.artifacts"
+  },
+  "metrics": [
+    {
+      "name": "accuracy",
+      "displayName": "Accuracy",
+      "unit": "ratio",
+      "format": ".2%",
+      "direction": "higher_is_better"
+    }
+  ],
+  "collections": {
+    "notes": {
+      "dir": "notes",
+      "id": "meta.id",
+      "columns": ["meta.title", "body"]
+    }
+  }
+}
+```
+
+`viewer.json` 不存在時使用 canonical adapter；存在但格式錯誤時顯示 manifest error，不偷偷退回 canonical。缺少 metric direction 時保持中性，不猜 higher/lower-is-better。
+
+## 架構與安全邊界
+
+```text
+project path
+    ↓
+Rust path resolution + containment + read-only I/O
+    ↓
+loadProject(root) → ProjectSnapshot
+    ├── Canonical Records Adapter
+    └── Manifest Adapter
+    ↓
+Vue views / tables / ECharts
+```
+
+`loadProject(root) -> ProjectSnapshot` 是 UI 唯一資料入口。Vue 不讀原始 JSON 欄位、不拼 OS path；所有列目錄、讀檔與 artifact path 解析都經 Rust command。Rust 拒絕絕對的相對參數、`..` traversal 與 symlink escape。Viewer 只開啟已存在的 comparison-result，不自行重算比較或改寫判定。
+
+## 資訊架構
+
+- Overview：全部 experiments、run/claim 狀態、有效比較、可信 improvement/regression、最近更新與錯誤摘要。
+- Experiments：可篩選、排序的 project experiment 列表。
+- Experiment workspace：Summary、Runs、Compare、Records、Artifacts、Claims tabs；單筆細節使用右側 Drawer。
+- Records：metric definitions 與 manifest 定義的動態 collections/columns；支援篩選、排序與 group by。
+- Diagnostics / About：project/records roots、adapter、path kind 與逐檔錯誤。
+
+Compare 只有在 `comparison_valid=true`、非 confounded，且 metric 明確宣告 direction 時，才標示 improvement/regression。invalid 與 confounded 是不同狀態，均不畫比較圖。
+
+## 開發與驗收
+
+```bash
+cd viewer/experiment-viewer && npm ci
+```
+
+在 WSL 使用 Linux Node/npm 安裝鎖定依賴，不混用 Windows npm 與 WSL UNC 路徑。
+
+```bash
+cd viewer/experiment-viewer && npm test
+```
+
+執行 adapter、manifest、dot-path、comparison status 與 project layout 的 Vitest 測試。
+
+```bash
+cd viewer/experiment-viewer && npm run build
+```
+
+執行 `vue-tsc --noEmit` 與 Vite production build。
+
+```bash
+cd viewer/experiment-viewer && cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+執行 Rust 路徑 containment、Windows/UNC/WSL UNC 分類與 IPC serialization 測試。
+
+```bash
+cd viewer/experiment-viewer && npm run tauri dev
+```
+
+啟動開發用 Tauri 視窗；Linux 需 WebKitGTK/GTK 等系統依賴，見 [ADR 0012](../../docs/adr/0012-experiment-viewer-toolchain.md)。
+
+## Windows release
+
+正式 `.exe` 與 installer 必須在 Windows NTFS checkout 建置；不要在 WSL UNC 路徑直接執行 Windows npm/cargo。
+
+```powershell
+cd viewer\experiment-viewer; npm ci; npm test; npm run build; cargo test --manifest-path src-tauri\Cargo.toml; npm run tauri build -- --bundles nsis
+```
+
+這一行完成乾淨依賴安裝、測試、前端 build、Rust 測試與 unsigned NSIS installer 建置。輸出位於 `src-tauri\target\release\bundle\nsis\`。

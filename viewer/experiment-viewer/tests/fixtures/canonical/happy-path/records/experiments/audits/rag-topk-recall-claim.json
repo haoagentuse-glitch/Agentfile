@@ -1,0 +1,16 @@
+{
+  "claim_id": "rag-topk-recall-claim",
+  "audited_at": "2026-01-05T05:00:00Z",
+  "mechanical": {
+    "reference_exists": true,
+    "comparison_valid": true,
+    "metric_exists": true,
+    "direction_matches": true,
+    "magnitude_matches": true,
+    "mechanical_pass": true
+  },
+  "mechanical_reasons": [],
+  "scope_verdict": "fully_supported",
+  "scope_reasoning": "claim 的範圍跟 comparison 實際涵蓋的資料集/模型一致，沒有多講。",
+  "final_verdict": "fully_supported"
+}

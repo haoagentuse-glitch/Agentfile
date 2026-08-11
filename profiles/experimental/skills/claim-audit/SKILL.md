@@ -23,10 +23,11 @@ metadata:
 ## 用法
 
 ```bash
-python3 profiles/experimental/skills/claim-audit/claim_audit.py records/experiments/claims/<claim-id>.json
+python3 profiles/experimental/skills/claim-audit/claim_audit.py records/experiments/claims/<claim-id>.json \
+  --output records/experiments/audits/<claim-id>.json
 ```
 
-exit code 0：機械段過了，`scope_verdict` 是 `pending`，換你判斷。exit code 1：機械段沒過，`final_verdict` 已經是 `unauditable` 或 `unsupported`，不用也不該再判斷 scope——連數字都不對的 claim，範圍判斷沒有意義。
+固定慣例把結果存到 `records/experiments/audits/<claim-id>.json`——experiment-viewer 只會自動掃描這個路徑。exit code 0：機械段過了，`scope_verdict` 是 `pending`，換你判斷。exit code 1：機械段沒過，`final_verdict` 已經是 `unauditable` 或 `unsupported`，不用也不該再判斷 scope——連數字都不對的 claim，範圍判斷沒有意義。
 
 ## 機械段過了之後，怎麼判斷 scope
 
