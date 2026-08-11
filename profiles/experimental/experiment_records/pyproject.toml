@@ -1,0 +1,25 @@
+[project]
+name = "experiment-records"
+version = "0.1.0"
+description = "驗證 records/experiments/ 底下的實驗紀錄：完整 JSON Schema Draft 2020-12 驗證 + project-root-relative ref 邊界檢查。"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "jsonschema>=4.26.0",
+]
+
+[project.scripts]
+experiment-records = "experiment_records.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
