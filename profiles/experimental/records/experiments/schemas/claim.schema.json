@@ -17,6 +17,7 @@
     "experiment_id": { "type": "string" },
     "comparison_ref": {
       "type": "string",
+      "format": "project-ref",
       "description": "指向支撐這個 claim 的 comparison-result.json 路徑"
     },
     "metric": { "type": "string", "description": "這個 claim 引用的是哪個 metric" },

@@ -21,6 +21,7 @@
     },
     "config_ref": {
       "type": "string",
+      "format": "project-ref",
       "description": "指向這次 run 實際使用的設定檔路徑，供 compare-runs 讀取內容做逐欄位可比較性檢查；不填的話 compare-runs 只能靠 config_hash 判斷有沒有差異，不能指出差在哪一個欄位"
     },
     "metric_definitions": {

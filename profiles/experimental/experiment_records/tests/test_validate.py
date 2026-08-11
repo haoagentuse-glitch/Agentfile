@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -42,8 +43,8 @@ def test_validate_passes_for_valid_project(project: Path) -> None:
     result = run_cli("validate", str(project))
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "ERROR" not in result.stdout
-    assert result.stdout.count("PASS") >= 4
+    assert "\n錯誤" not in f"\n{result.stdout}"
+    assert result.stdout.count("通過") >= 4
 
 
 def test_validate_accepts_single_record_file(project: Path) -> None:
@@ -117,6 +118,26 @@ def test_validate_rejects_unknown_schema_type(project: Path) -> None:
     assert "unknown-type" in result.stdout
 
 
+def test_validate_rejects_unknown_record_directory_in_project(project: Path) -> None:
+    write_record(project, "unknown-type", "mystery", {"anything": "goes"})
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "unknown-type" in result.stdout
+
+
+def test_validate_checks_schemas_without_records(project: Path) -> None:
+    schema = project / "records" / "experiments" / "schemas" / "run-envelope.schema.json"
+    schema.write_text('{"type": 42}', encoding="utf-8")
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "run-envelope.schema.json" in result.stdout
+    assert "本身無效" in result.stdout
+
+
 def test_validate_rejects_record_outside_records_root(project: Path) -> None:
     outside = project / "other" / "runs" / "demo-run.json"
     outside.parent.mkdir(parents=True)
@@ -145,16 +166,54 @@ def test_validate_applies_ref_rule_to_new_schema_field(project: Path) -> None:
         project / "records" / "experiments" / "schemas" / "run-envelope.schema.json"
     )
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
-    schema["properties"]["artifact_ref"] = {"type": "string"}
+    schema["properties"]["artifact_location"] = {
+        "type": "string",
+        "format": "project-ref",
+    }
     schema_path.write_text(json.dumps(schema), encoding="utf-8")
-    run = valid_run(artifact_ref="../outside.json")
+    run = valid_run(artifact_location="../outside.json")
     write_record(project, "runs", "demo-run-1", run)
 
     result = run_cli("validate", str(project))
 
     assert result.returncode == 1
-    assert "artifact_ref" in result.stdout
+    assert "artifact_location" in result.stdout
     assert ".." in result.stdout
+
+
+def test_validate_prints_glass_box_summary(project: Path) -> None:
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "命令：python -m experiment_records validate" in result.stdout
+    assert f"輸入：{project.resolve()}" in result.stdout
+    assert "Schema：" in result.stdout
+    assert "Commit：" in result.stdout
+
+
+def test_validate_marks_dirty_project_commit(project: Path) -> None:
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", *args],
+            cwd=project,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    git("init")
+    git("config", "user.name", "Experiment Records Test")
+    git("config", "user.email", "experiment-records@example.invalid")
+    git("add", ".")
+    git("commit", "-m", "建立測試專案")
+
+    schema = project / "records" / "experiments" / "schemas" / "claim.schema.json"
+    schema.write_text(schema.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "-dirty" in result.stdout
 
 
 def test_validate_rejects_ref_with_dotdot_traversal(project: Path) -> None:

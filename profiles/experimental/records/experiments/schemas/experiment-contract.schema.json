@@ -22,7 +22,7 @@
       "required": ["description", "config_ref"],
       "properties": {
         "description": { "type": "string" },
-        "config_ref": { "type": "string", "description": "指向 baseline 設定檔的路徑" }
+        "config_ref": { "type": "string", "format": "project-ref", "description": "指向 baseline 設定檔的路徑" }
       }
     },
     "treatment": {
@@ -30,7 +30,7 @@
       "required": ["description", "config_ref", "variable"],
       "properties": {
         "description": { "type": "string" },
-        "config_ref": { "type": "string" },
+        "config_ref": { "type": "string", "format": "project-ref" },
         "variable": {
           "type": "string",
           "description": "相對 baseline 改了什麼——單一主要變因；多因素實驗改用陣列並在 controlled_variables 聲明"

@@ -11,16 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-RECORD_SUBDIRS = (
-    "definitions",
-    "runs",
-    "comparisons",
-    "claims",
-    "audits",
-    "gates",
-    "metrics",
-)
-
 SUBDIR_TO_SCHEMA = {
     "definitions": "experiment-contract.schema.json",
     "runs": "run-envelope.schema.json",
@@ -30,6 +20,7 @@ SUBDIR_TO_SCHEMA = {
     "gates": "gate-state.schema.json",
     "metrics": "metric-definition.schema.json",
 }
+AUXILIARY_SUBDIRS = frozenset({"schemas", "configs", "artifacts"})
 
 
 class ProjectLayoutError(Exception):
@@ -74,8 +65,11 @@ def resolve_layout(start: Path) -> ProjectLayout:
 
 
 def collect_targets(start: Path, layout: ProjectLayout) -> list[Path]:
-    """回傳待驗證的 record 檔案清單。start 是單一 record 檔案時直接回傳自己；
-    否則掃描 records_root 底下已知的子目錄。"""
+    """回傳待驗證的 record 檔案清單。
+
+    目錄輸入會掃描所有非輔助子目錄，而不是只掃已知類型；如此新增或拼錯的
+    record 類型會進入驗證並明確失敗，不會被靜默略過。
+    """
     if start.is_file():
         try:
             start.relative_to(layout.records_root)
@@ -86,11 +80,10 @@ def collect_targets(start: Path, layout: ProjectLayout) -> list[Path]:
         return [start]
 
     targets: list[Path] = []
-    for subdir in RECORD_SUBDIRS:
-        d = layout.records_root / subdir
-        if not d.is_dir():
+    for child in sorted(layout.records_root.iterdir()):
+        if not child.is_dir() or child.name in AUXILIARY_SUBDIRS:
             continue
-        targets.extend(sorted(d.glob("*.json")))
+        targets.extend(sorted(child.glob("*.json")))
     return targets
 
 

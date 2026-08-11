@@ -1,4 +1,4 @@
-"""解析 record 裡的 `*_ref` 欄位。所有 ref 統一視為 project-root-relative、
+"""解析 Schema 以 `format: project-ref` 宣告的欄位。所有 ref 統一視為 project-root-relative、
 以 `/` 序列化——不是相對於引用它的檔案的目錄（舊版 experiment_lint.py／
 compare_runs.py 是後者，這裡刻意換成更嚴格、跟 claim.comparison_ref 既有慣例
 一致的規則，因為 config_ref 相對於檔案目錄、comparison_ref 相對於 project root
@@ -29,7 +29,8 @@ class RefNotFound(RefError):
     """ref 形狀合法，但解析後的檔案不存在。"""
 
 
-def resolve_ref(project_root: Path, ref: str) -> Path:
+def validate_ref_syntax(ref: str) -> None:
+    """驗證可由 Schema format 表達、不需檔案系統的 ref 規則。"""
     if not ref:
         raise RefInvalid("ref 不可為空字串")
 
@@ -45,6 +46,9 @@ def resolve_ref(project_root: Path, ref: str) -> Path:
     if any(segment == ".." for segment in ref.split("/")):
         raise RefInvalid(f"ref 不可包含 .. 跳脫：{ref!r}")
 
+
+def resolve_ref(project_root: Path, ref: str) -> Path:
+    validate_ref_syntax(ref)
     root_resolved = project_root.resolve(strict=True)
     joined = project_root / ref
     try:
