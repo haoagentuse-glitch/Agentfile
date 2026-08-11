@@ -154,3 +154,5 @@ cd viewer\experiment-viewer; npm ci; npm test; npm run build; cargo test --manif
 ```
 
 這一行完成乾淨依賴安裝、測試、前端 build、Rust 測試與 unsigned NSIS installer 建置。輸出位於 `src-tauri\target\release\bundle\nsis\`。
+
+方便本機查找的 portable release 副本固定放在 `viewer\experiment-viewer.exe`；它是可重建且不進版控的衍生產物，權威來源仍是本目錄的 source、`package-lock.json` 與 `Cargo.lock`。

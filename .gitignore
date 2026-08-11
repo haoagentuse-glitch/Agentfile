@@ -27,3 +27,6 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# Viewer 本機 Windows release 便利副本；可由 source 與 lockfiles 重建
+/viewer/experiment-viewer.exe
