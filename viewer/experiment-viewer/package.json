@@ -8,6 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "release:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-windows.ps1",
     "tauri": "tauri"
   },
   "dependencies": {

@@ -145,14 +145,14 @@ cd viewer/experiment-viewer && npm run tauri dev
 
 啟動開發用 Tauri 視窗；Linux 需 WebKitGTK/GTK 等系統依賴，見 [ADR 0012](../../docs/adr/0012-experiment-viewer-toolchain.md)。
 
-## Windows release
+## Windows portable release
 
-正式 `.exe` 與 installer 必須在 Windows NTFS checkout 建置；不要在 WSL UNC 路徑直接執行 Windows npm/cargo。
+正式 `.exe` 必須在 Windows NTFS checkout 建置；不要在 WSL UNC 路徑直接執行 Windows npm/cargo。
 
 ```powershell
-cd viewer\experiment-viewer; npm ci; npm test; npm run build; cargo test --manifest-path src-tauri\Cargo.toml; npm run tauri build -- --bundles nsis
+cd viewer\experiment-viewer; npm run release:windows
 ```
 
-這一行完成乾淨依賴安裝、測試、前端 build、Rust 測試與 unsigned NSIS installer 建置。輸出位於 `src-tauri\target\release\bundle\nsis\`。
+這個具名入口完成乾淨依賴安裝、前端測試、Rust 測試、unsigned release build、PE 檢查與 SHA-256 輸出。
 
-方便本機查找的 portable release 副本固定放在 `viewer\experiment-viewer.exe`；它是可重建且不進版控的衍生產物，權威來源仍是本目錄的 source、`package-lock.json` 與 `Cargo.lock`。
+產物固定複製到 `viewer\experiment-viewer.exe`；它是可重建且不進版控的衍生產物，權威來源仍是本目錄的 source、`package-lock.json` 與 `Cargo.lock`。
