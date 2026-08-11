@@ -118,7 +118,12 @@ pub enum ResolveError {
 /// 回傳值特意區分「不存在」跟「其他錯誤」——只有前者可以被上層當成空狀態。
 pub fn resolve_within_root(root: &Path, relative: &str) -> Result<PathBuf, ResolveError> {
     let relative_path = Path::new(relative);
-    if relative_path.is_absolute() {
+    let has_root_or_prefix = relative_path.is_absolute()
+        || relative_path.has_root()
+        || relative_path
+            .components()
+            .any(|c| matches!(c, Component::Prefix(_) | Component::RootDir));
+    if has_root_or_prefix {
         return Err(ResolveError::Invalid(format!("路徑必須是相對路徑：{relative}")));
     }
     if relative_path
@@ -268,9 +273,19 @@ mod tests {
     fn resolve_within_root_rejects_absolute_relative_arg() {
         let root = make_temp_dir("traversal-absolute");
 
-        match resolve_within_root(&root, "/etc/passwd") {
+        let absolute = std::env::temp_dir().join("outside-project");
+        let absolute = absolute.to_string_lossy();
+        match resolve_within_root(&root, &absolute) {
             Err(ResolveError::Invalid(msg)) => assert!(msg.contains("相對路徑")),
             other => panic!("expected Invalid(相對路徑), got {other:?}"),
+        }
+
+        #[cfg(windows)]
+        for rooted in [r"\Windows\System32", r"C:drive-relative"] {
+            match resolve_within_root(&root, rooted) {
+                Err(ResolveError::Invalid(msg)) => assert!(msg.contains("相對路徑")),
+                other => panic!("expected Invalid(相對路徑), got {other:?}"),
+            }
         }
 
         std::fs::remove_dir_all(&root).unwrap();
