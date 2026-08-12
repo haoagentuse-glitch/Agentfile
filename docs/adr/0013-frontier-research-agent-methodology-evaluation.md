@@ -340,7 +340,7 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 
 ### P0：閉合生命週期契約與研究資料結構
 
-1. **定義 Experiment Lifecycle 狀態與合法轉移。** 驗收：非法跳過 pilot／comparison／audit 會被拒絕；`inconclusive`、`confounded`、`failed` 是正式終態。
+1. **定義 Experiment Lifecycle 狀態與合法轉移（已實作）。** 每次轉移由 `experiment_records transition` 以 exclusive create 新增不可變 event。validator 由事件序列計算目前狀態。非法跳過 pilot／comparison／audit 會被拒絕；`inconclusive`、`confounded`、`failed` 是正式終態。
 2. **擴充 experiment definition 的 `derivation`。** 驗收：certificate 能表示 primitives、assumptions、mechanism、tension、falsifier、minimal test、failure update、source refs；`experiment-lint` 有 deterministic hard checks。
 3. **把 provenance 做成共享小型結構。** 驗收：agent 產出的 definition／claim／audit 可回溯 model、prompt ID/hash、input refs、tool artifact；run 可回溯 command、commit、config/data/eval/prompt hashes。
 4. **補 run stage／lineage／failure／resource usage。** 驗收：pilot、main、replication、ablation、diagnostic 與 failed run 都能表示，不需新增通用 tree framework。

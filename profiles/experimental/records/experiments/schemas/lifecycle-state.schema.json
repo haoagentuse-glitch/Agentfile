@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lifecycle-state.schema.json",
+  "title": "Experiment Lifecycle Transition Event",
+  "description": "一個不可變的生命週期轉移事件。每次轉移新增一個檔案。目前狀態由事件序列計算。",
+  "type": "object",
+  "required": ["event_id", "experiment_id", "sequence", "from_state", "to_state", "occurred_at", "reason", "evidence_refs"],
+  "x-initial-state": "draft",
+  "x-allowed-transitions": {
+    "draft": ["preflight_failed", "ready_to_lock"],
+    "preflight_failed": [],
+    "ready_to_lock": ["locked"],
+    "locked": ["pilot_running"],
+    "pilot_running": ["pilot_failed", "pilot_inconclusive", "promoted"],
+    "pilot_failed": [],
+    "pilot_inconclusive": [],
+    "promoted": ["main_running"],
+    "main_running": ["execution_failed", "awaiting_comparison"],
+    "execution_failed": [],
+    "awaiting_comparison": ["confounded", "invalid", "awaiting_claim"],
+    "confounded": [],
+    "invalid": [],
+    "awaiting_claim": ["claim_rejected", "awaiting_review"],
+    "claim_rejected": [],
+    "awaiting_review": ["accepted", "rejected", "inconclusive", "revise"],
+    "accepted": [],
+    "rejected": [],
+    "inconclusive": [],
+    "revise": []
+  },
+  "x-required-evidence-subdirs": {
+    "awaiting_claim": "comparisons",
+    "awaiting_review": "audits"
+  },
+  "x-requires-new-evidence": ["revise"],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "experiment_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "from_state": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/lifecycleState" }] },
+    "to_state": { "$ref": "#/$defs/lifecycleState" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "reason": { "type": "string", "minLength": 1 },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string", "format": "project-ref" }
+    },
+    "updated_definition_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^/", "description": "revise 所更新的 definition JSON Pointer" }
+    }
+  },
+  "allOf": [{
+    "if": { "required": ["to_state"], "properties": { "to_state": { "const": "revise" } } },
+    "then": {
+      "required": ["updated_definition_fields"],
+      "properties": { "evidence_refs": { "minItems": 1 } }
+    }
+  }],
+  "$defs": {
+    "lifecycleState": {
+      "type": "string",
+      "enum": [
+        "draft", "preflight_failed", "ready_to_lock", "locked", "pilot_running",
+        "pilot_failed", "pilot_inconclusive", "promoted", "main_running",
+        "execution_failed", "awaiting_comparison", "confounded", "invalid",
+        "awaiting_claim", "claim_rejected", "awaiting_review", "accepted",
+        "rejected", "inconclusive", "revise"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

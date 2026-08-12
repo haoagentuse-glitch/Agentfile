@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 把隨身包套進目標資料夾。固定多步驟流程：
-#   git init → skills 投影（core+profile 聯集）→ .claude/ 設定（core+profile 合併）
-#   → 規範文件（core+profile 串接）→ tracker 設定 → 授權 → .gitignore（core+profile 串接）
+#   git init → skills/tools 投影 → .claude/ 設定（core+profile 合併）
+#   → 規範文件（core+profile 串接）→ tracker 設定 → records → 授權 → .gitignore
 # 已存在的檔案一律跳過，不覆寫、不刪除。
 set -euo pipefail
 
@@ -51,7 +51,7 @@ copy_tree() {
       run mkdir -p "$(dirname "$dst")"
       run cp "$src/$rel" "$dst"
     fi
-  done < <(cd "$src" && find . -type f ! -name 'settings.local.json' ! -name 'settings.json' ! -name 'gitignore.base' -printf '%P\n' | sort)
+  done < <(cd "$src" && find . -type f ! -path '*/.venv/*' ! -path '*/.pytest_cache/*' ! -path '*/__pycache__/*' ! -name '*.pyc' ! -name 'settings.local.json' ! -name 'settings.json' ! -name 'gitignore.base' -printf '%P\n' | sort)
 }
 
 # 串接兩個文字檔（core 在前，profile 追加於末尾），已存在則跳過，不覆寫
@@ -102,6 +102,9 @@ fi
 # 3. skills：core + profile 聯集，真實檔案落在 .agents/skills/，Codex 直接掃這裡
 copy_tree "$PACK/core/skills" "$TARGET/.agents/skills" ".agents/skills/"
 copy_tree "$PACK/profiles/$PROFILE/skills" "$TARGET/.agents/skills" ".agents/skills/"
+
+# 3b. profile tools：確定性工具與 skill 分離。只有 active profile 的工具會被投射。
+copy_tree "$PACK/profiles/$PROFILE/tools" "$TARGET/.agents/tools" ".agents/tools/"
 
 # 4. Claude 讀 .claude/skills，指向同一份，不做第二次複製
 if [[ -e "$TARGET/.claude/skills" ]]; then

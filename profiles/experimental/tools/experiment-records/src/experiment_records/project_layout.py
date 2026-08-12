@@ -19,6 +19,7 @@ SUBDIR_TO_SCHEMA = {
     "audits": "claim-audit-result.schema.json",
     "gates": "gate-state.schema.json",
     "metrics": "metric-definition.schema.json",
+    "lifecycles": "lifecycle-state.schema.json",
 }
 AUXILIARY_SUBDIRS = frozenset({"schemas", "configs", "artifacts"})
 

@@ -27,6 +27,9 @@
 
 每個實驗動手前用 `experiment-design` 技能凍結一份 Contract（`records/experiments/definitions/`），lock 後算 hash。改 `top_k`／模型／資料集／檢索預算／指標算法／評估集等控制變因不算同一個條件，必須開新條件或新實驗——用 `experiment-lint` 技能機械檢查這件事，不是自己讀過去覺得像就算數。
 
+唯一機械驗證入口：`uv run --project .agents/tools/experiment-records python -m experiment_records validate .`。
+生命週期只能用 `uv run --project .agents/tools/experiment-records python -m experiment_records transition . <EXPERIMENT_ID> <TO_STATE> --reason "<REASON>"` 新增事件。不得手動覆寫既有事件。
+
 ### Compute Gate
 
 L0 理論／靜態檢查 → L1 合成資料／確定性測試 → L2 小型資料集 → L3 小規模試跑 → L4 消融／敏感度分析 → L5 完整規模執行。往上升級要 Contract 裡的 `scale_up_rule` 允許，不是「看起來有戲就繼續跑」；沒有協調器自動幫你升級，人或呼叫的 agent 自己讀規則判斷。昂貴的實驗不是預設權利。用 `compute-gate` 技能機械執行這件事：不准跳級，`abort_rule` 觸發直接中止，`scale_up_rule` 沒滿足就擋在原地——但那句規則怎麼翻成可比對的數字，是呼叫的人的責任，不是技能自動解析自然語言猜的。

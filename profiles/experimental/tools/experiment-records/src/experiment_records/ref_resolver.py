@@ -1,5 +1,5 @@
 """解析 Schema 以 `format: project-ref` 宣告的欄位。所有 ref 統一視為 project-root-relative、
-以 `/` 序列化——不是相對於引用它的檔案的目錄（舊版 experiment_lint.py／
+以 `/` 序列化——不是相對於引用它的檔案的目錄（舊版簡化 validator／
 compare_runs.py 是後者，這裡刻意換成更嚴格、跟 claim.comparison_ref 既有慣例
 一致的規則，因為 config_ref 相對於檔案目錄、comparison_ref 相對於 project root
 兩種慣例並存正是目前 fixture 裡已經出現的不一致，這個新套件不重蹈覆轍）。

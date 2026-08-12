@@ -13,6 +13,7 @@ from helpers import (
     valid_claim,
     valid_comparison,
     valid_definition,
+    valid_lifecycle,
     valid_run,
     write_config,
     write_record,
@@ -82,7 +83,7 @@ def test_validate_reports_missing_required_field(project: Path) -> None:
 
 def test_validate_rejects_undeclared_additional_property(project: Path) -> None:
     """驗證是完整 Draft 2020-12（含 additionalProperties: false），
-    不是只檢 required/enum 的簡化版——這是舊版 experiment_lint.py 抓不到的錯誤。"""
+    不是只檢 required/enum 的簡化版——這是舊版簡化 validator 抓不到的錯誤。"""
     write_config(project, "records/experiments/configs/baseline.yaml")
     write_config(project, "records/experiments/configs/treatment.yaml")
     definition = valid_definition(unexpected_field="不該存在的欄位")
@@ -96,7 +97,7 @@ def test_validate_rejects_undeclared_additional_property(project: Path) -> None:
 
 def test_validate_enforces_conditional_schema_rule(project: Path) -> None:
     """run-envelope 的 allOf/if-then：status=invalid 時必填 invalid_reason。
-    舊版 experiment_lint.py 的遞迴 required/enum 檢查完全不處理 allOf，這裡驗證新
+    舊版簡化 validator 的遞迴 required/enum 檢查完全不處理 allOf，這裡驗證新
     validator 真的在跑完整 Draft 2020-12（含條件式 schema），不是重新實作同一套簡化邏輯。"""
     run = valid_run(status="invalid")
     write_record(project, "runs", "demo-run-1", run)
@@ -108,7 +109,7 @@ def test_validate_enforces_conditional_schema_rule(project: Path) -> None:
 
 
 def test_validate_rejects_unknown_schema_type(project: Path) -> None:
-    """record 檔案所在目錄不是七個已知類型之一——沒有對應 schema，必須明確拒絕，
+    """record 檔案所在目錄不是八個已知類型之一——沒有對應 schema，必須明確拒絕，
     不能靜默跳過或憑空套用其他 schema。"""
     record_path = write_record(project, "unknown-type", "mystery", {"anything": "goes"})
 
@@ -185,7 +186,7 @@ def test_validate_prints_glass_box_summary(project: Path) -> None:
     result = run_cli("validate", str(project))
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "命令：python -m experiment_records validate" in result.stdout
+    assert "命令：uv run --project .agents/tools/experiment-records python -m experiment_records validate" in result.stdout
     assert f"輸入：{project.resolve()}" in result.stdout
     assert "Schema：" in result.stdout
     assert "Commit：" in result.stdout
@@ -287,3 +288,273 @@ def test_validate_rejects_ref_symlink_escape(
 
     assert result.returncode == 1
     assert "config_ref" in result.stdout
+
+
+def test_validate_rejects_lifecycle_that_skips_pilot(project: Path) -> None:
+    lifecycle = {
+        "experiment_id": "demo-exp",
+        "current_state": "locked",
+        "history": [
+            {
+                "from_state": None,
+                "to_state": "draft",
+                "occurred_at": "2026-01-01T00:00:00Z",
+                "reason": "建立實驗",
+                "evidence_refs": [],
+            },
+            {
+                "from_state": "draft",
+                "to_state": "locked",
+                "occurred_at": "2026-01-01T00:01:00Z",
+                "reason": "未經 preflight 直接鎖定",
+                "evidence_refs": [],
+            },
+        ],
+        "updated_at": "2026-01-01T00:01:00Z",
+    }
+    write_record(project, "lifecycles", "demo-exp", lifecycle)
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "非法生命週期轉移：draft -> locked" in result.stdout
+
+
+def test_validate_accepts_complete_lifecycle(project: Path) -> None:
+    lifecycle = valid_lifecycle(
+        "draft",
+        "ready_to_lock",
+        "locked",
+        "pilot_running",
+        "promoted",
+        "main_running",
+        "awaiting_comparison",
+        "awaiting_claim",
+        "awaiting_review",
+        "accepted",
+    )
+    write_record(project, "lifecycles", "demo-exp", lifecycle)
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "生命週期轉移合法" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("states", "illegal_transition"),
+    [
+        (
+            ("draft", "ready_to_lock", "locked", "main_running"),
+            "locked -> main_running",
+        ),
+        (
+            (
+                "draft",
+                "ready_to_lock",
+                "locked",
+                "pilot_running",
+                "promoted",
+                "main_running",
+                "awaiting_claim",
+            ),
+            "main_running -> awaiting_claim",
+        ),
+        (
+            (
+                "draft",
+                "ready_to_lock",
+                "locked",
+                "pilot_running",
+                "promoted",
+                "main_running",
+                "awaiting_comparison",
+                "awaiting_claim",
+                "accepted",
+            ),
+            "awaiting_claim -> accepted",
+        ),
+    ],
+    ids=["skip-pilot", "skip-comparison", "skip-audit"],
+)
+def test_validate_rejects_skipped_lifecycle_stage(
+    project: Path, states: tuple[str, ...], illegal_transition: str
+) -> None:
+    write_record(project, "lifecycles", "demo-exp", valid_lifecycle(*states))
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert f"非法生命週期轉移：{illegal_transition}" in result.stdout
+
+
+def test_validate_rejects_revise_without_updated_field_and_evidence(
+    project: Path,
+) -> None:
+    lifecycle = valid_lifecycle(
+        "draft",
+        "ready_to_lock",
+        "locked",
+        "pilot_running",
+        "promoted",
+        "main_running",
+        "awaiting_comparison",
+        "awaiting_claim",
+        "awaiting_review",
+        "revise",
+    )
+    write_record(project, "lifecycles", "demo-exp", lifecycle)
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "updated_definition_fields" in result.stdout
+    assert "evidence_refs" in result.stdout
+
+
+def test_validate_accepts_revise_with_updated_field_and_evidence(project: Path) -> None:
+    evidence = write_record(
+        project, "artifacts", "new-evidence", {"finding": "反例成立"}
+    )
+    lifecycle = valid_lifecycle(
+        "draft",
+        "ready_to_lock",
+        "locked",
+        "pilot_running",
+        "promoted",
+        "main_running",
+        "awaiting_comparison",
+        "awaiting_claim",
+        "awaiting_review",
+        "revise",
+    )
+    lifecycle["history"][-1]["updated_definition_fields"] = ["/hypothesis"]
+    lifecycle["history"][-1]["evidence_refs"] = [
+        str(evidence.relative_to(project))
+    ]
+    write_record(project, "lifecycles", "demo-exp", lifecycle)
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "生命週期轉移合法" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "states",
+    [
+        ("draft", "preflight_failed"),
+        (
+            "draft",
+            "ready_to_lock",
+            "locked",
+            "pilot_running",
+            "pilot_failed",
+        ),
+        (
+            "draft",
+            "ready_to_lock",
+            "locked",
+            "pilot_running",
+            "pilot_inconclusive",
+        ),
+        (
+            "draft",
+            "ready_to_lock",
+            "locked",
+            "pilot_running",
+            "promoted",
+            "main_running",
+            "execution_failed",
+        ),
+        (
+            "draft",
+            "ready_to_lock",
+            "locked",
+            "pilot_running",
+            "promoted",
+            "main_running",
+            "awaiting_comparison",
+            "confounded",
+        ),
+        (
+            "draft",
+            "ready_to_lock",
+            "locked",
+            "pilot_running",
+            "promoted",
+            "main_running",
+            "awaiting_comparison",
+            "awaiting_claim",
+            "awaiting_review",
+            "inconclusive",
+        ),
+    ],
+    ids=[
+        "preflight-failed",
+        "pilot-failed",
+        "pilot-inconclusive",
+        "execution-failed",
+        "confounded",
+        "inconclusive",
+    ],
+)
+def test_validate_accepts_formal_terminal_state(
+    project: Path, states: tuple[str, ...]
+) -> None:
+    write_record(project, "lifecycles", "demo-exp", valid_lifecycle(*states))
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_validate_rejects_transition_after_terminal_state(project: Path) -> None:
+    lifecycle = valid_lifecycle("draft", "preflight_failed", "ready_to_lock")
+    write_record(project, "lifecycles", "demo-exp", lifecycle)
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "非法生命週期轉移：preflight_failed -> ready_to_lock" in result.stdout
+
+
+def test_validate_uses_lifecycle_schema_as_transition_source(project: Path) -> None:
+    schema_path = (
+        project
+        / "records"
+        / "experiments"
+        / "schemas"
+        / "lifecycle-state.schema.json"
+    )
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema["x-allowed-transitions"]["draft"].append("locked")
+    schema_path.write_text(json.dumps(schema), encoding="utf-8")
+    write_record(
+        project,
+        "lifecycles",
+        "demo-exp",
+        valid_lifecycle("draft", "locked"),
+    )
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_validate_rejects_incomplete_lifecycle_transition_table(project: Path) -> None:
+    schema_path = (
+        project
+        / "records"
+        / "experiments"
+        / "schemas"
+        / "lifecycle-state.schema.json"
+    )
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    del schema["x-allowed-transitions"]["draft"]
+    schema_path.write_text(json.dumps(schema), encoding="utf-8")
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "轉移表必須為每個 state 定義出口" in result.stdout

@@ -1,11 +1,12 @@
 [project]
 name = "experiment-records"
 version = "0.1.0"
-description = "驗證 records/experiments/ 底下的實驗紀錄：完整 JSON Schema Draft 2020-12 驗證 + project-root-relative ref 邊界檢查。"
+description = "驗證 records/experiments/ 的 JSON Schema、project ref 與 Experiment Lifecycle。"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "jsonschema>=4.26.0",
+    "PyYAML>=6.0.3",
 ]
 
 [build-system]
