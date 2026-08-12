@@ -77,7 +77,119 @@
       "description": "lock 後才有值：對 lock 當下的 JSON（不含此欄位本身）算 sha256"
     },
     "created_at": { "type": "string", "format": "date-time" },
-    "producer": { "$ref": "provenance.schema.json#/$defs/producer" }
+    "producer": { "$ref": "provenance.schema.json#/$defs/producer" },
+    "derivation": {
+      "type": "object",
+      "title": "Research Question Certificate",
+      "description": "題目怎麼推導出來的可稽核紀錄，不是模型的私密推理過程。保存可公開審核的推導摘要，讓「為什麼做這個實驗」跟「實驗做了什麼」一樣可被檢查。lock 之後即凍結；要改就開新 experiment，不得原地改寫。",
+      "required": [
+        "primitives", "assumptions", "mechanism_model", "tension",
+        "falsifier", "minimal_decisive_test", "novelty_status"
+      ],
+      "properties": {
+        "primitives": {
+          "type": "array",
+          "minItems": 1,
+          "description": "這個題目賴以成立的基本概念。需要穩定 ID，因為 assumptions 與 claim audit 會引用",
+          "items": {
+            "type": "object",
+            "required": ["id", "definition"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+              "definition": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "minItems": 1,
+          "description": "題目成立所依賴、但尚未驗證的前提。failure_update 靠 ID 指回這裡",
+          "items": {
+            "type": "object",
+            "required": ["id", "statement", "status"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+              "statement": { "type": "string", "minLength": 1 },
+              "status": { "type": "string", "enum": ["unverified", "supported", "refuted"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "mechanism_model": {
+          "type": "object",
+          "description": "預期的因果鏈。summary 為必填——沒有機制敘述的題目無法判斷結果是否支持原本的想法",
+          "required": ["summary", "variables"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1 },
+            "variables": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "tension": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這個題目為什麼不是顯然的——取捨、競爭效應或邊界在哪"
+        },
+        "falsifier": {
+          "type": "string",
+          "minLength": 1,
+          "description": "看到什麼觀察就代表假說被推翻。沒有可證偽觀察的題目不該花算力"
+        },
+        "minimal_decisive_test": {
+          "type": "string",
+          "minLength": 1,
+          "description": "能分辨真假的最便宜測試"
+        },
+        "expected_observations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "failure_update": {
+          "type": "array",
+          "default": [],
+          "description": "預先寫好的失敗更新規則：看到什麼結果就把哪個 assumption 改成什麼狀態。事後才決定怎麼解讀失敗，等於沒有預先承諾",
+          "items": {
+            "type": "object",
+            "required": ["when", "update_assumption_id", "to"],
+            "properties": {
+              "when": { "type": "string", "minLength": 1 },
+              "update_assumption_id": { "type": "string" },
+              "to": { "type": "string", "enum": ["unverified", "supported", "refuted"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "items": { "type": "string", "format": "project-ref" },
+          "default": [],
+          "description": "實際查過並保存下來的來源。空陣列代表沒查過，novelty_status 只能是 unverified"
+        },
+        "counterexamples": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "反方研究者找到的既有反例、替代機制或會讓結果失效的 slice"
+        },
+        "novelty_status": {
+          "type": "string",
+          "enum": ["unverified", "novel_claimed", "prior_art_found"],
+          "description": "unverified 是預設值。沒有保存下來的來源就不得宣告 novel——模型憑記憶判斷新穎性會系統性高估"
+        }
+      },
+      "additionalProperties": false
+    }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "locked" } }, "required": ["status"] },
+      "then": {
+        "required": ["derivation"],
+        "description": "lock 是開始花算力的那一刻。此時題目推導必須已可稽核，否則事後只能用結果反推當初想問什麼"
+      }
+    }
+  ],
   "additionalProperties": false
 }

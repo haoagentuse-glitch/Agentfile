@@ -260,6 +260,58 @@ def _validate_lifecycle_event(
     return results
 
 
+def _validate_derivation(instance: dict[str, Any], label: str) -> list[Result]:
+    """Research Question Certificate 的確定性硬檢查。
+
+    只檢查可由結構本身判定的事：ID 唯一、引用可解、宣告與證據一致。
+    「這個機制講得對不對」是語意判斷，不在這裡做，也不得由這裡放行。
+    """
+    derivation = instance.get("derivation")
+    if not isinstance(derivation, dict):
+        return []
+
+    results: list[Result] = []
+
+    primitive_ids = [p["id"] for p in derivation.get("primitives", []) if isinstance(p, dict) and "id" in p]
+    duplicate_primitives = sorted({i for i in primitive_ids if primitive_ids.count(i) > 1})
+    if duplicate_primitives:
+        results.append(("錯誤", f"{label}: derivation.primitives ID 重複：{', '.join(duplicate_primitives)}"))
+
+    assumption_ids = [a["id"] for a in derivation.get("assumptions", []) if isinstance(a, dict) and "id" in a]
+    duplicate_assumptions = sorted({i for i in assumption_ids if assumption_ids.count(i) > 1})
+    if duplicate_assumptions:
+        results.append(("錯誤", f"{label}: derivation.assumptions ID 重複：{', '.join(duplicate_assumptions)}"))
+
+    known_assumptions = set(assumption_ids)
+    for index, rule in enumerate(derivation.get("failure_update", [])):
+        if not isinstance(rule, dict):
+            continue
+        target = rule.get("update_assumption_id")
+        if target not in known_assumptions:
+            results.append((
+                "錯誤",
+                f"{label}: derivation.failure_update[{index}] 指向不存在的 assumption {target!r}",
+            ))
+
+    # 沒有保存下來的來源就不得宣告新穎性——模型憑記憶判斷新穎性會系統性高估。
+    if derivation.get("novelty_status") != "unverified" and not derivation.get("source_refs"):
+        results.append((
+            "錯誤",
+            f"{label}: novelty_status={derivation.get('novelty_status')!r} 但 source_refs 為空；未查證只能標 unverified",
+        ))
+
+    # 機制模型必須提到實際被操弄的變因，否則這個機制敘述跟這個實驗無關。
+    treatment_variable = instance.get("treatment", {}).get("variable")
+    variables = derivation.get("mechanism_model", {}).get("variables", [])
+    if isinstance(treatment_variable, str) and isinstance(variables, list) and treatment_variable not in variables:
+        results.append((
+            "錯誤",
+            f"{label}: mechanism_model.variables 未包含 treatment.variable {treatment_variable!r}",
+        ))
+
+    return results
+
+
 def _validate_contract_configs(instance: dict[str, Any], label: str, layout: ProjectLayout) -> list[Result]:
     baseline_ref = instance.get("baseline", {}).get("config_ref")
     treatment_ref = instance.get("treatment", {}).get("config_ref")
@@ -367,6 +419,7 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
         if record_type == "lifecycles":
             results.extend(_validate_lifecycle_event(instance, label, schema, layout))
         elif record_type == "definitions":
+            results.extend(_validate_derivation(instance, label))
             results.extend(_validate_contract_configs(instance, label, layout))
 
     for field_label, ref_value in _extract_refs(schema, instance, layout):

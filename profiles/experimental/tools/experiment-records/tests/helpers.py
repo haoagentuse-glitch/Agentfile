@@ -86,6 +86,27 @@ def valid_definition(**overrides: object) -> dict:
     return data
 
 
+def valid_derivation(**overrides: object) -> dict:
+    data = {
+        "primitives": [{"id": "retrieval_coverage", "definition": "答案所需片段被取回的比例"}],
+        "assumptions": [{"id": "a1", "statement": "評估集沒有洩漏到索引裡", "status": "unverified"}],
+        "mechanism_model": {
+            "summary": "提高 top_k 增加覆蓋率，但引入干擾片段並吃掉 context 額度",
+            "variables": ["top_k", "coverage", "distractor_rate"],
+        },
+        "tension": "覆蓋率與干擾雜訊的取捨",
+        "falsifier": "預先指定的 slice 中 recall 沒有提升",
+        "minimal_decisive_test": "固定語料與查詢，只掃 top_k，重複三個 seed",
+        "expected_observations": ["recall 隨 top_k 遞增後趨於平緩"],
+        "failure_update": [{"when": "recall 沒提升", "update_assumption_id": "a1", "to": "refuted"}],
+        "source_refs": [],
+        "counterexamples": [],
+        "novelty_status": "unverified",
+    }
+    data.update(overrides)
+    return data
+
+
 def valid_run(**overrides: object) -> dict:
     data = {
         "run_id": "demo-run-1", "experiment_id": "demo-exp", "experiment_type": "rag",
