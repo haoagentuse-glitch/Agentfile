@@ -9,14 +9,22 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
+from referencing import Registry, Resource
+from referencing.jsonschema import DRAFT202012
 import yaml
 
-from experiment_records.project_layout import SUBDIR_TO_SCHEMA, ProjectLayout, record_type_for
+from experiment_records.project_layout import (
+    SUBDIR_TO_SCHEMA,
+    ProjectLayout,
+    all_schema_names,
+    record_type_for,
+)
 from experiment_records.ref_resolver import RefError, RefInvalid, resolve_ref, validate_ref_syntax
 
 Result = tuple[str, str]
 
 _SCHEMA_CACHE: dict[Path, dict[str, Any]] = {}
+_REGISTRY_CACHE: dict[Path, Registry] = {}
 _PROJECT_FORMAT_CHECKER = FormatChecker()
 
 
@@ -39,8 +47,35 @@ def _load_schema(schema_path: Path) -> dict[str, Any]:
     return schema
 
 
+def _registry(layout: ProjectLayout) -> Registry:
+    """讓 schema 之間的 $ref（例如 provenance.schema.json#/$defs/producer）可解析。
+
+    只註冊本 project schemas_dir 底下的檔案，不做網路取回——schema 是專案內的權威來源，
+    驗證結果不得依賴外部可用性。
+    """
+    cached = _REGISTRY_CACHE.get(layout.schemas_dir)
+    if cached is not None:
+        return cached
+    resources = []
+    for schema_name in all_schema_names():
+        try:
+            schema = _load_schema(layout.schemas_dir / schema_name)
+        except (json.JSONDecodeError, OSError, SchemaError, TypeError):
+            continue  # schema 本身無效由 validate_schemas 報告，這裡不重複報
+        resources.append((schema_name, Resource.from_contents(schema, default_specification=DRAFT202012)))
+    registry = Registry().with_resources(resources)
+    _REGISTRY_CACHE[layout.schemas_dir] = registry
+    return registry
+
+
+def _validator(schema: dict[str, Any], layout: ProjectLayout) -> Draft202012Validator:
+    return Draft202012Validator(
+        schema, registry=_registry(layout), format_checker=_PROJECT_FORMAT_CHECKER
+    )
+
+
 def schema_count() -> int:
-    return len(set(SUBDIR_TO_SCHEMA.values()))
+    return len(all_schema_names())
 
 
 def _validate_lifecycle_schema(schema: dict[str, Any]) -> list[Result]:
@@ -86,7 +121,7 @@ def _validate_lifecycle_schema(schema: dict[str, Any]) -> list[Result]:
 
 def validate_schemas(layout: ProjectLayout) -> list[Result]:
     results: list[Result] = []
-    for schema_name in dict.fromkeys(SUBDIR_TO_SCHEMA.values()):
+    for schema_name in all_schema_names():
         schema_path = layout.schemas_dir / schema_name
         try:
             schema = _load_schema(schema_path)
@@ -107,21 +142,62 @@ def _label(path: Path, layout: ProjectLayout) -> str:
         return str(path)
 
 
-def _extract_refs(schema: Any, value: Any, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
+def _deref(
+    schema: dict[str, Any], document: dict[str, Any], layout: ProjectLayout
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """跟隨 $ref 直到拿到實際 subschema，回傳 (subschema, 它所屬的 document)。
+
+    document 要一起回傳，因為跨檔 $ref 之後，後續的同檔 `#/$defs/...` 必須以新檔為基準。
+    解析不到就回空 schema——schema 本身的錯誤由 validate_schemas 負責報告，這裡只做 ref 擷取。
+    """
+    seen: set[str] = set()
+    while isinstance(schema, dict) and isinstance(schema.get("$ref"), str):
+        ref: str = schema["$ref"]
+        if ref in seen:
+            return {}, document
+        seen.add(ref)
+        document_name, _, pointer = ref.partition("#")
+        if document_name:
+            try:
+                document = _load_schema(layout.schemas_dir / document_name)
+            except (json.JSONDecodeError, OSError, SchemaError, TypeError):
+                return {}, document
+        target: Any = document
+        for part in pointer.split("/"):
+            if not part:
+                continue
+            key = part.replace("~1", "/").replace("~0", "~")
+            if not isinstance(target, dict) or key not in target:
+                return {}, document
+            target = target[key]
+        schema = target if isinstance(target, dict) else {}
+    return schema, document
+
+
+def _extract_refs(
+    schema: Any,
+    value: Any,
+    layout: ProjectLayout,
+    document: dict[str, Any] | None = None,
+    path: tuple[str, ...] = (),
+) -> list[tuple[str, str]]:
     refs: list[tuple[str, str]] = []
     if not isinstance(schema, dict):
         return refs
+    if document is None:
+        document = schema
+    schema, document = _deref(schema, document, layout)
     if schema.get("format") == "project-ref" and isinstance(value, str):
         refs.append((".".join(path), value))
     properties = schema.get("properties")
     if isinstance(properties, dict) and isinstance(value, dict):
         for key, child_schema in properties.items():
             if key in value:
-                refs.extend(_extract_refs(child_schema, value[key], (*path, key)))
+                refs.extend(_extract_refs(child_schema, value[key], layout, document, (*path, key)))
     items = schema.get("items")
     if isinstance(items, dict) and isinstance(value, list):
         for index, child in enumerate(value):
-            refs.extend(_extract_refs(items, child, (*path, str(index))))
+            refs.extend(_extract_refs(items, child, layout, document, (*path, str(index))))
     return refs
 
 
@@ -223,7 +299,7 @@ def validate_lifecycle_candidate(
 ) -> list[Result]:
     schema = _load_schema(layout.schemas_dir / SUBDIR_TO_SCHEMA["lifecycles"])
     errors = sorted(
-        Draft202012Validator(schema, format_checker=_PROJECT_FORMAT_CHECKER).iter_errors(instance),
+        _validator(schema, layout).iter_errors(instance),
         key=lambda error: list(map(str, error.path)),
     )
     results: list[Result] = []
@@ -233,7 +309,7 @@ def validate_lifecycle_candidate(
     if errors:
         return results
     results.extend(_validate_lifecycle_event(instance, label, schema, layout))
-    for field_label, ref_value in _extract_refs(schema, instance):
+    for field_label, ref_value in _extract_refs(schema, instance, layout):
         try:
             resolve_ref(layout.project_root, ref_value)
         except RefError as error:
@@ -278,7 +354,7 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
         return [("錯誤", f"{label}: Schema {schema_path.name} 本身無效：{detail}")]
 
     errors = sorted(
-        Draft202012Validator(schema, format_checker=_PROJECT_FORMAT_CHECKER).iter_errors(instance),
+        _validator(schema, layout).iter_errors(instance),
         key=lambda e: list(map(str, e.path)),
     )
     results: list[Result] = []
@@ -293,7 +369,7 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
         elif record_type == "definitions":
             results.extend(_validate_contract_configs(instance, label, layout))
 
-    for field_label, ref_value in _extract_refs(schema, instance):
+    for field_label, ref_value in _extract_refs(schema, instance, layout):
         try:
             resolved = resolve_ref(layout.project_root, ref_value)
         except RefError as e:
@@ -305,7 +381,7 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
 
 def validate_lifecycle_events(paths: list[Path], layout: ProjectLayout) -> list[Result]:
     schema = _load_schema(layout.schemas_dir / SUBDIR_TO_SCHEMA["lifecycles"])
-    validator = Draft202012Validator(schema, format_checker=_PROJECT_FORMAT_CHECKER)
+    validator = _validator(schema, layout)
     grouped: dict[str, list[tuple[Path, dict[str, Any]]]] = defaultdict(list)
 
     for path in paths:

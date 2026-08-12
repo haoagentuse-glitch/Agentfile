@@ -76,7 +76,8 @@
       "type": "string",
       "description": "lock 後才有值：對 lock 當下的 JSON（不含此欄位本身）算 sha256"
     },
-    "created_at": { "type": "string", "format": "date-time" }
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": { "$ref": "provenance.schema.json#/$defs/producer" }
   },
   "additionalProperties": false
 }

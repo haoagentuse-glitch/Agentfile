@@ -39,7 +39,8 @@
       "type": "string",
       "description": "這個 claim 宣稱的適用範圍，例如「僅限這個資料集與這個 model」或「所有 retrieval 任務都適用」——scope audit 就是在檢查這句話有沒有超出證據實際涵蓋的範圍"
     },
-    "created_at": { "type": "string", "format": "date-time" }
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": { "$ref": "provenance.schema.json#/$defs/producer" }
   },
   "additionalProperties": false
 }

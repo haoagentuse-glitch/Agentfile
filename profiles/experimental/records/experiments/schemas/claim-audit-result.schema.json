@@ -40,7 +40,8 @@
     "final_verdict": {
       "type": "string",
       "enum": ["fully_supported", "partially_supported", "overreaching", "unsupported", "unauditable"]
-    }
+    },
+    "producer": { "$ref": "provenance.schema.json#/$defs/producer" }
   },
   "additionalProperties": false
 }

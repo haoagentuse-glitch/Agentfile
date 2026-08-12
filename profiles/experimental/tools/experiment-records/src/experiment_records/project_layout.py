@@ -21,7 +21,15 @@ SUBDIR_TO_SCHEMA = {
     "metrics": "metric-definition.schema.json",
     "lifecycles": "lifecycle-state.schema.json",
 }
+# 不是 record 類型、沒有對應目錄的共用結構；只被其他 schema 以 $ref 引用。
+# 列在這裡是為了讓它也進 schema 合法性檢查與 $ref registry，不會因為沒人直接驗證而腐爛。
+SHARED_SCHEMAS = ("provenance.schema.json",)
 AUXILIARY_SUBDIRS = frozenset({"schemas", "configs", "artifacts"})
+
+
+def all_schema_names() -> list[str]:
+    """全部需要載入的 schema 檔名——record 類型加共用結構，去重後保持穩定順序。"""
+    return list(dict.fromkeys([*SUBDIR_TO_SCHEMA.values(), *SHARED_SCHEMAS]))
 
 
 class ProjectLayoutError(Exception):
