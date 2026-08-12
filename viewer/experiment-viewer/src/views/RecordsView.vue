@@ -50,7 +50,9 @@ function rowsFor(collection: GenericRecordCollection): Array<Record<string, unkn
     return collection.records.map((r) => {
       const row: Record<string, unknown> = { __id: r.id };
       for (const path of collection.columns) {
-        row[path] = getByPath(r.fields, path) ?? "—";
+        // 原值直接放進去，不先轉字串——缺值、物件、陣列的顯示規則由 DataTable
+        // 的 cell-value 統一決定，在這裡先壓成 "—" 會把型別資訊丟掉。
+        row[path] = getByPath(r.fields, path);
       }
       return row;
     });
@@ -59,6 +61,8 @@ function rowsFor(collection: GenericRecordCollection): Array<Record<string, unkn
 }
 
 const selectedRecord = ref<GenericRecord | null>(null);
+// 表格塞不下的長值走這裡，不是把整格撐開讓那一列讀不了。
+const expanded = ref<{ label: string; content: string } | null>(null);
 
 function openRecord(collection: GenericRecordCollection, row: Record<string, unknown>) {
   selectedRecord.value = collection.records.find((r) => r.id === row.__id) ?? null;
@@ -82,6 +86,7 @@ function openRecord(collection: GenericRecordCollection, row: Record<string, unk
           :row-key="(row) => String(row.__id)"
           groupable
           @select="(row) => openRecord(collection, row)"
+          @expand="(payload) => (expanded = payload)"
         />
       </div>
     </template>
@@ -89,6 +94,10 @@ function openRecord(collection: GenericRecordCollection, row: Record<string, unk
 
     <Drawer :open="selectedRecord !== null" :title="selectedRecord?.id ?? ''" @close="selectedRecord = null">
       <pre v-if="selectedRecord">{{ JSON.stringify(selectedRecord.fields, null, 2) }}</pre>
+    </Drawer>
+
+    <Drawer :open="expanded !== null" :title="expanded?.label ?? ''" @close="expanded = null">
+      <pre v-if="expanded">{{ expanded.content }}</pre>
     </Drawer>
   </section>
 </template>

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 // 共用表格外殼——Runs／Claims／Experiments／generic collections 共用文字篩選、欄位排序、
 // 可選分組與點列開 Drawer。欄位內容用具名 slot 客製，不強迫呼叫端使用同一種 cell 型別。
+//
+// 沒有 slot 的欄位一律走 cell-value 的通用顯示規則：generic collections 的欄位由
+// viewer.json 宣告，值可以是任何東西，寫死 `{{ row[key] }}` 會把物件印成 [object Object]。
 import { computed, ref } from "vue";
+import { toCellView, toComparable, toSearchText } from "../lib/cell-value";
 
 export interface DataTableColumn {
   key: string;
@@ -16,7 +20,10 @@ const props = defineProps<{
   groupable?: boolean;
 }>();
 
-const emit = defineEmits<{ select: [row: Record<string, unknown>] }>();
+const emit = defineEmits<{
+  select: [row: Record<string, unknown>];
+  expand: [payload: { label: string; content: string }];
+}>();
 
 const filterText = ref("");
 const sortKey = ref<string | null>(null);
@@ -26,8 +33,9 @@ const groupKey = ref("");
 const filteredRows = computed(() => {
   const query = filterText.value.trim().toLowerCase();
   if (!query) return props.rows;
+  // 物件與陣列欄位也要搜得到，不能只搜得到純量。
   return props.rows.filter((row) =>
-    Object.values(row).some((value) => String(value ?? "").toLowerCase().includes(query))
+    Object.values(row).some((value) => toSearchText(value).includes(query))
   );
 });
 
@@ -36,12 +44,20 @@ const sortedRows = computed(() => {
   const key = sortKey.value;
   const dir = sortDir.value === "asc" ? 1 : -1;
   return [...filteredRows.value].sort((a, b) => {
-    const av = a[key];
-    const bv = b[key];
+    const av = toComparable(a[key]);
+    const bv = toComparable(b[key]);
     if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-    return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
+    return String(av).localeCompare(String(bv)) * dir;
   });
 });
+
+function cell(row: Record<string, unknown>, key: string) {
+  return toCellView(row[key]);
+}
+
+function expand(label: string, content: string) {
+  emit("expand", { label, content });
+}
 
 const groupedRows = computed(() => {
   if (!props.groupable || !groupKey.value) {
@@ -112,7 +128,16 @@ function toggleSort(key: string) {
             @keydown.enter="emit('select', row)"
           >
             <td v-for="col in columns" :key="col.key">
-              <slot :name="col.key" :row="row">{{ row[col.key] }}</slot>
+              <slot :name="col.key" :row="row">
+                <span :class="`cell cell-${cell(row, col.key).kind}`">{{ cell(row, col.key).text }}</span>
+                <button
+                  v-if="cell(row, col.key).full"
+                  type="button"
+                  class="expand-button"
+                  :aria-label="`看完整的 ${col.label}`"
+                  @click.stop="expand(col.label, cell(row, col.key).full!)"
+                >⋯</button>
+              </slot>
             </td>
           </tr>
         </template>
@@ -165,5 +190,23 @@ function toggleSort(key: string) {
 }
 .sort-indicator {
   font-size: 9px;
+}
+/* 缺值與結構化值用中性樣式標示，讓「沒有值」跟「值是空字串」在畫面上分得出來。 */
+.cell-empty {
+  color: var(--color-text-muted);
+}
+.cell-object,
+.cell-array {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.expand-button {
+  background: transparent;
+  border: none;
+  padding: 0 4px;
+  margin-left: 4px;
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
 }
 </style>
