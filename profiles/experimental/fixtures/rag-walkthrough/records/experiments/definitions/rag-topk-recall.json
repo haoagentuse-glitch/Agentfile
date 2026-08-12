@@ -25,6 +25,33 @@
   },
   "abort_rule": "latency_ms p95 超過 400ms 立即中止，不再往上加算力",
   "scale_up_rule": "pilot 的 recall_at_10 提升 ≥ 0.03 才申請完整執行的算力",
+  "compute_cascade": [
+    { "stage": "preflight", "level": "L0" },
+    {
+      "stage": "pilot",
+      "level": "L3",
+      "budget": { "max_wall_clock_seconds": 600, "max_samples": 200 },
+      "abort": {
+        "metric": "latency_ms", "source": "run", "field": "value",
+        "comparator": ">", "threshold": 400,
+        "reason": "latency_ms p95 超過 400ms，依 abort_rule 終止這條路線"
+      }
+    },
+    {
+      "stage": "main",
+      "level": "L4",
+      "budget": { "max_wall_clock_seconds": 5400, "max_cost_usd": 18.0, "max_runs": 4 },
+      "promotion": {
+        "metric": "recall_at_10", "source": "comparison", "field": "absolute_diff",
+        "comparator": ">=", "threshold": 0.03
+      },
+      "abort": {
+        "metric": "latency_ms", "source": "run", "field": "value",
+        "comparator": ">", "threshold": 400,
+        "reason": "latency_ms p95 超過 400ms，依 abort_rule 終止這條路線"
+      }
+    }
+  ],
   "review_policy": { "required_reviewer_kind": "any_independent", "min_reviewers": 1 },
   "status": "locked",
   "contract_hash": "sha256:1f0c6a2b9d4e7c3a5b8f1e0d2c4a6b8d0f2e4c6a8b0d2f4e6c8a0b2d4f6e8c0a",

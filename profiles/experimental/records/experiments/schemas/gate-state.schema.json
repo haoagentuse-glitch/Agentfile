@@ -19,6 +19,11 @@
         "required": ["level", "status", "decided_at", "reason"],
         "properties": {
           "level": { "type": "string", "enum": ["L0", "L1", "L2", "L3", "L4", "L5"] },
+          "stage": {
+            "type": "string",
+            "enum": ["preflight", "pilot", "main", "replication", "independent_review"],
+            "description": "這一級對應的研究階段，由 Contract 的 compute_cascade 決定。stage 是研究階段，level 是花多少算力"
+          },
           "status": {
             "type": "string",
             "enum": ["passed", "failed", "aborted"],
@@ -26,8 +31,24 @@
           },
           "decided_at": { "type": "string", "format": "date-time" },
           "reason": { "type": "string" },
+          "checks": {
+            "type": "array",
+            "default": [],
+            "description": "這次判定實際做了哪些檢查、各自的結果。決定要能回溯到數字，不能只留一句結論",
+            "items": {
+              "type": "object",
+              "required": ["kind", "passed", "detail"],
+              "properties": {
+                "kind": { "type": "string", "enum": ["sequence", "budget", "promotion", "abort"] },
+                "passed": { "type": "boolean" },
+                "detail": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
           "run_ids": { "type": "array", "items": { "type": "string" }, "default": [] }
-        }
+        },
+        "additionalProperties": false
       }
     },
     "updated_at": { "type": "string", "format": "date-time" }

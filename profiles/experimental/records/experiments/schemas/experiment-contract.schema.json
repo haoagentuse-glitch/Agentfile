@@ -71,6 +71,70 @@
       "type": "string",
       "description": "從 pilot 升級到下一個 Compute Gate 等級的條件；不存在代表停在 pilot"
     },
+    "compute_cascade": {
+      "type": "array",
+      "description": "由便宜到昂貴的階梯，每一級各有預算、升級條件與中止條件。這是 scale_up_rule／abort_rule 那兩句自然語言的機械可判定版本：翻譯只做一次，而且凍結在 Contract 裡，不是散在某次呼叫的命令列參數。因此同一組紀錄重跑 compute-gate 會得到同一個判定。",
+      "items": {
+        "type": "object",
+        "required": ["stage", "level"],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": ["preflight", "pilot", "main", "replication", "independent_review"]
+          },
+          "level": {
+            "type": "string",
+            "enum": ["L0", "L1", "L2", "L3", "L4", "L5"],
+            "description": "對應的算力等級。stage 是研究階段，level 是花多少算力，兩個是不同的軸"
+          },
+          "budget": {
+            "type": "object",
+            "description": "這一級被授權的上限。run 的實際用量超過就不得升級",
+            "properties": {
+              "max_wall_clock_seconds": { "type": "number", "exclusiveMinimum": 0 },
+              "max_samples": { "type": "integer", "exclusiveMinimum": 0 },
+              "max_cost_usd": { "type": "number", "exclusiveMinimum": 0 },
+              "max_runs": { "type": "integer", "exclusiveMinimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "promotion": {
+            "type": ["object", "null"],
+            "description": "升到這一級要滿足的條件。null 代表這一級不設指標門檻，只做序列與預算檢查",
+            "required": ["metric", "source", "field", "comparator", "threshold"],
+            "properties": {
+              "metric": { "type": "string" },
+              "source": { "type": "string", "enum": ["comparison", "run"] },
+              "field": {
+                "type": "string",
+                "enum": ["absolute_diff", "relative_diff", "baseline", "treatment", "value"]
+              },
+              "comparator": { "type": "string", "enum": [">", "<", ">=", "<=", "==", "!="] },
+              "threshold": { "type": "number" }
+            },
+            "additionalProperties": false
+          },
+          "abort": {
+            "type": ["object", "null"],
+            "description": "觸發就整條路線終止，不是補證據重來",
+            "required": ["metric", "source", "field", "comparator", "threshold", "reason"],
+            "properties": {
+              "metric": { "type": "string" },
+              "source": { "type": "string", "enum": ["comparison", "run"] },
+              "field": {
+                "type": "string",
+                "enum": ["absolute_diff", "relative_diff", "baseline", "treatment", "value"]
+              },
+              "comparator": { "type": "string", "enum": [">", "<", ">=", "<=", "==", "!="] },
+              "threshold": { "type": "number" },
+              "reason": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "review_policy": {
       "type": "object",
       "description": "誰有資格審核這個 experiment 的結論。跟 Contract 一起凍結——看到結果之後才放寬審核標準，等於沒有審核",

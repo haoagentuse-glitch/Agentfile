@@ -22,6 +22,18 @@ Contract 的 `compute_budget.pilot_max_minutes`／`pilot_max_samples` 這兩個�
 
 合法序列升級、跳級被擋、`abort_rule` 觸發、`scale_up_rule` 不足、補證據後 `scale_up_rule` 通過、pilot 預算超支——六種都用 `compute_gate.py` 實際執行過，exit code 與 `gate-state.json` 的 `current_level`／`history` 都符合預期，不是憑空宣稱。跟 claim-audit 不同，這六個情境全部是機械可判定的，沒有語意段需要另外走一遍——`compute-gate` 本身不含語意判斷，語意判斷（規則翻譯）已經被推到呼叫端了。
 
+## 後續修訂（2026-08-13，ADR 0013 P1 第 10 項）
+
+門檻的存放位置改了，邊界沒改。
+
+原本呼叫端把 `scale_up_rule` 翻成 `--scaleup-metric` 這組命令列參數。問題是：門檻散在某次呼叫裡，同一組紀錄就重跑不出同一個判定——那不是確定性，只是剛好那次這樣打。ADR 0013 P1 第 10 項要求「重新執行同一輸入產生同一 gate decision」，這個形狀達不到。
+
+改成翻譯結果凍結在 Contract 的 `compute_cascade`：每一級各有 `stage`、`level`、`budget`、`promotion` 與 `abort`。`compute_gate.py` 讀 Contract 與紀錄，不從命令列收門檻。
+
+本 ADR 原本的邊界維持不變：這支工具**仍然不解析** `scale_up_rule`／`abort_rule` 那兩句自然語言。翻譯依舊是寫 Contract 的人的責任，只是翻譯結果從一次性的命令列參數，變成跟 Contract 一起凍結的欄位。語意翻譯與數字核對仍然分兩段。
+
+同時新增：`stage` 與 `level` 分開記（研究階段與算力等級是不同的軸）、判定順序固定為 `sequence`→`abort`→`budget`→`promotion`、每筆 `history` 帶 `checks` 逐項記下數字、取不到值時判 `failed` 不判通過。
+
 ## Consequences
 
 - Phase C 到這裡告一段落：`Experiment Contract → experiment-lint → Run → compare-runs → claim-audit`，加上橫向的 `compute-gate` 管制升級節奏，六個 skill 都是確定性優先、語意判斷有明確邊界。

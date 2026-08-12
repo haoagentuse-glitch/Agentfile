@@ -4,23 +4,43 @@
   "history": [
     {
       "level": "L0",
+      "stage": "preflight",
       "status": "passed",
       "decided_at": "2026-01-02T10:00:00Z",
-      "reason": "Contract 已鎖定，derivation 通過確定性硬檢查，可以做冒煙測試",
+      "reason": "preflight 階段的 sequence 檢查全部通過，升到 L0",
+      "checks": [
+        { "kind": "sequence", "passed": true, "detail": "None -> L0 是相鄰的一級" }
+      ],
       "run_ids": []
     },
     {
       "level": "L3",
+      "stage": "pilot",
       "status": "passed",
       "decided_at": "2026-01-03T02:30:00Z",
-      "reason": "pilot 耗時 400 與 500 秒，未超過 compute_budget.pilot_max_minutes=10；latency_ms p95 208ms 未觸發 abort_rule",
+      "reason": "pilot 階段的 abort、budget、sequence 檢查全部通過，升到 L3",
+      "checks": [
+        { "kind": "sequence", "passed": true, "detail": "L0 -> L3 是相鄰的一級" },
+        { "kind": "abort", "passed": true, "detail": "未觸發：run.latency_ms.value = [172, 208]，門檻 > 400" },
+        { "kind": "budget", "passed": true, "detail": "topk-pilot-baseline 的牆鐘秒數 400，上限 max_wall_clock_seconds=600" },
+        { "kind": "budget", "passed": true, "detail": "topk-pilot-treatment 的牆鐘秒數 500，上限 max_wall_clock_seconds=600" },
+        { "kind": "budget", "passed": true, "detail": "topk-pilot-baseline 的樣本數 200，上限 max_samples=200" },
+        { "kind": "budget", "passed": true, "detail": "topk-pilot-treatment 的樣本數 200，上限 max_samples=200" }
+      ],
       "run_ids": ["topk-pilot-baseline", "topk-pilot-treatment"]
     },
     {
       "level": "L4",
+      "stage": "main",
       "status": "passed",
       "decided_at": "2026-01-04T00:30:00Z",
-      "reason": "pilot 的 recall_at_10 提升 0.06 ≥ scale_up_rule 門檻 0.03，授權完整執行",
+      "reason": "main 階段的 abort、budget、promotion、sequence 檢查全部通過，升到 L4",
+      "checks": [
+        { "kind": "sequence", "passed": true, "detail": "L3 -> L4 是相鄰的一級" },
+        { "kind": "abort", "passed": true, "detail": "未觸發：run.latency_ms.value = [172, 208]，門檻 > 400" },
+        { "kind": "budget", "passed": true, "detail": "提供 2 個 run，上限 max_runs=4" },
+        { "kind": "promotion", "passed": true, "detail": "comparison.recall_at_10.absolute_diff = 0.06，門檻 >= 0.03" }
+      ],
       "run_ids": ["topk-pilot-baseline", "topk-pilot-treatment"]
     }
   ],
