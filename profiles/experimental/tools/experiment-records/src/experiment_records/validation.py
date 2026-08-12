@@ -436,6 +436,73 @@ def validate_claim_audit_chain(paths: list[Path], layout: ProjectLayout) -> list
     for claim_id, (label, _audit) in sorted(audits.items()):
         if claim_id not in claims:
             results.append(("錯誤", f"{label}: 稽核的 claim_id {claim_id!r} 不存在"))
+
+    results.extend(_validate_review_policy(claims, audits, layout))
+    return results
+
+
+# 哪幾種審核者滿足哪一種政策。any_independent 只要求獨立，不指定由誰做。
+_POLICY_SATISFIED_BY: dict[str, set[str]] = {
+    "human": {"human"},
+    "second_model": {"human", "second_model"},
+    "any_independent": {"human", "second_model", "same_model_separate_context"},
+}
+
+
+def _validate_review_policy(
+    claims: dict[str, tuple[str, dict[str, Any]]],
+    audits: dict[str, tuple[str, dict[str, Any]]],
+    layout: ProjectLayout,
+) -> list[Result]:
+    """稽核者的身分必須滿足 Contract 凍結的審核政策。
+
+    政策跟 Contract 一起凍結，正是為了擋掉「看到結果之後才放寬審核標準」。
+    在這裡機械比對，才不會變成靠自律遵守的一句話。
+    """
+    results: list[Result] = []
+    for claim_id, (audit_label, audit) in sorted(audits.items()):
+        claim_entry = claims.get(claim_id)
+        if claim_entry is None:
+            continue
+        experiment_id = claim_entry[1].get("experiment_id")
+        if not isinstance(experiment_id, str):
+            continue
+        contract_path = layout.records_root / "definitions" / f"{experiment_id}.json"
+        if not contract_path.is_file():
+            continue
+        try:
+            contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        policy = contract.get("review_policy")
+        if not isinstance(policy, dict):
+            continue
+        required = policy.get("required_reviewer_kind")
+        allowed = _POLICY_SATISFIED_BY.get(required)
+        if allowed is None:
+            continue
+
+        independence = audit.get("review_independence")
+        if not isinstance(independence, dict):
+            results.append((
+                "錯誤",
+                f"{audit_label}: Contract 要求 required_reviewer_kind={required}，"
+                "但這份稽核沒有記錄 review_independence",
+            ))
+            continue
+        reviewer_kind = independence.get("reviewer_kind")
+        if reviewer_kind is None:
+            results.append((
+                "錯誤",
+                f"{audit_label}: Contract 要求 required_reviewer_kind={required}，"
+                "但這份稽核沒有記錄 reviewer_kind",
+            ))
+        elif reviewer_kind not in allowed:
+            results.append((
+                "錯誤",
+                f"{audit_label}: reviewer_kind={reviewer_kind!r} 不滿足 Contract 凍結的 "
+                f"required_reviewer_kind={required!r}",
+            ))
     return results
 
 

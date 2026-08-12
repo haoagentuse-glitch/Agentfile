@@ -71,6 +71,20 @@
       "type": "string",
       "description": "從 pilot 升級到下一個 Compute Gate 等級的條件；不存在代表停在 pilot"
     },
+    "review_policy": {
+      "type": "object",
+      "description": "誰有資格審核這個 experiment 的結論。跟 Contract 一起凍結——看到結果之後才放寬審核標準，等於沒有審核",
+      "required": ["required_reviewer_kind"],
+      "properties": {
+        "required_reviewer_kind": {
+          "type": "string",
+          "enum": ["human", "second_model", "any_independent"],
+          "description": "any_independent 接受任何獨立審核；second_model 要求換一個模型；human 要求人工審核"
+        },
+        "min_reviewers": { "type": "integer", "minimum": 1, "default": 1 }
+      },
+      "additionalProperties": false
+    },
     "status": { "type": "string", "enum": ["draft", "locked"] },
     "contract_hash": {
       "type": "string",

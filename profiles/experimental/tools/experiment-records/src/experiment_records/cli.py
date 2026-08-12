@@ -13,6 +13,7 @@ from typing import Any
 
 from experiment_records.project_layout import ProjectLayoutError, collect_targets, record_type_for, resolve_layout
 from experiment_records.prompts import known_prompts, prompts_dir
+from experiment_records.review_package import ReviewPackageError, build_review_package
 from experiment_records.validation import (
     schema_count,
     validate_claim_audit_chain,
@@ -45,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     prompts_parser = sub.add_parser("prompts", help="列出本專案管理的 prompt role 與內容雜湊")
     prompts_parser.add_argument("project", help="project root 或 records/experiments")
+
+    review_parser = sub.add_parser("review-package", help="組出獨立審核者收到的完整輸入")
+    review_parser.add_argument("project", help="project root 或 records/experiments")
+    review_parser.add_argument("claim_id")
+    review_parser.add_argument("--output", help="寫出的路徑；不給就印到標準輸出")
     return parser
 
 
@@ -258,6 +264,50 @@ def _cmd_prompts(project_arg: str) -> int:
     return 0
 
 
+def _cmd_review_package(args: argparse.Namespace) -> int:
+    resolved = _resolve_target(args.project)
+    if resolved is None:
+        return 2
+    try:
+        layout = resolve_layout(resolved)
+    except ProjectLayoutError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+
+    command = ["uv", "run", "--project", ".agents/tools/experiment-records", "python", "-m",
+               "experiment_records", "review-package", str(resolved), args.claim_id]
+    if args.output:
+        command.extend(["--output", args.output])
+    print(f"命令：{shlex.join(command)}")
+    print(f"輸入：claim_id={args.claim_id}")
+    print(f"Schema：{layout.schemas_dir / 'review-package.schema.json'}")
+    print(f"Commit：{_git_commit(layout.project_root)}")
+    print()
+
+    try:
+        package = build_review_package(layout, args.claim_id)
+    except ReviewPackageError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(package, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"輸出：{output_path}")
+    else:
+        print(json.dumps(package, ensure_ascii=False, indent=2))
+
+    unresolved = [e for e in package["evidence_excerpts"] if not e["resolved"]]
+    print()
+    print(f"審核政策：{package['policy']['required_reviewer_kind']}")
+    print(f"證據摘錄：{len(package['evidence_excerpts'])} 筆，其中 {len(unresolved)} 筆取不到值")
+    print(f"run 摘要：{len(package['runs'])} 筆（含失敗與作廢）")
+    for line in package["omitted"]:
+        print(f"未包含：{line}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -267,5 +317,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_transition(args)
     if args.command == "prompts":
         return _cmd_prompts(args.project)
+    if args.command == "review-package":
+        return _cmd_review_package(args)
     parser.error(f"未知指令：{args.command}")
     return 2

@@ -29,6 +29,20 @@ python3 profiles/experimental/skills/claim-audit/claim_audit.py records/experime
 
 固定慣例把結果存到 `records/experiments/audits/<claim-id>.json`——experiment-viewer 只會自動掃描這個路徑。exit code 0：機械段過了，`scope_verdict` 是 `pending`，換你判斷。exit code 1：機械段沒過，`final_verdict` 已經是 `unauditable` 或 `unsupported`，不用也不該再判斷 scope——連數字都不對的 claim，範圍判斷沒有意義。
 
+## 獨立審核包
+
+語意段要獨立，就不能一邊寫主張一邊審自己寫的東西。先組出審核包，換一個 context 或換一個人來看：
+
+```bash
+uv run --project .agents/tools/experiment-records python -m experiment_records review-package . <claim-id> --output records/experiments/artifacts/<claim-id>-review.json
+```
+
+包裡有凍結的研究問題、候選主張、比較結果的三個可比較性判定、把 `locator` 實際取出來的證據摘錄，以及全部 run 的摘要（含失敗與作廢的）。包裡**沒有** `producer`——審核者不該知道這個主張是哪個 agent、用哪版 prompt 寫的，知道了就會被它帶著走。
+
+審核者只看這個包。包裡找不到答案的問題，正確做法是判 `unauditable`，不是回頭翻專案。
+
+Contract 的 `review_policy.required_reviewer_kind` 決定誰有資格審。它跟 Contract 一起凍結，`experiment_records validate` 會比對稽核紀錄的 `reviewer_kind` 是否滿足——看到結果之後才放寬審核標準，等於沒有審核。
+
 ## 機械段過了之後，怎麼判斷 scope
 
 讀 claim 的 `scope` 欄位（宣稱的適用範圍）跟它實際引用的 comparison 涵蓋了什麼（哪個 `dataset`、哪個 `model`、哪個條件——回頭看 comparison-result 跟它引用的 Experiment Contract），四選一：
