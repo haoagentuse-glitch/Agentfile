@@ -1,0 +1,28 @@
+{
+  "experiment_id": "rag-topk-recall",
+  "current_level": "L4",
+  "history": [
+    {
+      "level": "L0",
+      "status": "passed",
+      "decided_at": "2026-01-02T10:00:00Z",
+      "reason": "Contract 已鎖定，derivation 通過確定性硬檢查，可以做冒煙測試",
+      "run_ids": []
+    },
+    {
+      "level": "L3",
+      "status": "passed",
+      "decided_at": "2026-01-03T02:30:00Z",
+      "reason": "pilot 耗時 400 與 500 秒，未超過 compute_budget.pilot_max_minutes=10；latency_ms p95 208ms 未觸發 abort_rule",
+      "run_ids": ["topk-pilot-baseline", "topk-pilot-treatment"]
+    },
+    {
+      "level": "L4",
+      "status": "passed",
+      "decided_at": "2026-01-04T00:30:00Z",
+      "reason": "pilot 的 recall_at_10 提升 0.06 ≥ scale_up_rule 門檻 0.03，授權完整執行",
+      "run_ids": ["topk-pilot-baseline", "topk-pilot-treatment"]
+    }
+  ],
+  "updated_at": "2026-01-04T00:30:00Z"
+}

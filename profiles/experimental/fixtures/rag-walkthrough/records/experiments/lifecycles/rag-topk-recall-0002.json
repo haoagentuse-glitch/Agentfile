@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0002",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 2,
+  "from_state": "draft",
+  "to_state": "ready_to_lock",
+  "occurred_at": "2026-01-02T09:30:00Z",
+  "reason": "derivation 六要素齊備，反例研究已保存來源",
+  "evidence_refs": []
+}

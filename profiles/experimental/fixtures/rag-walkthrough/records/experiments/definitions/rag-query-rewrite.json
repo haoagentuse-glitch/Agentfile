@@ -1,0 +1,42 @@
+{
+  "experiment_id": "rag-query-rewrite",
+  "question": "開啟查詢改寫，能不能提升 recall_at_10？",
+  "hypothesis": "改寫讓查詢用詞更貼近語料，recall_at_10 會提升",
+  "baseline": {
+    "description": "不做查詢改寫",
+    "config_ref": "records/experiments/configs/rewrite-baseline.yaml"
+  },
+  "treatment": {
+    "description": "只開啟查詢改寫",
+    "config_ref": "records/experiments/configs/rewrite-treatment.yaml",
+    "variable": "query_rewrite"
+  },
+  "controlled_variables": ["dataset", "evaluation_set", "model", "embedding_model", "judge_prompt", "seed"],
+  "primary_metric": "recall_at_10",
+  "decision_rule": "recall_at_10 絕對提升 ≥ 0.03 視為成功；提升 < 0.03 且無法排除雜訊則判定證據不足",
+  "compute_budget": { "pilot_max_minutes": 10, "pilot_max_samples": 200 },
+  "abort_rule": "改寫失敗率超過 5% 立即中止",
+  "status": "locked",
+  "created_at": "2026-01-08T09:00:00Z",
+  "derivation": {
+    "primitives": [
+      { "id": "lexical_gap", "definition": "查詢用詞與語料用詞不一致、造成取不回相關片段的情況" }
+    ],
+    "assumptions": [
+      { "id": "d1", "statement": "本評估集的查詢與語料之間存在明顯的用詞落差", "status": "unverified" }
+    ],
+    "mechanism_model": {
+      "summary": "改寫把查詢改成更接近語料的用詞，縮小用詞落差，因而提升取回覆蓋率",
+      "variables": ["query_rewrite", "lexical_gap", "retrieval_coverage"]
+    },
+    "tension": "改寫縮小用詞落差，但也可能改掉原始查詢的關鍵限定詞",
+    "falsifier": "改寫後取回結果與原查詢高度重疊，覆蓋率沒有變化",
+    "minimal_decisive_test": "固定其他零件，只切換 query_rewrite，重複三個 seed",
+    "expected_observations": ["用詞落差大的 slice 提升最明顯"],
+    "failure_update": [
+      { "when": "提升幅度落在複現之間的變異範圍內", "update_assumption_id": "d1", "to": "unverified" }
+    ],
+    "source_refs": [],
+    "novelty_status": "unverified"
+  }
+}

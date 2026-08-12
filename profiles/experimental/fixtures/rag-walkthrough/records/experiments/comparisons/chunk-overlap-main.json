@@ -1,0 +1,34 @@
+{
+  "experiment_id": "rag-chunk-overlap",
+  "run_a": "overlap-main-baseline",
+  "run_b": "overlap-main-treatment",
+  "generated_at": "2026-01-06T14:00:00Z",
+  "comparability": {
+    "dimensions": {
+      "dataset": { "status": "PASS", "run_a_value": "nq-open-2026-01", "run_b_value": "nq-open-2026-01" },
+      "evaluation_set": { "status": "PASS", "run_a_value": "nq-open-eval-v3", "run_b_value": "nq-open-eval-v3" },
+      "model": { "status": "PASS", "run_a_value": "claude-opus-5", "run_b_value": "claude-opus-5" },
+      "judge_prompt": { "status": "DIFF", "run_a_value": "answer-grader@4", "run_b_value": "answer-grader@5" },
+      "seed": { "status": "PASS", "run_a_value": 42, "run_b_value": 42 }
+    },
+    "declared_variable": { "name": "chunk_overlap", "run_a_value": 0, "run_b_value": 64, "changed": true }
+  },
+  "structurally_comparable": true,
+  "controlled_variables_match": false,
+  "differences": [
+    { "category": "prompt", "key": "judge_prompt", "run_a_value": "answer-grader@4", "run_b_value": "answer-grader@5", "severity": "blocking", "declared": false },
+    { "category": "config", "key": "chunk_overlap", "run_a_value": 0, "run_b_value": 64, "severity": "informational", "declared": true }
+  ],
+  "comparison_valid": false,
+  "confounded": true,
+  "confounded_reasons": [
+    "維度 'judge_prompt' 應該一致卻不同：'answer-grader@4' vs 'answer-grader@5'"
+  ],
+  "metrics": {
+    "recall_at_10": { "definition_consistent": true, "computed": false, "baseline": null, "treatment": null, "absolute_diff": null, "relative_diff": null }
+  },
+  "diagnostic_suggestions": [
+    "最便宜的下一步是用 answer-grader@4 重跑 treatment，不必重建索引，就能分辨提升來自重疊還是評分器換版"
+  ],
+  "notes": ["混雜，不得下因果性結論；recall 的 0.06 提升可能整段來自評分器換版"]
+}

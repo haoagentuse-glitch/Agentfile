@@ -1,0 +1,12 @@
+{
+  "event_id": "rag-query-rewrite-0008",
+  "experiment_id": "rag-query-rewrite",
+  "sequence": 8,
+  "from_state": "awaiting_comparison",
+  "to_state": "awaiting_claim",
+  "occurred_at": "2026-01-08T14:30:00Z",
+  "reason": "比較合法且非混雜，可以寫 claim",
+  "evidence_refs": [
+    "records/experiments/comparisons/query-rewrite-main.json"
+  ]
+}

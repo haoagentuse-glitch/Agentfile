@@ -1,0 +1,21 @@
+{
+  "claim_id": "query-rewrite-claim",
+  "statement": "開啟查詢改寫讓 recall_at_10 從 0.62 上升到 0.633，絕對提升 0.013。",
+  "experiment_id": "rag-query-rewrite",
+  "comparison_ref": "records/experiments/comparisons/query-rewrite-main.json",
+  "metric": "recall_at_10",
+  "expected_direction": "increase",
+  "stated_magnitude": 0.013,
+  "magnitude_type": "absolute",
+  "scope": "僅限 nq-open-2026-01 語料與 nq-open-eval-v3 評估集，且只有單一 seed 的一次執行。",
+  "created_at": "2026-01-08T15:00:00Z",
+  "claim_type": "comparative",
+  "status": "inconclusive",
+  "evidence_refs": [
+    {
+      "kind": "comparison",
+      "ref": "records/experiments/comparisons/query-rewrite-main.json",
+      "locator": "metrics.recall_at_10.absolute_diff"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "run_id": "overlap-main-baseline",
+  "experiment_id": "rag-chunk-overlap",
+  "experiment_type": "rag",
+  "created_at": "2026-01-06T10:00:00Z",
+  "stage": "main",
+  "code_commit": "9f2c1a4",
+  "config_hash": "sha256:a0b1",
+  "config_ref": "records/experiments/configs/overlap-baseline.yaml",
+  "schema_version": "1",
+  "baseline_run": null,
+  "status": "completed",
+  "seed": 42,
+  "command": "python -m rag_lab pipeline run --stage main --config records/experiments/configs/overlap-baseline.yaml",
+  "duration_seconds": 3300,
+  "components": {
+    "evaluator": { "name": "answer-grader", "prompt_id": "answer-grader@4", "prompt_hash": "sha256:7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f5b8e1d4a7c0f" }
+  },
+  "metric_definitions": { "recall_at_10": "records/experiments/metrics/recall_at_10.json" },
+  "metrics": { "recall_at_10": 0.62 },
+  "artifacts": []
+}

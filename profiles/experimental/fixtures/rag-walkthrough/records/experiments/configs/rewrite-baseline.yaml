@@ -1,0 +1,7 @@
+dataset: nq-open-2026-01
+evaluation_set: nq-open-eval-v3
+model: claude-opus-5
+embedding_model: text-embed-3
+judge_prompt: answer-grader@4
+seed: 42
+query_rewrite: off

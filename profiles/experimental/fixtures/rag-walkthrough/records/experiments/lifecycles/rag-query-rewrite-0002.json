@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-query-rewrite-0002",
+  "experiment_id": "rag-query-rewrite",
+  "sequence": 2,
+  "from_state": "draft",
+  "to_state": "ready_to_lock",
+  "occurred_at": "2026-01-08T08:30:00Z",
+  "reason": "derivation 齊備",
+  "evidence_refs": []
+}

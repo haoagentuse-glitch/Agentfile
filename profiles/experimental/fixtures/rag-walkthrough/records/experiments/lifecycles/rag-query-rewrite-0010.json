@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-query-rewrite-0010",
+  "experiment_id": "rag-query-rewrite",
+  "sequence": 10,
+  "from_state": "awaiting_review",
+  "to_state": "inconclusive",
+  "occurred_at": "2026-01-08T17:00:00Z",
+  "reason": "提升 0.013 低於 decision_rule 的 0.03 門檻，且只有單一 seed 沒有變異估計。證據不足是正式終態，不改寫成弱版本的成功",
+  "evidence_refs": []
+}

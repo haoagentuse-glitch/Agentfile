@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-chunk-overlap-0004",
+  "experiment_id": "rag-chunk-overlap",
+  "sequence": 4,
+  "from_state": "locked",
+  "to_state": "pilot_running",
+  "occurred_at": "2026-01-06T09:30:00Z",
+  "reason": "開始小規模試跑",
+  "evidence_refs": []
+}

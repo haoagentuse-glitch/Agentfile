@@ -1,0 +1,32 @@
+{
+  "experiment_id": "rag-query-rewrite",
+  "run_a": "rewrite-main-baseline",
+  "run_b": "rewrite-main-treatment",
+  "generated_at": "2026-01-08T14:00:00Z",
+  "comparability": {
+    "dimensions": {
+      "dataset": { "status": "PASS", "run_a_value": "nq-open-2026-01", "run_b_value": "nq-open-2026-01" },
+      "evaluation_set": { "status": "PASS", "run_a_value": "nq-open-eval-v3", "run_b_value": "nq-open-eval-v3" },
+      "model": { "status": "PASS", "run_a_value": "claude-opus-5", "run_b_value": "claude-opus-5" },
+      "seed": { "status": "PASS", "run_a_value": 42, "run_b_value": 42 }
+    },
+    "declared_variable": { "name": "query_rewrite", "run_a_value": "off", "run_b_value": "on", "changed": true }
+  },
+  "structurally_comparable": true,
+  "controlled_variables_match": true,
+  "differences": [
+    { "category": "config", "key": "query_rewrite", "run_a_value": "off", "run_b_value": "on", "severity": "informational", "declared": true }
+  ],
+  "comparison_valid": true,
+  "confounded": false,
+  "confounded_reasons": [],
+  "metrics": {
+    "recall_at_10": { "definition_consistent": true, "computed": true, "baseline": 0.62, "treatment": 0.633, "absolute_diff": 0.013, "relative_diff": 0.021 }
+  },
+  "diagnostic_suggestions": [
+    "0.013 落在複現變異範圍內。最便宜的下一步是各跑三個 seed 拿到變異估計，而不是直接下結論"
+  ],
+  "notes": [
+    "比較本身合法，提升幅度也算得出來。合法不等於足以支持結論——decision_rule 的門檻是 0.03。"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0004",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 4,
+  "from_state": "locked",
+  "to_state": "pilot_running",
+  "occurred_at": "2026-01-03T02:00:00Z",
+  "reason": "L3 算力閘門通過，開始小規模試跑",
+  "evidence_refs": []
+}

@@ -341,12 +341,12 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 ### P0：閉合生命週期契約與研究資料結構
 
 1. **定義 Experiment Lifecycle 狀態與合法轉移（已實作）。** 每次轉移由 `experiment_records transition` 以 exclusive create 新增不可變 event。validator 由事件序列計算目前狀態。非法跳過 pilot／comparison／audit 會被拒絕；`inconclusive`、`confounded`、`failed` 是正式終態。
-2. **擴充 experiment definition 的 `derivation`。** 驗收：certificate 能表示 primitives、assumptions、mechanism、tension、falsifier、minimal test、failure update、source refs；`experiment-lint` 有 deterministic hard checks。
-3. **把 provenance 做成共享小型結構。** 驗收：agent 產出的 definition／claim／audit 可回溯 model、prompt ID/hash、input refs、tool artifact；run 可回溯 command、commit、config/data/eval/prompt hashes。
-4. **補 run stage／lineage／failure／resource usage。** 驗收：pilot、main、replication、ablation、diagnostic 與 failed run 都能表示，不需新增通用 tree framework。
-5. **強化 comparison contract。** 驗收：config、data、model、prompt、evaluator、sample identity 的 differences 都可列出；`comparison_valid` 與 `confounded` 只由 code 算；數值可重算。
-6. **強化 claim→evidence audit。** 驗收：每個 claim 可逐項檢查 evidence existence、numeric recomputation、scope、intended-question fit、novelty status、review independence。
-7. **建立完整 RAG 貫穿式骨架 fixture。** 驗收：topic/certificate → locked definition → pilot → gate → 3 replication runs → comparison → claim → audit → review 全鏈可由 fixtures 重放；至少含 confounded、failed、inconclusive 三條反例。
+2. **擴充 experiment definition 的 `derivation`（已實作）。** certificate 表示 primitives、assumptions、mechanism_model、tension、falsifier、minimal_decisive_test、expected_observations、failure_update、source_refs、counterexamples 與 novelty_status。`status` 為 `locked` 時 `derivation` 必填。確定性硬檢查：ID 唯一、`failure_update` 指到存在的 assumption、`mechanism_model.variables` 包含 `treatment.variable`、`source_refs` 為空時 `novelty_status` 只能是 `unverified`。
+3. **把 provenance 做成共享小型結構（已實作）。** `provenance.schema.json` 的 `producer` 由 definition／claim／audit 以跨檔 `$ref` 引用。`software_agent` 的 `model` 與 `prompt_id` 必填。run 端由 `command`、`code_commit`、`dirty_worktree`、`config_hash`、`data_identity` 與 `components.*.prompt_hash` 承接。
+4. **補 run stage／lineage／failure／resource usage（已實作）。** `stage`、`parent_run_id`、`attempt_kind`、`data_identity`、`components`、`seed`／`nondeterminism_sources`、`resource_usage`、`budget_limit`、`abort_reason`、`failure`。RAG 特有的身分走 `data_identity` 與 `components` 的具名角色，未在最外層開專屬欄位。確定性硬檢查：有 `failure` 不得標 `completed`、replication 與 retry 必須指名 parent、parent 必須存在且不得成環、超出 `budget_limit` 必須有 `abort_reason`。
+5. **強化 comparison contract（已實作）。** `structurally_comparable`、`controlled_variables_match`、`confounded` 三個判斷分開表示，全部由 `compare_runs.py` 算。`differences` 是具名差異的唯一清單，每筆帶 `category`（config／data／model／prompt／evaluator／sample／unknown）與 `severity`。`diagnostic_suggestions` 與 validity 分欄。
+6. **強化 claim→evidence audit（已實作）。** claim 補 `claim_type`、`evidence_refs`、`status`、`superseded_by`；audit 補 `entailment`、`intended_question_fit`、`novelty`、`review_independence`，mechanical 段補 `comparison_confounded`、`evidence_hashes_match`、`numeric_recomputed`。確定性硬檢查：`mechanical_pass` 為 false 不得是 supported 結論、審核者不獨立時不得 `fully_supported`、claim 與 audit 的 producer 相同時 `review_independence.independent` 必須是 false、claim 標 `supported` 必須有結論相符的稽核。
+7. **建立完整 RAG 貫穿式骨架 fixture（已實作）。** `profiles/experimental/fixtures/rag-walkthrough/`，62 筆紀錄、四條生命週期鏈，終態分別是 `accepted`、`confounded`、`execution_failed`、`inconclusive`。由 `tests/test_rag_walkthrough_fixture.py` 重放驗證。
 
 ### P1：契約成立後加入提示詞與研究執行增強
 

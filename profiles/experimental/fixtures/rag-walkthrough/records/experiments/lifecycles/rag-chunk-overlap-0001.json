@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-chunk-overlap-0001",
+  "experiment_id": "rag-chunk-overlap",
+  "sequence": 1,
+  "from_state": null,
+  "to_state": "draft",
+  "occurred_at": "2026-01-06T08:00:00Z",
+  "reason": "題目進入實驗流程",
+  "evidence_refs": []
+}

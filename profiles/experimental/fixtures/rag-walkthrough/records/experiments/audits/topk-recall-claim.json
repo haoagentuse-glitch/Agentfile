@@ -1,0 +1,52 @@
+{
+  "claim_id": "topk-recall-claim",
+  "audited_at": "2026-01-05T11:00:00Z",
+  "mechanical": {
+    "reference_exists": true,
+    "comparison_valid": true,
+    "comparison_confounded": false,
+    "metric_exists": true,
+    "direction_matches": true,
+    "magnitude_matches": true,
+    "evidence_hashes_match": true,
+    "numeric_recomputed": true,
+    "mechanical_pass": true
+  },
+  "mechanical_reasons": [],
+  "entailment": {
+    "verdict": "entailed",
+    "reasoning": "宣稱的方向與幅度都能由引用的 comparison 直接讀出，並由三次複現的 recall_at_10（0.70／0.72／0.71）支持",
+    "alternative_explanations": [
+      "評估集片段洩漏進索引也會造成同方向提升；已由 a1 的洩漏檢查排除"
+    ]
+  },
+  "scope_verdict": "fully_supported",
+  "scope_reasoning": "claim 明確把適用範圍限制在這一組語料、評估集、嵌入模型與生成模型，跟證據實際涵蓋的範圍一致，沒有外推。",
+  "intended_question_fit": {
+    "verdict": "partially_answers",
+    "reasoning": "回答了 recall_at_10 是否提升，但沒有回答 definition.question 後半段的延遲 guardrail。延遲增幅 48ms 在證據中，claim 卻沒有提及。"
+  },
+  "novelty": {
+    "status": "prior_art_found",
+    "source_refs": ["records/experiments/artifacts/topk-prior-art.md"],
+    "reasoning": "提高取回數量提升覆蓋率是既有結果。本實驗的貢獻是在這一組具體零件上量化該效應，不是機制上的新發現。"
+  },
+  "review_independence": {
+    "independent": true,
+    "reason": "由 evidence-reviewer 在獨立 context 中稽核，只收到凍結的 definition、comparison 與 claim，未看到 claim-writer 的推理過程",
+    "reviewer_kind": "same_model_separate_context"
+  },
+  "final_verdict": "fully_supported",
+  "producer": {
+    "kind": "software_agent",
+    "name": "evidence-reviewer",
+    "model": "anthropic/claude-opus-5",
+    "prompt_id": "evidence-reviewer@1",
+    "prompt_hash": "sha256:8e1d4a7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f5b8e1d",
+    "input_refs": [
+      "records/experiments/claims/topk-recall-claim.json",
+      "records/experiments/comparisons/topk-main.json"
+    ],
+    "created_at": "2026-01-05T11:00:00Z"
+  }
+}

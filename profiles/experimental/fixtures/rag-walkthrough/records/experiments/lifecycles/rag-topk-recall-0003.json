@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0003",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 3,
+  "from_state": "ready_to_lock",
+  "to_state": "locked",
+  "occurred_at": "2026-01-02T10:00:00Z",
+  "reason": "Contract 凍結並計算 contract_hash，此後只能開新 experiment 不能原地改寫",
+  "evidence_refs": []
+}
