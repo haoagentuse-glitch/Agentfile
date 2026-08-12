@@ -9,12 +9,18 @@
   2. 載入對應的 Experiment Contract，取得宣告的實驗變因與控制條件。
   3. 用 config_ref 載入兩邊實際用的設定，逐欄位比對：
      相同條件 / 已宣告差異（declared variable）/ 未預期差異。
-  4. 有未預期差異、或宣告要控制的欄位實際卻不同、或宣告的變因根本沒變 → confounded，
-     comparison_valid 設 false，不計算指標差異。
+  4. 有未預期差異、或宣告要控制的欄位實際卻不同、或宣告的變因根本沒變 → confounded。
   5. metric 層級另外檢查兩邊是不是用同一套 metric definition 算出來的——不一致的
-     metric 個別跳過，不影響其他 metric。
+     metric 個別跳過，不影響其他 metric。一個都對不上就是 structurally_comparable=false。
 
-exit code：0 = 可比較（可能仍有 metric 被跳過），1 = confounded（整體不可信）。
+三個判斷刻意分開，因為它們問的是不同問題：
+  structurally_comparable    兩邊在講同一件事嗎（有沒有共同基準）
+  controlled_variables_match 除了宣告的變因，其他條件真的一樣嗎
+  confounded                 差異嚴重到不能歸因嗎
+comparison_valid 才是綜合結論：非 confounded 且結構可比較。三者都由程式算，
+不接受 LLM 直接決定；agent 的解釋與建議只能進 diagnostic_suggestions。
+
+exit code：0 = 可引用，1 = 不可引用（confounded 或沒有共同基準）。
 """
 
 from __future__ import annotations
@@ -68,15 +74,38 @@ NAMED_DIMENSIONS: dict[str, list[str]] = {
     "model": ["model", "model_name"],
 }
 
+# 差異分類：把設定欄位名歸到 config／data／model／prompt／evaluator，讓「差在哪一類」
+# 可以直接讀出來，不必每個下游各自重新判斷欄位名的意思。對不上就是 unknown——
+# 猜錯分類比不分類更糟。
+DIFFERENCE_CATEGORIES: dict[str, tuple[str, ...]] = {
+    "data": ("dataset", "corpus", "eval_set", "evaluation_set", "eval_dataset", "sample", "split"),
+    "model": ("model", "embedding", "retriever", "reranker", "generator"),
+    "prompt": ("prompt", "instruction", "system_message", "temperature"),
+    "evaluator": ("evaluator", "judge", "scorer", "metric_impl"),
+}
 
-def resolve_config(run: dict, records_root: Path, run_path: Path) -> dict | None:
+
+def categorize_difference(key: str) -> str:
+    lowered = key.lower()
+    for category, markers in DIFFERENCE_CATEGORIES.items():
+        if any(marker in lowered for marker in markers):
+            return category
+    return "config"
+
+
+def resolve_config(run: dict, records_root: Path) -> dict | None:
+    """config_ref 一律相對 project root 解析，跟 experiment_records 的 ref 規則一致。
+
+    兩邊用不同慣例的話，同一份 record 會出現「驗證得過但比較不了」的狀況。
+    """
     ref = run.get("config_ref")
     if not ref:
         return None
-    p = (run_path.parent / ref).resolve()
-    if not p.is_file():
+    project_root = records_root.parent.parent
+    candidate = (project_root / ref).resolve()
+    if not candidate.is_file() or project_root.resolve() not in candidate.parents:
         return None
-    return load_json(p)
+    return load_json(candidate)
 
 
 def diff_dimension(name: str, candidates: list[str], cfg_a: dict, cfg_b: dict) -> dict[str, Any] | None:
@@ -136,11 +165,12 @@ def main() -> int:
     declared_variable_name = contract.get("treatment", {}).get("variable") if contract else None
 
     baseline_run, treatment_run = resolve_roles(run_a, run_b)
-    cfg_a = resolve_config(baseline_run, records_root, run_a_path if baseline_run is run_a else run_b_path)
-    cfg_b = resolve_config(treatment_run, records_root, run_b_path if treatment_run is run_b else run_a_path)
+    cfg_a = resolve_config(baseline_run, records_root)
+    cfg_b = resolve_config(treatment_run, records_root)
 
     dimensions: dict[str, Any] = {}
     other_differences: list[dict[str, Any]] = []
+    differences: list[dict[str, Any]] = []
     declared_variable: dict[str, Any] = {"name": declared_variable_name, "run_a_value": None, "run_b_value": None, "changed": False}
     notes: list[str] = []
 
@@ -152,6 +182,17 @@ def main() -> int:
             dimensions[name] = {"status": "SKIPPED"}
         confounded = baseline_run.get("config_hash") != treatment_run.get("config_hash")
         confounded_reasons = ["config_ref 缺失，config_hash 不同但無法指出差在哪個欄位"] if confounded else []
+        if confounded:
+            differences.append({
+                "category": "unknown",
+                "key": "config_hash",
+                "run_a_value": baseline_run.get("config_hash"),
+                "run_b_value": treatment_run.get("config_hash"),
+                "severity": "blocking",
+                "declared": False,
+            })
+        # 逐欄位比不了就不知道控制條件有沒有守住。「不知道」不等於「相同」。
+        controlled_variables_match = False
     else:
         accounted_keys: set[str] = set()
         for name, candidates in NAMED_DIMENSIONS.items():
@@ -185,19 +226,47 @@ def main() -> int:
         for name, d in dimensions.items():
             if d["status"] == "DIFF":
                 confounded_reasons.append(f"維度 '{name}' 應該一致卻不同：{d['run_a_value']!r} vs {d['run_b_value']!r}")
+                differences.append({
+                    "category": categorize_difference(name),
+                    "key": name,
+                    "run_a_value": d["run_a_value"],
+                    "run_b_value": d["run_b_value"],
+                    "severity": "blocking",
+                    "declared": False,
+                })
         if other_differences:
             confounded_reasons.append(f"{len(other_differences)} 個未宣告的欄位差異：{', '.join(d['key'] for d in other_differences)}")
+            for d in other_differences:
+                differences.append({
+                    "category": categorize_difference(d["key"]),
+                    "key": d["key"],
+                    "run_a_value": d["run_a_value"],
+                    "run_b_value": d["run_b_value"],
+                    "severity": "blocking",
+                    "declared": False,
+                })
         if declared_variable_name and not declared_variable["changed"]:
             confounded_reasons.append(f"宣告的實驗變因 '{declared_variable_name}' 實際上兩邊相同，沒有有效的處理效應可以歸因")
+        elif declared_variable_name:
+            # 宣告的變因本身當然不同——那正是實驗要測的東西，列出來但不是阻斷級。
+            differences.append({
+                "category": categorize_difference(declared_variable_name),
+                "key": declared_variable_name,
+                "run_a_value": declared_variable["run_a_value"],
+                "run_b_value": declared_variable["run_b_value"],
+                "severity": "informational",
+                "declared": True,
+            })
         confounded = bool(confounded_reasons)
+        controlled_variables_match = not any(d["severity"] == "blocking" for d in differences)
 
-    comparison_valid = not confounded
-
-    # metric 層級：definition 是否一致，一致且整體 comparison_valid 才計算差異
+    # metric 層級先判 definition 是否一致——這是「兩邊在講同一件事嗎」，
+    # 跟「條件有沒有守住」是兩個獨立問題，必須先算完才能決定整體 comparison_valid。
     metric_names = sorted(set(baseline_run.get("metrics", {})) | set(treatment_run.get("metrics", {})))
     if contract:
         metric_names = sorted(set(metric_names) | {contract.get("primary_metric")} | set(contract.get("secondary_metrics", [])) - {None})
-    metrics_out: dict[str, Any] = {}
+
+    shared: dict[str, bool] = {}
     for name in metric_names:
         def_a = baseline_run.get("metric_definitions", {}).get(name)
         def_b = treatment_run.get("metric_definitions", {}).get(name)
@@ -205,9 +274,34 @@ def main() -> int:
         if def_a is not None and def_b is not None and def_a != def_b:
             definition_consistent = False
             notes.append(f"metric '{name}' 的定義不一致：baseline 用 {def_a!r}，treatment 用 {def_b!r}")
+            differences.append({
+                "category": "evaluator",
+                "key": f"metric_definitions.{name}",
+                "run_a_value": def_a,
+                "run_b_value": def_b,
+                "severity": "blocking",
+                "declared": False,
+            })
         elif def_a is None or def_b is None:
             notes.append(f"metric '{name}' 至少一邊沒記錄 metric_definitions，無法驗證是否同一套算法")
+        shared[name] = definition_consistent
 
+    # 沒有任何一個指標兩邊都有、且用同一套定義算出來 → 這次比較沒有共同基準。
+    # 這是 invalid 但不是 confounded：不是條件沒守住，是根本沒有可對照的量。
+    structurally_comparable = any(
+        consistent
+        and name in baseline_run.get("metrics", {})
+        and name in treatment_run.get("metrics", {})
+        for name, consistent in shared.items()
+    )
+    if not structurally_comparable:
+        notes.append("沒有任何指標在兩邊都存在且定義一致，這次比較沒有共同基準")
+
+    comparison_valid = (not confounded) and structurally_comparable
+
+    metrics_out: dict[str, Any] = {}
+    for name in metric_names:
+        definition_consistent = shared[name]
         can_compute = comparison_valid and definition_consistent and name in baseline_run.get("metrics", {}) and name in treatment_run.get("metrics", {})
         entry: dict[str, Any] = {"definition_consistent": definition_consistent, "computed": can_compute}
         if can_compute:
@@ -229,12 +323,15 @@ def main() -> int:
         "comparability": {
             "dimensions": dimensions,
             "declared_variable": declared_variable,
-            "other_differences": other_differences,
         },
+        "structurally_comparable": structurally_comparable,
+        "controlled_variables_match": controlled_variables_match,
+        "differences": differences,
         "comparison_valid": comparison_valid,
         "confounded": confounded,
         "confounded_reasons": confounded_reasons,
         "metrics": metrics_out,
+        "diagnostic_suggestions": [],
         "notes": notes,
     }
 
@@ -250,14 +347,24 @@ def main() -> int:
         if declared_variable_name:
             tag = "CHANGED" if declared_variable["changed"] else "UNCHANGED"
             print(f"{tag:8s} {declared_variable_name}（宣告變因）")
-        for d in other_differences:
-            print(f"UNDECLARED {d['key']}")
+        print()
+        print(f"結構可比較：{'是' if structurally_comparable else '否'}")
+        print(f"控制條件一致：{'是' if controlled_variables_match else '否'}")
+        if differences:
+            print("\n具名差異")
+            for d in differences:
+                mark = "（宣告變因）" if d["declared"] else ""
+                print(f"  [{d['severity']:13s}] {d['category']:9s} {d['key']}{mark}")
         print()
         if confounded:
             print("CONFOUNDED COMPARISON")
             for reason in confounded_reasons:
                 print(f"  - {reason}")
             print("\n不得據此產生因果性結論。")
+        elif not structurally_comparable:
+            print("NOT STRUCTURALLY COMPARABLE")
+            print("  - 沒有任何指標在兩邊都存在且定義一致")
+            print("\n這不是 confounded，是沒有共同基準可比。同樣不得據此產生結論。")
         else:
             print(f"Comparable: YES")
             print(f"Changed variable: {declared_variable_name}")
@@ -270,7 +377,8 @@ def main() -> int:
         for note in notes:
             print(f"note: {note}")
 
-    return 1 if confounded else 0
+    # confounded 與「沒有共同基準」是不同的失敗，但兩者都讓這次比較不可引用。
+    return 1 if not comparison_valid else 0
 
 
 if __name__ == "__main__":

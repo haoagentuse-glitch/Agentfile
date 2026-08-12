@@ -9,9 +9,13 @@
       "evaluation_set": { "status": "PASS" },
       "model": { "status": "PASS" }
     },
-    "declared_variable": { "name": "top_k", "run_a_value": 20, "run_b_value": 50, "changed": true },
-    "other_differences": []
+    "declared_variable": { "name": "top_k", "run_a_value": 20, "run_b_value": 50, "changed": true }
   },
+  "structurally_comparable": true,
+  "controlled_variables_match": true,
+  "differences": [
+    { "category": "config", "key": "top_k", "run_a_value": 20, "run_b_value": 50, "severity": "informational", "declared": true }
+  ],
   "comparison_valid": true,
   "confounded": false,
   "confounded_reasons": [],

@@ -122,7 +122,8 @@ def valid_comparison(**overrides: object) -> dict:
     data = {
         "experiment_id": "demo-exp", "run_a": "demo-run-1", "run_b": "demo-run-2",
         "generated_at": "2026-01-01T00:00:00Z",
-        "comparability": {"dimensions": {}, "declared_variable": {}, "other_differences": []},
+        "comparability": {"dimensions": {}, "declared_variable": {}},
+        "structurally_comparable": True, "controlled_variables_match": True, "differences": [],
         "comparison_valid": True, "confounded": False, "metrics": {},
     }
     data.update(overrides)
