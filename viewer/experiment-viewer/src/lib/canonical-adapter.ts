@@ -28,6 +28,7 @@ import {
   adaptClaimAuditResult,
   adaptComparisonResult,
   adaptExperimentContract,
+  adaptFailureDiagnosis,
   adaptGateState,
   adaptMetricDefinition,
   adaptRunEnvelope,
@@ -42,6 +43,7 @@ const AUDITS_DIR = "records/experiments/audits";
 const GATES_DIR = "records/experiments/gates";
 const COMPARISONS_DIR = "records/experiments/comparisons";
 const METRICS_DIR = "records/experiments/metrics";
+const DIAGNOSES_DIR = "records/experiments/diagnoses";
 
 interface JsonFileOk {
   path: string;
@@ -93,7 +95,13 @@ export async function loadCanonicalProject(layout: ProjectLayout): Promise<Proje
     }
     try {
       const contract = adaptExperimentContract(file.data, file.path);
-      experiments.set(contract.experimentId, { ...contract, runs: [], claims: [], gateState: null });
+      experiments.set(contract.experimentId, {
+        ...contract,
+        runs: [],
+        claims: [],
+        gateState: null,
+        diagnoses: [],
+      });
     } catch (e) {
       diagnostics.push({ level: "error", message: String(e), sourcePath: file.path });
     }
@@ -199,6 +207,29 @@ export async function loadCanonicalProject(layout: ProjectLayout): Promise<Proje
     }
     try {
       comparisons.push(adaptComparisonResult(file.data, file.path));
+    } catch (e) {
+      diagnostics.push({ level: "error", message: String(e), sourcePath: file.path });
+    }
+  }
+
+  // 失敗診斷跟 gate、claim 一樣是這個 experiment 的正式紀錄，不是附註。
+  for (const file of await readJsonFiles(projectRoot, DIAGNOSES_DIR)) {
+    if (!file.ok) {
+      diagnostics.push({ level: "error", message: file.error, sourcePath: file.path });
+      continue;
+    }
+    try {
+      const diagnosis = adaptFailureDiagnosis(file.data, file.path);
+      const experiment = experiments.get(diagnosis.experimentId);
+      if (experiment) {
+        experiment.diagnoses.push(diagnosis);
+      } else {
+        diagnostics.push({
+          level: "warning",
+          message: `failure diagnosis 找不到對應的 experiment contract（experiment_id=${diagnosis.experimentId}）`,
+          sourcePath: file.path,
+        });
+      }
     } catch (e) {
       diagnostics.push({ level: "error", message: String(e), sourcePath: file.path });
     }

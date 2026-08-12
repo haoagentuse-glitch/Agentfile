@@ -12,10 +12,12 @@ import DataTable from "../components/DataTable.vue";
 import Drawer from "../components/Drawer.vue";
 import MetricValue from "../components/MetricValue.vue";
 import RunSelector from "../components/RunSelector.vue";
+import { buildClaimLineage } from "../lib/lineage";
 import type {
   CanonicalArtifact,
   CanonicalClaim,
   CanonicalComparison,
+  CanonicalDiagnosis,
   CanonicalGateHistoryEntry,
   CanonicalMetricDefinition,
   CanonicalRun,
@@ -138,14 +140,15 @@ async function openArtifactExternally(path: string) {
 const claimColumns = [
   { key: "claimId", label: "claim_id" },
   { key: "metric", label: "metric" },
-  { key: "expectedDirection", label: "expected_direction" },
+  { key: "status", label: "status" },
   { key: "verdict", label: "final_verdict" },
 ];
+// refuted 與 inconclusive 是正式終態，一起列出來，不因為結論不好看就過濾掉。
 const claimRows = computed(() =>
   (experiment.value?.claims ?? []).map((c) => ({
     claimId: c.claimId,
     metric: c.metric,
-    expectedDirection: c.expectedDirection,
+    status: c.status,
     verdict: c.auditResult?.finalVerdict ?? "尚未稽核",
   }))
 );
@@ -153,6 +156,16 @@ const selectedClaim = ref<CanonicalClaim | null>(null);
 function openClaim(row: Record<string, unknown>) {
   selectedClaim.value = experiment.value?.claims.find((c) => c.claimId === row.claimId) ?? null;
 }
+
+// --- Lineage：從選中的 claim 一路回推到題目憑證與 prompt 版本。 ---
+const selectedLineage = computed(() =>
+  selectedClaim.value && snapshot.value
+    ? buildClaimLineage(snapshot.value, selectedClaim.value.claimId)
+    : null
+);
+
+// --- 失敗診斷：終態只留一句 reason 不夠，這裡把結構化診斷攤開。 ---
+const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
 </script>
 
 <template>
@@ -379,8 +392,73 @@ function openClaim(row: Record<string, unknown>) {
             }"
           >{{ row.verdict }}</span>
         </template>
+        <template #status="{ row }">
+          <span
+            class="badge"
+            :class="{
+              'badge-good': row.status === 'supported',
+              'badge-warn': row.status === 'inconclusive' || row.status === 'refuted',
+            }"
+          >{{ row.status }}</span>
+        </template>
       </DataTable>
       <p v-else class="hint">這個 experiment 底下還沒有任何 claim。</p>
+
+      <h3>失敗診斷（{{ experiment.diagnoses.length }}）</h3>
+      <table v-if="experiment.diagnoses.length > 0">
+        <thead><tr><th>diagnosis_id</th><th>對象</th><th>假設分類</th><th>最便宜的下一步</th></tr></thead>
+        <tbody>
+          <tr
+            v-for="d in experiment.diagnoses"
+            :key="d.diagnosisId"
+            tabindex="0"
+            @click="selectedDiagnosis = d"
+            @keydown.enter="selectedDiagnosis = d"
+          >
+            <td>{{ d.diagnosisId }}</td>
+            <td><code>{{ d.subject.kind }}</code></td>
+            <td>{{ [...new Set(d.hypotheses.map((h) => h.failureClass))].join("、") }}</td>
+            <td>{{ d.cheapestNextTest.description }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="hint">這個 experiment 底下沒有結構化的失敗診斷。</p>
+
+      <Drawer
+        :open="selectedDiagnosis !== null"
+        :title="selectedDiagnosis?.diagnosisId ?? ''"
+        @close="selectedDiagnosis = null"
+      >
+        <template v-if="selectedDiagnosis">
+          <h4>確定性事實</h4>
+          <ul>
+            <li v-for="(f, i) in selectedDiagnosis.deterministicFacts" :key="i">
+              {{ f.fact }}<br /><code>{{ f.sourceRef }}{{ f.locator ? `#${f.locator}` : "" }}</code>
+            </li>
+          </ul>
+          <h4>假設（推測，非事實）</h4>
+          <ul>
+            <li v-for="h in selectedDiagnosis.hypotheses" :key="h.id">
+              <span class="badge">{{ h.failureClass }}</span>
+              <span class="badge">{{ h.confidence }}</span>
+              {{ h.statement }}
+              <p v-if="h.discriminatingObservation" class="hint">分辨方式：{{ h.discriminatingObservation }}</p>
+            </li>
+          </ul>
+          <template v-if="selectedDiagnosis.excludedClasses.length > 0">
+            <h4>已排除</h4>
+            <ul>
+              <li v-for="(e, i) in selectedDiagnosis.excludedClasses" :key="i">
+                <code>{{ e.failureClass }}</code>：{{ e.reason }}
+              </li>
+            </ul>
+          </template>
+          <h4>最便宜的下一步</h4>
+          <p>{{ selectedDiagnosis.cheapestNextTest.description }}</p>
+          <p v-if="selectedDiagnosis.cheapestNextTest.command"><code>{{ selectedDiagnosis.cheapestNextTest.command }}</code></p>
+          <p class="hint">能分辨：{{ selectedDiagnosis.cheapestNextTest.distinguishes.join("、") }}</p>
+        </template>
+      </Drawer>
 
       <Drawer :open="selectedClaim !== null" :title="selectedClaim?.claimId ?? ''" @close="selectedClaim = null">
         <template v-if="selectedClaim">
@@ -401,6 +479,21 @@ function openClaim(row: Record<string, unknown>) {
             <p v-if="selectedClaim.auditResult.scopeReasoning" class="hint">{{ selectedClaim.auditResult.scopeReasoning }}</p>
           </template>
           <p v-else class="hint">還沒有對應的 claim-audit-result。</p>
+
+          <h4>研究 lineage</h4>
+          <p v-if="selectedLineage?.broken" class="errors">
+            這條證據鏈有缺口。標示「接不上」的環節下方會說明原因。
+          </p>
+          <ol v-if="selectedLineage" class="lineage">
+            <li v-for="(step, i) in selectedLineage.steps" :key="i" :class="{ missing: step.missing }">
+              <span class="badge">{{ step.kind }}</span>
+              <strong>{{ step.label }}</strong>
+              <p>{{ step.detail }}</p>
+              <p v-if="step.ref" class="hint"><code>{{ step.ref }}</code></p>
+              <p v-if="step.missing" class="errors">接不上</p>
+              <p v-else-if="step.warning" class="hint">⚠ {{ step.warning }}</p>
+            </li>
+          </ol>
         </template>
       </Drawer>
     </div>
@@ -445,5 +538,33 @@ function openClaim(row: Record<string, unknown>) {
   color: var(--color-accent);
   cursor: pointer;
   font: inherit;
+}
+/* lineage 用縮排的直線串起來，讓「這是一條鏈」在畫面上看得出來。 */
+.lineage {
+  list-style: none;
+  padding-left: var(--space-3);
+  margin: 0;
+  border-left: 2px solid var(--color-border);
+}
+.lineage li {
+  padding: var(--space-2) 0 var(--space-2) var(--space-3);
+  position: relative;
+}
+.lineage li::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--space-3) - 5px);
+  top: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+/* 接不上的環節保留在鏈上並標紅——鏈上少一環跟鏈上有一環接不上不是同一回事。 */
+.lineage li.missing::before {
+  background: var(--color-bad);
+}
+.lineage li p {
+  margin: var(--space-1) 0 0 0;
 }
 </style>

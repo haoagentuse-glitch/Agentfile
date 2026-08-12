@@ -350,11 +350,11 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 
 ### P1：契約成立後加入提示詞與研究執行增強
 
-8. **建立少量版本化 prompt roles，而非總控 mega-prompt。** 首批只做：`question-builder`、`counterexample-reviewer`、`experiment-design-critic`、`failure-diagnoser`、`claim-writer`、`evidence-reviewer`。驗收：每個 prompt 輸出 具型別 JSON、版本與 hash 進 provenance，且無權直接改 gate 狀態。
-9. **實作 evidence-only independent review package。** 驗收：reviewer 看不到 writer 的隱藏推理，只收到 frozen contract、comparison、claim、evidence excerpts；可設定第二模型或 human-required policy。
-10. **實作 compute cascade gate。** 驗收：preflight/pilot/main/replication 每級有預算、promotion、abort reason；重新執行同一輸入產生同一 gate decision。
-11. **建立 failure taxonomy 與最便宜 next-test 建議。** 驗收：execution、data、metric、confound、insufficient-power、hypothesis-refuted、scope-mismatch 分類不混寫；agent 建議與 deterministic facts 分欄。
-12. **Viewer 呈現研究 lineage。** 驗收：從 claim 可一路點回 comparison、runs、definition/certificate、sources/prompts；failed／inconclusive 不被隱藏。
+8. **建立少量版本化 prompt roles（已實作）。** 六個 role 放 `records/experiments/prompts/<role>@<version>.md`。輸出型別在 `prompt-output.schema.json`，其中沒有任何 gate、comparison 判定或 lifecycle 欄位——界線寫在 schema 裡，不只寫在提示詞裡。validator 比對 `producer.prompt_hash` 與 prompt 檔案的實際雜湊，不符即錯誤；`experiment_records prompts` 列出 role 與雜湊。
+9. **實作 evidence-only independent review package（已實作）。** `experiment_records review-package` 組出凍結的研究問題、候選主張、比較判定、由 `locator` 實際取出的證據摘錄與全部 run 摘要。包裡沒有 `producer`，`omitted` 明說看不到什麼。Contract 的 `review_policy.required_reviewer_kind` 與 Contract 一起凍結，validator 比對稽核紀錄的 `reviewer_kind` 是否滿足。
+10. **實作 compute cascade gate（已實作）。** Contract 的 `compute_cascade` 每級有 `stage`、`level`、`budget`、`promotion`、`abort`。`compute_gate.py` 只讀 Contract 與紀錄，不從命令列收門檻，因此同一組輸入重跑得到同一個判定（有測試比對兩次的 `history` 最後一筆）。判定順序固定 `sequence`→`abort`→`budget`→`promotion`，取不到值判 `failed`。詳見 [ADR 0009](0009-compute-gate-design.md) 的後續修訂。
+11. **建立 failure taxonomy 與最便宜 next-test 建議（已實作）。** 七種分類集中在 `failure-taxonomy.schema.json`，其他 schema 一律 `$ref`，有測試確認沒有第二份副本。新增 `diagnoses/` record 類型，`deterministic_facts`（每條有來源）與 `hypotheses`（推測）分欄。validator 擋下：`distinguishes` 指到不存在的假設、facts 的 ref 解析不到、未排除其他分類就判 `hypothesis_refuted`。
+12. **Viewer 呈現研究 lineage（已實作）。** `src/lib/lineage.ts` 從 claim 組出 claim → audit → comparison → runs → definition → certificate → sources → prompts 的完整鏈。接不上的環節保留在鏈上並標紅，不從鏈上拿掉——鏈上少一環跟鏈上有一環接不上，讀的人要分得出來。作廢的 run、`refuted` 與 `inconclusive` 的 claim 一律照實列出。Claims 分頁另外顯示失敗診斷。
 
 #### Viewer 現況與剩餘工作
 

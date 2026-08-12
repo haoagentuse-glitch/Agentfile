@@ -230,6 +230,11 @@ export async function loadManifestProject(
       runs: [],
       claims: [],
       gateState: null,
+      // manifest 專案沒有這包的 derivation／producer／diagnoses 概念；
+      // 空值代表「這個 adapter 不提供」，不是「資料缺了」。
+      derivation: null,
+      producer: null,
+      diagnoses: [],
       sourcePath: path,
     });
   }

@@ -3,10 +3,23 @@
 
 export type RunStatus = "pending" | "running" | "completed" | "invalid";
 
+export interface CanonicalRunFailure {
+  failureClass: string;
+  phase: string;
+  exitCode?: number;
+  retriable?: boolean;
+  errorArtifact?: string;
+}
+
 export interface CanonicalRun {
   runId: string;
   experimentId: string;
   experimentType?: string;
+  stage?: string;
+  parentRunId?: string;
+  attemptKind?: string;
+  // 跑失敗是正式結果。UI 照實顯示，不因為它不好看就過濾掉。
+  failure?: CanonicalRunFailure;
   // canonical adapter 只會產生 RunStatus 四個值；manifest adapter 讀的是使用者自訂資料，
   // 狀態字串可以是任何值，所以型別放寬成 string，UI 對未知值一律用中性樣式顯示。
   status: string;
@@ -33,8 +46,32 @@ export interface CanonicalExperiment {
   runs: CanonicalRun[];
   claims: CanonicalClaim[];
   gateState: CanonicalGateState | null;
+  derivation: CanonicalDerivation | null;
+  producer: CanonicalProducer | null;
+  diagnoses: CanonicalDiagnosis[];
   sourcePath: string;
 }
+
+// 產生或修改一份紀錄的責任者。lineage 靠它回答「這個結論是誰、用哪版 prompt 寫的」。
+export interface CanonicalProducer {
+  kind: string;
+  name: string;
+  model?: string;
+  promptId?: string;
+  promptHash?: string;
+  inputRefs: string[];
+  toolCallsArtifact?: string;
+  createdAt?: string;
+}
+
+export interface CanonicalEvidenceRef {
+  kind: "comparison" | "run" | "artifact" | "source";
+  ref: string;
+  locator?: string;
+  hash?: string;
+}
+
+export type ClaimStatus = "candidate" | "supported" | "refuted" | "inconclusive" | "superseded";
 
 export interface CanonicalClaim {
   claimId: string;
@@ -47,6 +84,12 @@ export interface CanonicalClaim {
   magnitudeType?: "absolute" | "relative";
   scope: string;
   createdAt: string;
+  claimType?: string;
+  // refuted 與 inconclusive 是正式終態，UI 不得因為「不好看」就藏起來。
+  status: ClaimStatus;
+  supersededBy?: string;
+  evidenceRefs: CanonicalEvidenceRef[];
+  producer: CanonicalProducer | null;
   sourcePath: string;
   auditResult: CanonicalClaimAuditResult | null;
 }
@@ -74,6 +117,46 @@ export interface CanonicalClaimAuditResult {
   // "pending" 代表機械段跑完、語意段還沒判——schema 規定此時不得寫出 final_verdict，
   // 所以這裡不是「資料缺漏」，是一個合法的中間狀態，UI 必須照實顯示。
   finalVerdict: ClaimVerdict;
+  intendedQuestionFit?: { verdict: string; reasoning?: string };
+  entailment?: { verdict: string; reasoning?: string };
+  novelty?: { status: string; sourceRefs: string[]; reasoning?: string };
+  reviewIndependence?: { independent: boolean; reviewerKind?: string; reason?: string };
+  producer: CanonicalProducer | null;
+  sourcePath: string;
+}
+
+// definition.derivation 的研究問題憑證。lineage 的終點——「當初為什麼問這個問題」。
+export interface CanonicalDerivation {
+  primitives: Array<{ id: string; definition: string }>;
+  assumptions: Array<{ id: string; statement: string; status: string }>;
+  mechanismSummary: string;
+  mechanismVariables: string[];
+  tension: string;
+  falsifier: string;
+  minimalDecisiveTest: string;
+  expectedObservations: string[];
+  failureUpdate: Array<{ when: string; updateAssumptionId: string; to: string }>;
+  sourceRefs: string[];
+  counterexamples: string[];
+  noveltyStatus: string;
+}
+
+export interface CanonicalDiagnosis {
+  diagnosisId: string;
+  experimentId: string;
+  diagnosedAt: string;
+  subject: { kind: string; ref: string };
+  deterministicFacts: Array<{ fact: string; sourceRef: string; locator?: string }>;
+  hypotheses: Array<{
+    id: string;
+    failureClass: string;
+    statement: string;
+    confidence: string;
+    discriminatingObservation?: string;
+  }>;
+  excludedClasses: Array<{ failureClass: string; reason: string }>;
+  cheapestNextTest: { description: string; command?: string; distinguishes: string[]; estimatedCost?: string };
+  producer: CanonicalProducer | null;
   sourcePath: string;
 }
 
