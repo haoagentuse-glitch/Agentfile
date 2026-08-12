@@ -112,4 +112,18 @@ describe("loadCanonicalProject - edge cases", () => {
     expect(comparison.comparisonValid).toBe(false);
     expect(comparison.confoundedReasons.length).toBeGreaterThan(0);
   });
+
+  it("loads an audit whose semantic pass has not run yet as pending, not as an error", async () => {
+    // scope_verdict 還是 pending 時，schema 規定不得寫出 final_verdict。
+    // 缺這一欄是合法的中間狀態，不是壞掉的檔案。
+    const snapshot = await loadCanonicalFixture(root);
+    const exp = snapshot.experiments.find((e) => e.experimentId === "edge-exp");
+    const claim = exp?.claims.find((c) => c.claimId === "edge-pending-claim");
+    expect(claim?.auditResult?.scopeVerdict).toBe("pending");
+    expect(claim?.auditResult?.finalVerdict).toBe("pending");
+    expect(claim?.auditResult?.mechanicalPass).toBe(true);
+    expect(
+      snapshot.diagnostics.some((d) => d.sourcePath === "records/experiments/audits/edge-pending.json")
+    ).toBe(false);
+  });
 });

@@ -42,6 +42,21 @@ python3 profiles/experimental/skills/claim-audit/claim_audit.py records/experime
 
 判斷完把 `scope_reasoning` 寫清楚「證據實際涵蓋什麼」跟「claim 宣稱涵蓋什麼」之間的落差，`final_verdict` 抄 `scope_verdict` 的值，存回同一份 audit result 檔案（或用 `--output` 產生的檔案，讀出來改這兩欄再存回去）。
 
+`scope_verdict` 還是 `pending` 的時候不得寫 `final_verdict`——「還沒判」不是一種結論。
+
+## 其他要填的軸線
+
+scope 不是唯一要判的東西。以下幾軸分開記，因為它們會分歧：一個 claim 可以數字全對、卻沒有回答原本的研究問題。
+
+| 欄位 | 判什麼 | 不填會怎樣 |
+|---|---|---|
+| `entailment.verdict` | 證據是不是真的推得出這句話，而不只是跟它相關 | 相關被當成因果 |
+| `intended_question_fit.verdict` | 有沒有回答 `definition.question` 本來要問的東西 | 技術上正確但答非所問的結論通過 |
+| `novelty.status` | 新穎性有沒有獨立的文獻查核 | 憑模型記憶宣告新穎 |
+| `review_independence.independent` | 審核者是不是獨立於產出者 | 自寫自審後自動接受 |
+
+`novelty.status` 標 `novel_confirmed` 必須附 `source_refs`；沒查過只能是 `unverified`。`review_independence.independent` 為 `false` 時，`final_verdict` 不得是 `fully_supported`。這兩條由 `experiment_records validate` 機械擋下，不靠自律。
+
 ## 不要做的事
 
 不要因為 claim 的 `statement` 讀起來很有道理就放寬判準。不要幫 claim 補充它沒說的限定詞再判它過——claim 寫了什麼就審什麼，寫得不夠精確是 claim 的問題，不是你幫忙圓回來的地方。機械段沒過的東西不要嘗試用語意判斷救回來——`comparison_valid: false` 是硬限制（規則 10），沒有例外。

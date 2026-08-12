@@ -50,13 +50,16 @@ def audit(claim_path: Path) -> dict[str, Any]:
     reasons: list[str] = []
     reference_exists = False
     comparison_valid: bool | None = None
+    comparison_confounded: bool | None = None
     metric_exists: bool | None = None
     direction_matches: bool | None = None
     magnitude_matches: bool | None = None
     comparison: dict | None = None
 
+    # comparison_ref 一律相對 project root 解析，跟 experiment_records 的 ref 規則一致。
+    project_root = records_root.parent.parent
     comparison_ref = claim.get("comparison_ref")
-    comparison_path = (claim_path.parent / comparison_ref).resolve() if comparison_ref else None
+    comparison_path = (project_root / comparison_ref).resolve() if comparison_ref else None
     if comparison_path and comparison_path.is_file():
         reference_exists = True
         comparison = load_json(comparison_path)
@@ -70,8 +73,11 @@ def audit(claim_path: Path) -> dict[str, Any]:
                 f"experiment_id={comparison.get('experiment_id')!r} 對不上"
             )
         comparison_valid = bool(comparison.get("comparison_valid"))
+        comparison_confounded = bool(comparison.get("confounded"))
         if not comparison_valid:
-            reasons.append("引用的 comparison 是 confounded／invalid，不得用來支撐結論（規則 10）")
+            # 分開講：confounded 是條件沒守住，非 confounded 的 invalid 是沒有共同基準。
+            cause = "confounded" if comparison_confounded else "沒有共同基準可比"
+            reasons.append(f"引用的 comparison 不可引用（{cause}），不得用來支撐結論（規則 10）")
 
         metric_name = claim.get("metric")
         metric_entry = comparison.get("metrics", {}).get(metric_name)
@@ -136,6 +142,7 @@ def audit(claim_path: Path) -> dict[str, Any]:
         "mechanical": {
             "reference_exists": reference_exists,
             "comparison_valid": comparison_valid,
+            "comparison_confounded": comparison_confounded,
             "metric_exists": metric_exists,
             "direction_matches": direction_matches,
             "magnitude_matches": magnitude_matches,
@@ -144,8 +151,10 @@ def audit(claim_path: Path) -> dict[str, Any]:
         "mechanical_reasons": reasons,
         "scope_verdict": scope_verdict,
         "scope_reasoning": "",
-        "final_verdict": scope_verdict if scope_verdict != "pending" else "pending",
     }
+    # scope_verdict 還是 pending 時不寫 final_verdict——「還沒判」不是一種結論。
+    if scope_verdict != "pending":
+        result["final_verdict"] = scope_verdict
     return result
 
 

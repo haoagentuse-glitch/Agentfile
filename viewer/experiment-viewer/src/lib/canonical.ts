@@ -71,7 +71,9 @@ export interface CanonicalClaimAuditResult {
   mechanicalReasons: string[];
   scopeVerdict: ClaimVerdict;
   scopeReasoning?: string;
-  finalVerdict: Exclude<ClaimVerdict, "pending">;
+  // "pending" 代表機械段跑完、語意段還沒判——schema 規定此時不得寫出 final_verdict，
+  // 所以這裡不是「資料缺漏」，是一個合法的中間狀態，UI 必須照實顯示。
+  finalVerdict: ClaimVerdict;
   sourcePath: string;
 }
 

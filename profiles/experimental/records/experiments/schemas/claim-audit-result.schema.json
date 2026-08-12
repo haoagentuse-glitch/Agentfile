@@ -2,14 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "claim-audit-result.schema.json",
   "title": "Claim Audit Result",
-  "description": "claim_audit.py 產生機械檢查的部分（mechanical.*），scope_verdict／scope_reasoning 留給呼叫的 agent 依 claim-audit 技能的判準填寫，兩段合起來才是 final_verdict。mechanical_pass 為 false 時 scope_verdict 固定是 unauditable 或 unsupported，不需要、也不該再做語意判斷。",
+  "description": "稽核分成互不取代的幾個軸。claim_audit.py 產生機械段（mechanical.*）；entailment、scope、intended_question、novelty 由稽核 agent 依 claim-audit 技能的判準填寫；review_independence 記錄審核者是否獨立於產出者。合起來才是 final_verdict。\n\n這些軸刻意不合併成單一 valid：一個 claim 可以數字全對（機械段通過）、卻沒有回答原本的研究問題，也可以推論成立卻超出證據涵蓋的範圍。混成一個布林值就分不出這幾種情況。mechanical_pass 為 false 時 scope_verdict 固定是 unauditable 或 unsupported，不需要、也不該再做語意判斷。",
   "type": "object",
-  "required": ["claim_id", "audited_at", "mechanical", "final_verdict"],
+  "required": ["claim_id", "audited_at", "mechanical"],
   "properties": {
     "claim_id": { "type": "string" },
     "audited_at": { "type": "string", "format": "date-time" },
     "mechanical": {
       "type": "object",
+      "description": "全部由程式判定，不含語意判斷。",
       "required": [
         "reference_exists", "comparison_valid", "metric_exists",
         "direction_matches", "magnitude_matches", "mechanical_pass"
@@ -17,16 +18,31 @@
       "properties": {
         "reference_exists": { "type": "boolean", "description": "comparison_ref 指到的檔案存在、載得進來" },
         "comparison_valid": { "type": ["boolean", "null"], "description": "引用的 comparison-result 的 comparison_valid 欄位；null 代表 reference_exists 為 false，沒得檢查" },
+        "comparison_confounded": { "type": ["boolean", "null"], "description": "引用的 comparison-result 的 confounded 欄位。跟 comparison_valid 分開記，因為「不可比」跟「混雜」是不同原因" },
         "metric_exists": { "type": ["boolean", "null"], "description": "claim 引用的 metric 在 comparison-result 裡有沒有被計算出來" },
         "direction_matches": { "type": ["boolean", "null"], "description": "claim 宣稱的 expected_direction 是否符合 comparison-result 裡該 metric 的實際差異方向" },
         "magnitude_matches": { "type": ["boolean", "null"], "description": "沒填 stated_magnitude 時為 null（不檢查）；有填則核對是否落在容許誤差內" },
+        "evidence_hashes_match": { "type": ["boolean", "null"], "description": "claim.evidence_refs 記下的 hash 跟現在的檔案內容是否一致；null 代表 claim 沒記 hash。false 代表證據在下結論之後被改過" },
+        "numeric_recomputed": { "type": ["boolean", "null"], "description": "claim 引用的數字能否由原始 run metrics 重算出同一個值；null 代表缺少重算所需的輸入" },
         "mechanical_pass": { "type": "boolean" }
-      }
+      },
+      "additionalProperties": false
     },
     "mechanical_reasons": {
       "type": "array",
       "items": { "type": "string" },
       "default": []
+    },
+    "entailment": {
+      "type": "object",
+      "description": "證據是否真的推得出這句話，而不只是跟它相關。數字對不代表這句話成立",
+      "required": ["verdict"],
+      "properties": {
+        "verdict": { "type": "string", "enum": ["entailed", "partially_entailed", "not_entailed", "unauditable"] },
+        "reasoning": { "type": "string" },
+        "alternative_explanations": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "additionalProperties": false
     },
     "scope_verdict": {
       "type": "string",
@@ -37,11 +53,51 @@
       "type": "string",
       "description": "agent 填：為什麼判定這個 scope_verdict，特別是「證據實際涵蓋什麼」跟「claim 宣稱涵蓋什麼」之間的落差"
     },
+    "intended_question_fit": {
+      "type": "object",
+      "description": "這個 claim 有沒有回答 definition.question 本來要問的東西。技術上正確但答非所問，是自動化研究最常見的失效模式",
+      "required": ["verdict"],
+      "properties": {
+        "verdict": { "type": "string", "enum": ["answers", "partially_answers", "vacuous", "off_target", "unauditable"] },
+        "reasoning": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "novelty": {
+      "type": "object",
+      "description": "新穎性必須有獨立的文獻查核。沒查過就是 unverified，不得因為模型沒印象就當作新穎",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["unverified", "novel_confirmed", "prior_art_found", "not_applicable"] },
+        "source_refs": { "type": "array", "items": { "type": "string", "format": "project-ref" }, "default": [] },
+        "reasoning": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "review_independence": {
+      "type": "object",
+      "description": "審核者是否獨立於產出者。同一個 context 自寫自審後自動接受，等於沒有審核",
+      "required": ["independent"],
+      "properties": {
+        "independent": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "reviewer_kind": { "type": "string", "enum": ["human", "second_model", "same_model_separate_context", "same_context"] }
+      },
+      "additionalProperties": false
+    },
     "final_verdict": {
       "type": "string",
-      "enum": ["fully_supported", "partially_supported", "overreaching", "unsupported", "unauditable"]
+      "enum": ["fully_supported", "partially_supported", "overreaching", "unsupported", "unauditable"],
+      "description": "scope_verdict 還是 pending 時必須留空——「還沒判」不是一種結論，不得用 pending 混進終局判定"
     },
     "producer": { "$ref": "provenance.schema.json#/$defs/producer" }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "scope_verdict": { "const": "pending" } }, "required": ["scope_verdict"] },
+      "then": { "not": { "required": ["final_verdict"] } },
+      "else": { "required": ["final_verdict"] }
+    }
+  ],
   "additionalProperties": false
 }

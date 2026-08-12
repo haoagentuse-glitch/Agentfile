@@ -310,6 +310,104 @@ def _validate_run(instance: dict[str, Any], label: str) -> list[Result]:
     return results
 
 
+def _same_producer(a: Any, b: Any) -> bool:
+    """兩份紀錄是不是同一個產出者做的。
+
+    比對 name 與 prompt_id：同一個 agent 用同一版 prompt 自寫自審，就不是獨立審核。
+    兩邊都沒有 producer 時無從判斷，回 False——不能因為欄位空著就推定有問題。
+    """
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        return False
+    return (a.get("name"), a.get("prompt_id")) == (b.get("name"), b.get("prompt_id"))
+
+
+def _validate_audit(instance: dict[str, Any], label: str) -> list[Result]:
+    """單筆 audit 的確定性檢查：結論不得比它自己記錄的檢查結果更強。"""
+    results: list[Result] = []
+    final_verdict = instance.get("final_verdict")
+    mechanical_pass = instance.get("mechanical", {}).get("mechanical_pass")
+
+    if mechanical_pass is False and final_verdict in ("fully_supported", "partially_supported"):
+        results.append((
+            "錯誤",
+            f"{label}: mechanical_pass 為 false，final_verdict 不得是 {final_verdict}",
+        ))
+
+    independence = instance.get("review_independence")
+    if isinstance(independence, dict):
+        if independence.get("independent") is False and final_verdict == "fully_supported":
+            results.append((
+                "錯誤",
+                f"{label}: 審核者不獨立於產出者，final_verdict 不得是 fully_supported",
+            ))
+        if independence.get("reviewer_kind") == "same_context" and independence.get("independent") is True:
+            results.append(("錯誤", f"{label}: reviewer_kind=same_context 不可能是獨立審核"))
+
+    novelty = instance.get("novelty")
+    if isinstance(novelty, dict):
+        if novelty.get("status") == "novel_confirmed" and not novelty.get("source_refs"):
+            results.append((
+                "錯誤",
+                f"{label}: novelty.status=novel_confirmed 但沒有任何 source_refs；未查證只能標 unverified",
+            ))
+
+    return results
+
+
+def validate_claim_audit_chain(paths: list[Path], layout: ProjectLayout) -> list[Result]:
+    """跨檔檢查 claim 與 audit 的關係。
+
+    兩件事只有把兩份紀錄放在一起才判得出來：claim 標 supported 時是否真的有稽核撐著，
+    以及稽核者是不是就是寫這個 claim 的同一個 agent 與同一版 prompt。
+    """
+    claims: dict[str, tuple[str, dict[str, Any]]] = {}
+    audits: dict[str, tuple[str, dict[str, Any]]] = {}
+    for path in paths:
+        record_type = record_type_for(path)
+        if record_type not in ("claims", "audits"):
+            continue
+        try:
+            instance = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if not isinstance(instance, dict):
+            continue
+        claim_id = instance.get("claim_id")
+        if not isinstance(claim_id, str):
+            continue
+        (claims if record_type == "claims" else audits)[claim_id] = (_label(path, layout), instance)
+
+    results: list[Result] = []
+    for claim_id, (label, claim) in sorted(claims.items()):
+        audit_entry = audits.get(claim_id)
+
+        if claim.get("status") == "supported":
+            if audit_entry is None:
+                results.append(("錯誤", f"{label}: status=supported 但沒有對應的 claim-audit-result"))
+            elif audit_entry[1].get("final_verdict") not in ("fully_supported", "partially_supported"):
+                results.append((
+                    "錯誤",
+                    f"{label}: status=supported 但稽核結論是 {audit_entry[1].get('final_verdict')!r}",
+                ))
+
+        if audit_entry is None:
+            continue
+        audit_label, audit = audit_entry
+        if _same_producer(claim.get("producer"), audit.get("producer")):
+            independence = audit.get("review_independence")
+            if not isinstance(independence, dict) or independence.get("independent") is not False:
+                results.append((
+                    "錯誤",
+                    f"{audit_label}: 稽核者與 claim 產出者相同（同一 name 與 prompt_id），"
+                    "review_independence.independent 必須是 false",
+                ))
+
+    for claim_id, (label, _audit) in sorted(audits.items()):
+        if claim_id not in claims:
+            results.append(("錯誤", f"{label}: 稽核的 claim_id {claim_id!r} 不存在"))
+    return results
+
+
 def validate_run_lineage(paths: list[Path], layout: ProjectLayout) -> list[Result]:
     """跨檔 lineage 檢查：parent_run_id 必須指到存在的 run，且不得成環。
 
@@ -516,6 +614,8 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
             results.extend(_validate_contract_configs(instance, label, layout))
         elif record_type == "runs":
             results.extend(_validate_run(instance, label))
+        elif record_type == "audits":
+            results.extend(_validate_audit(instance, label))
 
     for field_label, ref_value in _extract_refs(schema, instance, layout):
         try:

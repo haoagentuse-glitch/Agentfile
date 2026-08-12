@@ -14,6 +14,7 @@ from typing import Any
 from experiment_records.project_layout import ProjectLayoutError, collect_targets, record_type_for, resolve_layout
 from experiment_records.validation import (
     schema_count,
+    validate_claim_audit_chain,
     validate_lifecycle_candidate,
     validate_lifecycle_events,
     validate_lifecycle_history_candidate,
@@ -83,6 +84,7 @@ def _all_results(targets: list[Path], layout: Any) -> list[tuple[str, str]]:
     for path in targets:
         results.extend(validate_record(path, layout))
     results.extend(validate_run_lineage(targets, layout))
+    results.extend(validate_claim_audit_chain(targets, layout))
     results.extend(validate_lifecycle_events(targets, layout))
     return results
 
@@ -111,6 +113,7 @@ def _cmd_validate(target_arg: str) -> int:
             results.extend(validate_record(path, layout))
         if not resolved.is_file():
             results.extend(validate_run_lineage(targets, layout))
+            results.extend(validate_claim_audit_chain(targets, layout))
             results.extend(validate_lifecycle_events(targets, layout))
 
     for level, message in results:

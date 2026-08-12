@@ -162,10 +162,8 @@ export function adaptClaimAuditResult(
   const claimId = requireField(raw, "claim_id", sourcePath) as string;
   const auditedAt = requireField(raw, "audited_at", sourcePath) as string;
   const mechanical = requireField(raw, "mechanical", sourcePath) as Record<string, unknown>;
-  const finalVerdict = requireField(raw, "final_verdict", sourcePath) as Exclude<
-    ClaimVerdict,
-    "pending"
-  >;
+  // scope_verdict 還是 pending 時 schema 規定不得寫 final_verdict——缺這欄不是壞資料。
+  const finalVerdict = (raw.final_verdict as ClaimVerdict | undefined) ?? "pending";
 
   if (!("mechanical_pass" in mechanical)) {
     throw new SchemaAdapterError('mechanical 底下缺少 "mechanical_pass"', sourcePath);

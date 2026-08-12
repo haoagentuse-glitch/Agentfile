@@ -40,7 +40,50 @@
       "description": "這個 claim 宣稱的適用範圍，例如「僅限這個資料集與這個 model」或「所有 retrieval 任務都適用」——scope audit 就是在檢查這句話有沒有超出證據實際涵蓋的範圍"
     },
     "created_at": { "type": "string", "format": "date-time" },
-    "producer": { "$ref": "provenance.schema.json#/$defs/producer" }
+    "producer": { "$ref": "provenance.schema.json#/$defs/producer" },
+    "claim_type": {
+      "type": "string",
+      "enum": ["descriptive", "comparative", "causal", "novelty", "mechanism", "negative_result"],
+      "description": "不同類型的主張需要不同強度的證據。causal 需要 comparison_valid 且非 confounded；negative_result 是正式結果，不是失敗"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "default": [],
+      "description": "支撐這個 claim 的具名證據位置。comparison_ref 是主要比較來源，這裡放完整清單，包含 run、artifact 與外部來源",
+      "items": {
+        "type": "object",
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["comparison", "run", "artifact", "source"] },
+          "ref": { "type": "string", "format": "project-ref" },
+          "locator": {
+            "type": "string",
+            "description": "檔案內的具名位置，例如 metrics.recall_at_10.absolute_diff。指到檔案而不指到欄位，稽核就得自己猜引用的是哪個數字"
+          },
+          "hash": {
+            "type": "string",
+            "description": "引用當下的內容 hash。稽核時比對，可偵測證據在下結論之後被改過"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["candidate", "supported", "refuted", "inconclusive", "superseded"],
+      "default": "candidate",
+      "description": "inconclusive 是正式終態，不是待辦。沒有稽核通過就不得標 supported"
+    },
+    "superseded_by": {
+      "type": "string",
+      "description": "status 為 superseded 時指向取代它的 claim_id。舊結論保留，不刪除"
+    }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "superseded" } }, "required": ["status"] },
+      "then": { "required": ["superseded_by"] }
+    }
+  ],
   "additionalProperties": false
 }

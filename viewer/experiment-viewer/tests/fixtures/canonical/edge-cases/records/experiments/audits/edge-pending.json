@@ -1,0 +1,16 @@
+{
+  "claim_id": "edge-pending-claim",
+  "audited_at": "2026-01-08T06:00:00Z",
+  "mechanical": {
+    "reference_exists": true,
+    "comparison_valid": true,
+    "comparison_confounded": false,
+    "metric_exists": true,
+    "direction_matches": true,
+    "magnitude_matches": null,
+    "mechanical_pass": true
+  },
+  "mechanical_reasons": [],
+  "scope_verdict": "pending",
+  "scope_reasoning": ""
+}
