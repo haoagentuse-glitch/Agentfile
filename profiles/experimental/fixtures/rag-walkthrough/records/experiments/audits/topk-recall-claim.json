@@ -42,7 +42,7 @@
     "name": "evidence-reviewer",
     "model": "anthropic/claude-opus-5",
     "prompt_id": "evidence-reviewer@1",
-    "prompt_hash": "sha256:8e1d4a7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f5b8e1d",
+    "prompt_hash": "sha256:07651c0ae812dd423a9ebbdf91a5ee567b6a49bb5d025dd65c8876a65c7a0f6e",
     "input_refs": [
       "records/experiments/claims/topk-recall-claim.json",
       "records/experiments/comparisons/topk-main.json"

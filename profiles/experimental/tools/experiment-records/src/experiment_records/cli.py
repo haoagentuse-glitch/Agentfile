@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from experiment_records.project_layout import ProjectLayoutError, collect_targets, record_type_for, resolve_layout
+from experiment_records.prompts import known_prompts, prompts_dir
 from experiment_records.validation import (
     schema_count,
     validate_claim_audit_chain,
@@ -41,6 +42,9 @@ def build_parser() -> argparse.ArgumentParser:
     transition_parser.add_argument("--evidence-ref", action="append", default=[])
     transition_parser.add_argument("--updated-definition-field", action="append", default=[])
     transition_parser.add_argument("--occurred-at", help="RFC 3339 timestamp。省略時使用目前 UTC 時間")
+
+    prompts_parser = sub.add_parser("prompts", help="列出本專案管理的 prompt role 與內容雜湊")
+    prompts_parser.add_argument("project", help="project root 或 records/experiments")
     return parser
 
 
@@ -217,6 +221,43 @@ def _cmd_transition(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_prompts(project_arg: str) -> int:
+    """把 prompt_hash 從「自己算一次」變成「查一次」。
+
+    要人手動算雜湊，實務上就會有人填錯或不填；填錯會被 validate 擋下，但那時已經
+    多繞一圈。這裡直接給可貼進 producer 的值。
+    """
+    resolved = _resolve_target(project_arg)
+    if resolved is None:
+        return 2
+    try:
+        layout = resolve_layout(resolved)
+    except ProjectLayoutError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+
+    command = ["uv", "run", "--project", ".agents/tools/experiment-records", "python", "-m",
+               "experiment_records", "prompts", str(resolved)]
+    print(f"命令：{shlex.join(command)}")
+    print(f"輸入：{resolved}")
+    print(f"Prompt 目錄：{prompts_dir(layout)}")
+    print(f"Commit：{_git_commit(layout.project_root)}")
+    print()
+
+    registry = known_prompts(layout)
+    if not registry:
+        print("這個專案沒有自己管理的 prompt role。")
+        print("producer.prompt_hash 沒有可比對的來源，驗證會略過雜湊檢查。")
+        return 0
+
+    width = max(len(prompt_id) for prompt_id in registry)
+    for prompt_id, digest in registry.items():
+        print(f"{prompt_id:{width}s}  {digest}")
+    print()
+    print(f"共 {len(registry)} 個 prompt role。把 prompt_id 與上面的雜湊一起寫進 producer。")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -224,5 +265,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_validate(args.target)
     if args.command == "transition":
         return _cmd_transition(args)
+    if args.command == "prompts":
+        return _cmd_prompts(args.project)
     parser.error(f"未知指令：{args.command}")
     return 2

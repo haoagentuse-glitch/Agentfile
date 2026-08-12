@@ -25,13 +25,17 @@ def _find(relative: str) -> Path:
 
 WALKTHROUGH = _find("fixtures/rag-walkthrough")
 SCHEMAS = _find("records/experiments/schemas")
+PROMPTS = _find("records/experiments/prompts")
 
 
 @pytest.fixture(scope="module")
 def walkthrough(tmp_path_factory) -> Path:
     root = tmp_path_factory.mktemp("walkthrough") / "project"
     shutil.copytree(WALKTHROUGH, root)
+    # schemas 與 prompts 各只有一份，不在 fixture 裡複製一次；組起來才驗證，
+    # 這樣 fixture 記的 prompt_hash 就必須跟真的 prompt 檔案對得上。
     shutil.copytree(SCHEMAS, root / "records" / "experiments" / "schemas")
+    shutil.copytree(PROMPTS, root / "records" / "experiments" / "prompts")
     return root
 
 

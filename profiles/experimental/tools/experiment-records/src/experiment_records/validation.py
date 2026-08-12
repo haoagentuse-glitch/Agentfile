@@ -19,6 +19,7 @@ from experiment_records.project_layout import (
     all_schema_names,
     record_type_for,
 )
+from experiment_records.prompts import hash_file, prompt_path
 from experiment_records.ref_resolver import RefError, RefInvalid, resolve_ref, validate_ref_syntax
 
 Result = tuple[str, str]
@@ -308,6 +309,36 @@ def _validate_run(instance: dict[str, Any], label: str) -> list[Result]:
         results.append(("警告", f"{label}: 未宣告 seed，也未列出 nondeterminism_sources"))
 
     return results
+
+
+def _validate_producer_prompt(instance: dict[str, Any], label: str, layout: ProjectLayout) -> list[Result]:
+    """producer 引用本專案管理的 prompt role 時，prompt_hash 必須對得上實際檔案內容。
+
+    prompt 改了而 hash 沒改，就是把 prompt 漂移藏起來——同名 prompt 產生的兩份紀錄
+    會被誤認為可比較。專案自有的 prompt（prompts/ 底下找不到）略過，不能驗證的東西
+    不假裝驗證過。
+    """
+    producer = instance.get("producer")
+    if not isinstance(producer, dict):
+        return []
+    prompt_id = producer.get("prompt_id")
+    if not isinstance(prompt_id, str):
+        return []
+    path = prompt_path(layout, prompt_id)
+    if path is None:
+        return []
+
+    expected = hash_file(path)
+    actual = producer.get("prompt_hash")
+    if actual is None:
+        return [("警告", f"{label}: prompt_id={prompt_id!r} 由本專案管理，但沒有記錄 prompt_hash")]
+    if actual != expected:
+        return [(
+            "錯誤",
+            f"{label}: prompt_hash 與 prompts/{prompt_id}.md 實際內容不符；"
+            f"預期 {expected}，收到 {actual}",
+        )]
+    return []
 
 
 def _same_producer(a: Any, b: Any) -> bool:
@@ -607,6 +638,7 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
             results.append(("錯誤", f"{label}: Schema[{at}]: {error.message}"))
     else:
         results.append(("通過", f"{label}: Schema 有效"))
+        results.extend(_validate_producer_prompt(instance, label, layout))
         if record_type == "lifecycles":
             results.extend(_validate_lifecycle_event(instance, label, schema, layout))
         elif record_type == "definitions":

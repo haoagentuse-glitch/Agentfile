@@ -23,8 +23,8 @@ SUBDIR_TO_SCHEMA = {
 }
 # 不是 record 類型、沒有對應目錄的共用結構；只被其他 schema 以 $ref 引用。
 # 列在這裡是為了讓它也進 schema 合法性檢查與 $ref registry，不會因為沒人直接驗證而腐爛。
-SHARED_SCHEMAS = ("provenance.schema.json",)
-AUXILIARY_SUBDIRS = frozenset({"schemas", "configs", "artifacts"})
+SHARED_SCHEMAS = ("provenance.schema.json", "prompt-output.schema.json")
+AUXILIARY_SUBDIRS = frozenset({"schemas", "configs", "artifacts", "prompts"})
 
 
 def all_schema_names() -> list[str]:
