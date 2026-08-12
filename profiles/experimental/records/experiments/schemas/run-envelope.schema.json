@@ -115,17 +115,8 @@
       "description": "跑失敗的結構化紀錄。分類與確定性事實分開：class 與 phase 是給後續分析用的具名分類，不是自由敘述",
       "required": ["class", "phase"],
       "properties": {
-        "class": {
-          "type": "string",
-          "enum": [
-            "execution", "data", "metric", "confound",
-            "insufficient_power", "hypothesis_refuted", "scope_mismatch"
-          ]
-        },
-        "phase": {
-          "type": "string",
-          "enum": ["setup", "data_load", "execution", "metric_computation", "artifact_write"]
-        },
+        "class": { "$ref": "failure-taxonomy.schema.json#/$defs/failureClass" },
+        "phase": { "$ref": "failure-taxonomy.schema.json#/$defs/failurePhase" },
         "exit_code": { "type": "integer" },
         "retriable": { "type": "boolean" },
         "error_artifact": { "type": "string", "format": "project-ref" }

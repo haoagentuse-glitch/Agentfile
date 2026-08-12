@@ -144,6 +144,32 @@ def test_execution_failed_counterexample_is_present(walkthrough: Path) -> None:
     assert run["abort_reason"]
 
 
+def test_every_failed_chain_has_a_structured_diagnosis(walkthrough: Path) -> None:
+    """終態只留一句 reason，回頭看時說不出當初排除過什麼。"""
+    diagnoses = _records(walkthrough, "diagnoses")
+
+    by_experiment = {d["experiment_id"]: d for d in diagnoses.values()}
+    assert set(by_experiment) == {"rag-chunk-overlap", "rag-rerank-depth", "rag-query-rewrite"}
+    for diagnosis in by_experiment.values():
+        # 兩欄分開才讀得出哪些是已知、哪些是猜的。
+        assert diagnosis["deterministic_facts"]
+        assert all(fact["source_ref"] for fact in diagnosis["deterministic_facts"])
+        assert diagnosis["hypotheses"]
+        assert diagnosis["cheapest_next_test"]["distinguishes"]
+
+
+def test_diagnoses_use_the_expected_failure_classes(walkthrough: Path) -> None:
+    by_experiment = {d["experiment_id"]: d for d in _records(walkthrough, "diagnoses").values()}
+
+    classes = {
+        experiment_id: {h["failure_class"] for h in diagnosis["hypotheses"]}
+        for experiment_id, diagnosis in by_experiment.items()
+    }
+    assert "confound" in classes["rag-chunk-overlap"]
+    assert classes["rag-rerank-depth"] == {"data"}
+    assert "insufficient_power" in classes["rag-query-rewrite"]
+
+
 def test_inconclusive_counterexample_is_present(walkthrough: Path) -> None:
     """證據不足是正式終態，不是待辦，也不得被改寫成弱版本的成功。"""
     claim = _records(walkthrough, "claims")["query-rewrite-claim"]

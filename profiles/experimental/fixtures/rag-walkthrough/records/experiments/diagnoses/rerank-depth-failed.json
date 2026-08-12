@@ -1,0 +1,48 @@
+{
+  "diagnosis_id": "rerank-depth-failed",
+  "experiment_id": "rag-rerank-depth",
+  "diagnosed_at": "2026-01-07T10:15:00Z",
+  "subject": {
+    "kind": "run",
+    "ref": "records/experiments/runs/rerank-depth-main.json"
+  },
+  "deterministic_facts": [
+    {
+      "fact": "run 的 failure.class 為 data，phase 為 data_load，exit_code 為 2",
+      "source_ref": "records/experiments/runs/rerank-depth-main.json",
+      "locator": "failure"
+    },
+    {
+      "fact": "評估集雜湊記為 sha256:bb99，與其他 experiment 使用的 nq-open-eval-v3 雜湊 sha256:bb03 不同",
+      "source_ref": "records/experiments/runs/rerank-depth-main.json",
+      "locator": "data_identity.evaluation_set.hash"
+    },
+    {
+      "fact": "abort_reason 已記錄，run 在 95 秒後中止，沒有產生任何 metric",
+      "source_ref": "records/experiments/runs/rerank-depth-main.json",
+      "locator": "abort_reason"
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "h-regenerated",
+      "failure_class": "data",
+      "statement": "評估集被重新產生過，內容變了但沿用同一個 id",
+      "confidence": "high",
+      "discriminating_observation": "比對兩份評估集的檔案內容，看差異是全面的還是只有幾筆"
+    },
+    {
+      "id": "h-wrong-path",
+      "failure_class": "data",
+      "statement": "設定指到另一份同名但不同來源的評估集",
+      "confidence": "medium",
+      "discriminating_observation": "檢查設定裡的評估集路徑是否與 Contract 鎖定當下相同"
+    }
+  ],
+  "cheapest_next_test": {
+    "description": "把兩份評估集的內容做逐筆比對，不重跑任何實驗。這一步不需要算力。",
+    "command": "python -m rag_lab data diff-eval-set --left nq-open-eval-v3@bb03 --right nq-open-eval-v3@bb99",
+    "distinguishes": ["h-regenerated", "h-wrong-path"],
+    "estimated_cost": "數秒，不需要 GPU"
+  }
+}

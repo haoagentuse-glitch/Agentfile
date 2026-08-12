@@ -30,3 +30,5 @@ uv run --project profiles/experimental/tools/experiment-records pytest tests/tes
 **不可引用有兩種原因。** `rag-chunk-overlap` 是 `confounded`（條件沒守住）。另一種是 `structurally_comparable=false`（沒有共同基準），本 fixture 沒有這條，因為它在 `compare_runs.py` 的端到端測試裡涵蓋了。
 
 **證據不足沒有被改寫成弱版本的成功。** `query-rewrite-claim` 的 `status` 是 `inconclusive`，稽核 `final_verdict` 是 `unsupported`，`entailment.verdict` 是 `not_entailed`。數字正確但推不出因果。
+
+**三條失敗的鏈都有結構化診斷。** `diagnoses/` 底下每份都把 `deterministic_facts`（每條有來源）跟 `hypotheses`（推測）分欄，並給出能分辨假設的最便宜下一步。混雜那條的假設全部歸在 `confound`：混雜還沒解開之前，不能說假說被推翻。

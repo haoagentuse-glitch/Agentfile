@@ -352,6 +352,44 @@ def _same_producer(a: Any, b: Any) -> bool:
     return (a.get("name"), a.get("prompt_id")) == (b.get("name"), b.get("prompt_id"))
 
 
+def _validate_diagnosis(instance: dict[str, Any], label: str) -> list[Result]:
+    """診斷的確定性檢查：ID 可解、下一步真的能分辨假設、兜底分類不得白用。"""
+    results: list[Result] = []
+
+    hypotheses = instance.get("hypotheses", [])
+    ids = [h["id"] for h in hypotheses if isinstance(h, dict) and "id" in h]
+    duplicates = sorted({i for i in ids if ids.count(i) > 1})
+    if duplicates:
+        results.append(("錯誤", f"{label}: hypotheses ID 重複：{', '.join(duplicates)}"))
+
+    # 「能分辨假設」不能只是一句宣稱——指到的假設要真的存在。
+    known = set(ids)
+    for target in instance.get("cheapest_next_test", {}).get("distinguishes", []):
+        if target not in known:
+            results.append((
+                "錯誤",
+                f"{label}: cheapest_next_test.distinguishes 指向不存在的 hypotheses.id {target!r}",
+            ))
+
+    # hypothesis_refuted 是正式結論，不是兜底選項。要用它就得說明其他分類怎麼排除的。
+    classes = {h.get("failure_class") for h in hypotheses if isinstance(h, dict)}
+    if "hypothesis_refuted" in classes:
+        excluded = {
+            e.get("failure_class")
+            for e in instance.get("excluded_classes", [])
+            if isinstance(e, dict)
+        }
+        missing = {"execution", "data", "metric", "confound", "insufficient_power"} - excluded
+        if missing:
+            results.append((
+                "錯誤",
+                f"{label}: 判 hypothesis_refuted 之前必須先排除 {', '.join(sorted(missing))}，"
+                "並寫進 excluded_classes",
+            ))
+
+    return results
+
+
 def _validate_audit(instance: dict[str, Any], label: str) -> list[Result]:
     """單筆 audit 的確定性檢查：結論不得比它自己記錄的檢查結果更強。"""
     results: list[Result] = []
@@ -715,6 +753,8 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
             results.extend(_validate_run(instance, label))
         elif record_type == "audits":
             results.extend(_validate_audit(instance, label))
+        elif record_type == "diagnoses":
+            results.extend(_validate_diagnosis(instance, label))
 
     for field_label, ref_value in _extract_refs(schema, instance, layout):
         try:

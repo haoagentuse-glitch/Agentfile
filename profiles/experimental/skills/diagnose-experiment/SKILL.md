@@ -93,3 +93,16 @@ metadata:
 ## 輸出
 
 簡短的診斷報告：(1) 探測結果、(2) 假設、(3) smoke 結果、(4) 原因或存疑、(5) 建議的下一步。每個斷言都要能指回支撐它的探測輸出。
+
+## 讓診斷留下來
+
+生命週期走到終態（`execution_failed`、`pilot_failed`、`confounded`、`inconclusive`……）時，只留一句 `reason`，過幾週回頭看就說不出當初排除過什麼。這種時候把診斷寫成 `records/experiments/diagnoses/<diagnosis-id>.json`：
+
+- `deterministic_facts`：從紀錄讀出來的事實，每條都要 `source_ref`。說不出來源的就是推測，該放另一欄。
+- `hypotheses`：你的推測，每個標一種失敗分類與把握程度。
+- `excluded_classes`：已經排除的分類與排除依據。
+- `cheapest_next_test.distinguishes`：這個測試能分開哪幾個 `hypotheses.id`。
+
+兩欄分開的用處是：讀的人一眼分得出哪些是已知、哪些是猜的。混寫的話，猜測會隨著時間被當成事實。
+
+`experiment_records validate` 會擋下幾件事：`distinguishes` 指到不存在的假設（「能分辨假設」不能只是一句宣稱）、`deterministic_facts` 的 ref 解析不到，以及在沒排除 `execution`／`data`／`metric`／`confound`／`insufficient_power` 之前就判 `hypothesis_refuted`——假說被推翻是正式結論，不是最後的兜底選項。

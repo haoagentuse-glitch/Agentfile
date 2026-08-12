@@ -1,0 +1,62 @@
+{
+  "diagnosis_id": "chunk-overlap-confounded",
+  "experiment_id": "rag-chunk-overlap",
+  "diagnosed_at": "2026-01-06T14:20:00Z",
+  "subject": {
+    "kind": "comparison",
+    "ref": "records/experiments/comparisons/chunk-overlap-main.json"
+  },
+  "deterministic_facts": [
+    {
+      "fact": "comparison 的 confounded 為 true",
+      "source_ref": "records/experiments/comparisons/chunk-overlap-main.json",
+      "locator": "confounded"
+    },
+    {
+      "fact": "judge_prompt 在兩次執行之間從 answer-grader@4 變成 answer-grader@5，且它列在 Contract 的 controlled_variables 裡",
+      "source_ref": "records/experiments/comparisons/chunk-overlap-main.json",
+      "locator": "comparability.dimensions.judge_prompt"
+    },
+    {
+      "fact": "recall_at_10 的 computed 為 false，沒有可引用的差異數字",
+      "source_ref": "records/experiments/comparisons/chunk-overlap-main.json",
+      "locator": "metrics.recall_at_10.computed"
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "h-judge",
+      "failure_class": "confound",
+      "statement": "0.62 到 0.68 的提升整段或部分來自評分器換版，不是切塊重疊",
+      "confidence": "high",
+      "discriminating_observation": "用 answer-grader@4 重跑 treatment，提升消失或大幅縮小"
+    },
+    {
+      "id": "h-partial",
+      "failure_class": "confound",
+      "statement": "提升部分來自切塊重疊、部分來自評分器換版，兩者的比例目前無法拆開",
+      "confidence": "medium",
+      "discriminating_observation": "用舊版評分器重跑後仍有部分提升留下"
+    }
+  ],
+  "excluded_classes": [
+    { "failure_class": "execution", "reason": "兩個 run 的 status 都是 completed，沒有 failure 區塊", "source_ref": "records/experiments/runs/overlap-main-treatment.json" },
+    { "failure_class": "data", "reason": "dataset 與 evaluation_set 兩個維度都判 PASS", "source_ref": "records/experiments/comparisons/chunk-overlap-main.json" },
+    { "failure_class": "metric", "reason": "recall_at_10 的 definition_consistent 為 true", "source_ref": "records/experiments/comparisons/chunk-overlap-main.json" }
+  ],
+  "cheapest_next_test": {
+    "description": "用 answer-grader@4 重跑 treatment。索引不必重建，只換評分器，因此成本遠低於整條重跑。",
+    "command": "python -m rag_lab pipeline run --stage main --config records/experiments/configs/overlap-treatment.yaml --judge answer-grader@4",
+    "distinguishes": ["h-judge", "h-partial"],
+    "estimated_cost": "約 55 分鐘，不含索引建置"
+  },
+  "producer": {
+    "kind": "software_agent",
+    "name": "failure-diagnoser",
+    "model": "anthropic/claude-opus-5",
+    "prompt_id": "failure-diagnoser@1",
+    "prompt_hash": "sha256:793c5d83fec8e47402ccce9adc871b88522b07e211c48c821075b5a152586b8d",
+    "input_refs": ["records/experiments/comparisons/chunk-overlap-main.json"],
+    "created_at": "2026-01-06T14:20:00Z"
+  }
+}
