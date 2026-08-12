@@ -18,6 +18,7 @@ from experiment_records.validation import (
     validate_lifecycle_events,
     validate_lifecycle_history_candidate,
     validate_record,
+    validate_run_lineage,
     validate_schemas,
 )
 
@@ -81,6 +82,7 @@ def _all_results(targets: list[Path], layout: Any) -> list[tuple[str, str]]:
         return results
     for path in targets:
         results.extend(validate_record(path, layout))
+    results.extend(validate_run_lineage(targets, layout))
     results.extend(validate_lifecycle_events(targets, layout))
     return results
 
@@ -108,6 +110,7 @@ def _cmd_validate(target_arg: str) -> int:
         for path in targets:
             results.extend(validate_record(path, layout))
         if not resolved.is_file():
+            results.extend(validate_run_lineage(targets, layout))
             results.extend(validate_lifecycle_events(targets, layout))
 
     for level, message in results:

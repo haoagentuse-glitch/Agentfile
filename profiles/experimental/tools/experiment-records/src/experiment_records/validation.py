@@ -260,6 +260,99 @@ def _validate_lifecycle_event(
     return results
 
 
+_BUDGET_CHECKS: tuple[tuple[str, str, str], ...] = (
+    ("max_wall_clock_seconds", "duration_seconds", "牆鐘秒數"),
+    ("max_samples", "resource_usage.samples", "樣本數"),
+    ("max_cost_usd", "resource_usage.cost_usd", "花費"),
+    ("max_tokens", "resource_usage.tokens_out", "輸出 token 數"),
+)
+
+
+def _run_usage(instance: dict[str, Any], field: str) -> float | None:
+    """取 budget 對照用的實際用量；field 可以是頂層欄位或 resource_usage 底下的欄位。"""
+    head, _, tail = field.partition(".")
+    value = instance.get(head)
+    if tail:
+        value = value.get(tail) if isinstance(value, dict) else None
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def _validate_run(instance: dict[str, Any], label: str) -> list[Result]:
+    """單筆 run 的確定性檢查——不需要看其他 run 就能判定的部分。"""
+    results: list[Result] = []
+
+    # 相對「哪一次 run」再跑一次，必須說得出是哪一次。
+    if instance.get("attempt_kind") not in (None, "initial") and not instance.get("parent_run_id"):
+        results.append(("錯誤", f"{label}: attempt_kind={instance['attempt_kind']!r} 必須指定 parent_run_id"))
+    if instance.get("stage") == "replication" and not instance.get("parent_run_id"):
+        results.append(("錯誤", f"{label}: stage=replication 必須指定 parent_run_id"))
+
+    # 超出預算卻沒有中止原因，代表預算不是真的預算。
+    budget = instance.get("budget_limit")
+    if isinstance(budget, dict) and not instance.get("abort_reason"):
+        for limit_field, usage_field, noun in _BUDGET_CHECKS:
+            limit = budget.get(limit_field)
+            usage = _run_usage(instance, usage_field)
+            if isinstance(limit, (int, float)) and usage is not None and usage > limit:
+                results.append((
+                    "錯誤",
+                    f"{label}: {noun} {usage} 超過 budget_limit.{limit_field}={limit}，但沒有 abort_reason",
+                ))
+
+    # 完成的 run 若既沒固定種子、也沒列出不確定性來源，就無法判斷它能不能重現。
+    if (
+        instance.get("status") == "completed"
+        and instance.get("seed") is None
+        and not instance.get("nondeterminism_sources")
+    ):
+        results.append(("警告", f"{label}: 未宣告 seed，也未列出 nondeterminism_sources"))
+
+    return results
+
+
+def validate_run_lineage(paths: list[Path], layout: ProjectLayout) -> list[Result]:
+    """跨檔 lineage 檢查：parent_run_id 必須指到存在的 run，且不得成環。
+
+    指不到的 parent 會讓 replication 與 retry 的來源無法回溯；成環則讓 lineage 無法收斂。
+    兩者都是結構問題，不是語意判斷。
+    """
+    runs: dict[str, str] = {}
+    parents: dict[str, str] = {}
+    for path in paths:
+        if record_type_for(path) != "runs":
+            continue
+        try:
+            instance = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        run_id = instance.get("run_id") if isinstance(instance, dict) else None
+        if not isinstance(run_id, str):
+            continue
+        runs[run_id] = _label(path, layout)
+        parent = instance.get("parent_run_id")
+        if isinstance(parent, str):
+            parents[run_id] = parent
+
+    results: list[Result] = []
+    for run_id, parent in sorted(parents.items()):
+        label = runs[run_id]
+        if parent == run_id:
+            results.append(("錯誤", f"{label}: parent_run_id 指向自己"))
+            continue
+        if parent not in runs:
+            results.append(("錯誤", f"{label}: parent_run_id {parent!r} 指向不存在的 run"))
+            continue
+        seen = {run_id}
+        cursor = parent
+        while cursor in parents:
+            if cursor in seen:
+                results.append(("錯誤", f"{label}: parent_run_id 形成循環 lineage"))
+                break
+            seen.add(cursor)
+            cursor = parents[cursor]
+    return results
+
+
 def _validate_derivation(instance: dict[str, Any], label: str) -> list[Result]:
     """Research Question Certificate 的確定性硬檢查。
 
@@ -421,6 +514,8 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
         elif record_type == "definitions":
             results.extend(_validate_derivation(instance, label))
             results.extend(_validate_contract_configs(instance, label, layout))
+        elif record_type == "runs":
+            results.extend(_validate_run(instance, label))
 
     for field_label, ref_value in _extract_refs(schema, instance, layout):
         try:
