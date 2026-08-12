@@ -338,7 +338,7 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 
 ## 實作清單
 
-### P0：先補斷鏈處，維持 KISS
+### P0：閉合生命週期契約與研究資料結構
 
 1. **定義 Experiment Lifecycle 狀態與合法轉移。** 驗收：非法跳過 pilot／comparison／audit 會被拒絕；`inconclusive`、`confounded`、`failed` 是正式終態。
 2. **擴充 experiment definition 的 `derivation`。** 驗收：certificate 能表示 primitives、assumptions、mechanism、tension、falsifier、minimal test、failure update、source refs；`experiment-lint` 有 deterministic hard checks。
@@ -348,7 +348,7 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 6. **強化 claim→evidence audit。** 驗收：每個 claim 可逐項檢查 evidence existence、numeric recomputation、scope、intended-question fit、novelty status、review independence。
 7. **建立完整 RAG 貫穿式骨架 fixture。** 驗收：topic/certificate → locked definition → pilot → gate → 3 replication runs → comparison → claim → audit → review 全鏈可由 fixtures 重放；至少含 confounded、failed、inconclusive 三條反例。
 
-### P1：資料結構成立後再加入提示詞增強
+### P1：契約成立後加入提示詞與研究執行增強
 
 8. **建立少量版本化 prompt roles，而非總控 mega-prompt。** 首批只做：`question-builder`、`counterexample-reviewer`、`experiment-design-critic`、`failure-diagnoser`、`claim-writer`、`evidence-reviewer`。驗收：每個 prompt 輸出 具型別 JSON、版本與 hash 進 provenance，且無權直接改 gate 狀態。
 9. **實作 evidence-only independent review package。** 驗收：reviewer 看不到 writer 的隱藏推理，只收到 frozen contract、comparison、claim、evidence excerpts；可設定第二模型或 human-required policy。
@@ -356,7 +356,7 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 11. **建立 failure taxonomy 與最便宜 next-test 建議。** 驗收：execution、data、metric、confound、insufficient-power、hypothesis-refuted、scope-mismatch 分類不混寫；agent 建議與 deterministic facts 分欄。
 12. **Viewer 呈現研究 lineage。** 驗收：從 claim 可一路點回 comparison、runs、definition/certificate、sources/prompts；failed／inconclusive 不被隱藏。
 
-### P2：有量測證據後才考慮
+### P2：各項前置條件成立後才評估後置能力
 
 13. **候選 hypothesis ranking／pairwise tournament。** 只有當候選量已造成真實人工瓶頸才做；ranking 只安排 compute，不代表 truth。
 14. **agentic tree search／evolutionary population。** 只有 evaluator 快、rich、穩定且單線 workflow 已證實會卡 local optimum 才做。
@@ -367,7 +367,7 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 
 - 本 ADR 是研究型 Agent 實驗生命週期的唯一決策來源；原始研究報告路徑不再保留。
 - 提示詞負責形成候選、反例、診斷與研究主張；Schema、路徑、雜湊、比較、預算與狀態轉移由確定性程式負責。
-- 實作順序固定為 P0 契約閉合、P1 研究資料結構、P2 提示詞增強；沒有量測證據前不建立自主協調器。
+- 實作順序固定為 P0 生命週期契約與研究資料結構閉合、P1 提示詞與研究執行增強、P2 各項前置條件成立後才評估的後置能力；沒有量測證據前不建立自主協調器。
 - Viewer 維持唯讀，只呈現既有紀錄與診斷，不補寫或修復來源資料。
 
 ## 被拒絕的方案
