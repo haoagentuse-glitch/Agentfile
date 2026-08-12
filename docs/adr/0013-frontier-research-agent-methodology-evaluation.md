@@ -356,6 +356,21 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 11. **建立 failure taxonomy 與最便宜 next-test 建議。** 驗收：execution、data、metric、confound、insufficient-power、hypothesis-refuted、scope-mismatch 分類不混寫；agent 建議與 deterministic facts 分欄。
 12. **Viewer 呈現研究 lineage。** 驗收：從 claim 可一路點回 comparison、runs、definition/certificate、sources/prompts；failed／inconclusive 不被隱藏。
 
+#### Viewer 下一輪代辦（未實作）
+
+依賴順序固定如下。先證明 adapter 邊界，再調整資訊架構，最後完成通用 Records rendering。
+
+1. **實作 manifest-driven generic JSON。** 新增第二份與 canonical records 不同的 schema fixture。只新增 manifest 與 fixture mapping，不修改 Vue，也不修改 canonical model。驗收：第二份 fixture 可由同一個 `loadProject(root)` 載入，並進入同一套 Overview、Compare、Records 與 Detail 流程；測試明確證明 adapter 選擇、dot-path mapping、缺欄位錯誤和 project-root containment。
+2. **重構 Viewer UI。** Sidebar 固定為 `Overview`、`Compare`、`Records`、`Artifacts / Detail`。單筆 Detail 使用右側 drawer，不新增大量獨立頁面。視覺採 IDE／terminal 與 Solarized Light 類風格。驗收：四個入口、tabs、table、chart、drawer、loading、empty、error 與 partial-data 狀態互動一致；鍵盤焦點、選取狀態與窄視窗仍可使用。
+3. **讓 Records View 成為真正 generic。** columns、metrics、format、unit、排序、篩選與 record detail 由 manifest 和 canonical model 提供的 metadata 決定。Vue 不得依賴 Agentfile 固定欄位名稱。驗收：canonical fixture 與第二份 generic fixture 使用同一組 Records components；新增欄位或 metric 只改資料與 manifest，不改 Vue；缺值、未知型別和大型欄位有明確 fallback rendering。
+
+非目標：
+
+- 不在這輪加入 CSV、Parquet 或 DuckDB adapter。
+- 不建立新的設計系統或通用 plugin framework。
+- 不改 Viewer 的唯讀邊界。
+- 不把 Viewer 納入 `apply.sh`；它仍是獨立 Windows 原生工具。
+
 ### P2：各項前置條件成立後才評估後置能力
 
 13. **候選 hypothesis ranking／pairwise tournament。** 只有當候選量已造成真實人工瓶頸才做；ranking 只安排 compute，不代表 truth。
