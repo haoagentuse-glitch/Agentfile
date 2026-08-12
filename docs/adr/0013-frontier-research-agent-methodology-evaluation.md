@@ -356,20 +356,30 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 11. **建立 failure taxonomy 與最便宜 next-test 建議。** 驗收：execution、data、metric、confound、insufficient-power、hypothesis-refuted、scope-mismatch 分類不混寫；agent 建議與 deterministic facts 分欄。
 12. **Viewer 呈現研究 lineage。** 驗收：從 claim 可一路點回 comparison、runs、definition/certificate、sources/prompts；failed／inconclusive 不被隱藏。
 
-#### Viewer 下一輪代辦（未實作）
+#### Viewer 現況與剩餘工作
 
-依賴順序固定如下。先證明 adapter 邊界，再調整資訊架構，最後完成通用 Records rendering。
+資訊架構由 [ADR 0012](0012-experiment-viewer-toolchain.md) 擁有。頂層導覽維持 `Overview`、`Experiments`、`Records`、`Diagnostics`。`Compare` 與 `Artifacts` 維持在 experiment workspace。若要改變這個結構，必須先用新 ADR 取代 ADR 0012。
 
-1. **實作 manifest-driven generic JSON。** 新增第二份與 canonical records 不同的 schema fixture。只新增 manifest 與 fixture mapping，不修改 Vue，也不修改 canonical model。驗收：第二份 fixture 可由同一個 `loadProject(root)` 載入，並進入同一套 Overview、Compare、Records 與 Detail 流程；測試明確證明 adapter 選擇、dot-path mapping、缺欄位錯誤和 project-root containment。
-2. **重構 Viewer UI。** Sidebar 固定為 `Overview`、`Compare`、`Records`、`Artifacts / Detail`。單筆 Detail 使用右側 drawer，不新增大量獨立頁面。視覺採 IDE／terminal 與 Solarized Light 類風格。驗收：四個入口、tabs、table、chart、drawer、loading、empty、error 與 partial-data 狀態互動一致；鍵盤焦點、選取狀態與窄視窗仍可使用。
-3. **讓 Records View 成為真正 generic。** columns、metrics、format、unit、排序、篩選與 record detail 由 manifest 和 canonical model 提供的 metadata 決定。Vue 不得依賴 Agentfile 固定欄位名稱。驗收：canonical fixture 與第二份 generic fixture 使用同一組 Records components；新增欄位或 metric 只改資料與 manifest，不改 Vue；缺值、未知型別和大型欄位有明確 fallback rendering。
+已完成：
+
+- **manifest-driven generic JSON。** `viewer/experiment-viewer/src/lib/manifest-adapter.ts` 與 `viewer/experiment-viewer/src/lib/dot-path.ts` 已實作受限 mapping。`viewer/experiment-viewer/tests/fixtures/generic/` 使用 `meta.id`、`meta.experiment` 與 `results.metrics` 等不同 schema。`src/lib/__tests__/manifest-adapter.test.ts`、`dot-path.test.ts` 與 `project-loader.test.ts` 已驗證 adapter 選擇、mapping、缺欄位與錯誤 manifest。`src-tauri/src/paths.rs` 的測試驗證 `..` traversal、絕對路徑與 symlink containment。
+- **Viewer UI 資訊架構與視覺。** 已依 ADR 0012 實作頂層導覽與 experiment workspace tabs。`viewer/experiment-viewer/src/components/Drawer.vue` 提供右側 Detail。`viewer/experiment-viewer/src/styles/theme.css` 提供 Solarized Light 衍生配色、等寬字體與 IDE／terminal 類風格。
+- **Records 動態欄位。** `viewer/experiment-viewer/src/views/RecordsView.vue` 已依 `viewer.json` 的 `collections.*.columns` 建立欄位。新增 dot-path 欄位不需修改 Vue。
+
+剩餘工作依序如下：
+
+1. **補 generic value rendering。** 建立共用 value formatter。它必須處理缺值、純量、object、array 與長字串。object 與 array 不得顯示為 `[object Object]`。長字串必須有截斷與完整內容入口。排序、篩選與分組不得因未知型別拋出例外。
+2. **補 Vue 元件測試。** 為 `DataTable.vue` 與 `RecordsView.vue` 建立測試。驗收範圍包含排序、篩選、分組、選取、Drawer、缺值、object、array 與長字串。目前 `src/lib/__tests__/` 的資料層測試不能取代元件測試。
+3. **補 generic fixture UI 貫穿驗收。** 用 `tests/fixtures/generic/` 驗證 manifest 專案可經 `loadProject(root)` 進入現有 Overview、Experiments、Records 與 experiment workspace。這項驗收不得修改 canonical model，也不得為第二份 schema 建立專用 Vue 元件。
+
+研究 lineage 仍由本節上方第 12 項追蹤。不要在此重複建立第二份代辦。
 
 非目標：
 
 - 不在這輪加入 CSV、Parquet 或 DuckDB adapter。
 - 不建立新的設計系統或通用 plugin framework。
 - 不改 Viewer 的唯讀邊界。
-- 不把 Viewer 納入 `apply.sh`；它仍是獨立 Windows 原生工具。
+- 不把 Viewer 納入 `apply.sh`。它仍是獨立 Windows 原生工具。
 
 ### P2：各項前置條件成立後才評估後置能力
 
