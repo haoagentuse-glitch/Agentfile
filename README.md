@@ -143,7 +143,7 @@ symlink 在 Windows 原生環境不可靠；WSL、macOS、Linux 正常。
 - 注入 `metadata.source` / `metadata.license`
 - 上游要求跑 `/setup-matt-pocock-skills` 的地方，改指向本包交付的 `docs/agents/issue-tracker.md`
 
-本包自有：`project-docs` `rule-check` `zh-lint`（core）、`project-bootstrap` `api-contract`（software profile）
+本包自有：`asd-ste100` `project-docs` `rule-check` `zh-lint`（core）、`project-bootstrap` `api-contract`（software profile）
 
 另從 [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT，授權全文在 `LICENSES/`）**裁切改編**（不是逐字保留）三個技能到 `profiles/experimental/skills/`：`experiment-design`（最小修改）、`evidence-review`（裁自上游 `literature-research`，砍掉找論文缺口的部分，換成本包的 Research Gate 輸出格式）、`diagnose-experiment`（裁自上游 `debug`，五步紀律整段保留，探測清單跟 smoke 對照表從 ML 訓練專屬泛化成 RAG／agent 架構／模擬／最佳化與演算法比較都適用的 failure taxonomy，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)）。取捨依據跟哪些段落改了什麼，記在 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)，不在這裡重述。`experiment-lint`、`compare-runs`、`claim-audit`、`compute-gate` 是本包自寫的，不是 vendor 來的——`compare-runs` 只借了 phd-skills/compare 兩條規則的精神（見 [ADR 0007](docs/adr/0007-compare-runs-design.md)），`claim-audit` 只借了 ARA 論文的 claim→experiment→evidence 綁定概念（ARA 本身沒有可 vendor 的實作，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)），`compute-gate` 只借了 Scholar Loop 的分級漏斗形狀（不碰它的自動決策機制，見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)、[ADR 0009](docs/adr/0009-compute-gate-design.md)）。判定邏輯與輸出格式都是自己設計。
 
