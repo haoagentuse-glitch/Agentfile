@@ -1,6 +1,14 @@
-MIT License
+# 第三方授權
 
-Copyright (c) 2026 Fatih Cagatay Akyon
+本專案包含下列 MIT 授權內容。
+
+| 來源 | Copyright |
+|---|---|
+| [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd) | Copyright (c) 2026 Ayoub Ghriss |
+| [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills) | Copyright (c) 2026 Fatih Cagatay Akyon |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | Copyright (c) 2026 Matt Pocock |
+
+## MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

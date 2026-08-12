@@ -15,7 +15,7 @@ profiles/experimental/ 實驗型專案（RAG、agent 架構、ML/DL、模擬、�
                         最佳化、演算法比較）特化規則與 skill
 ```
 
-`core/AGENTS.md` + `profiles/<active>/AGENTS.md` 串接成目標專案唯一一份 `AGENTS.md`；`.claude/settings.json` 同樣是 core + profile 合併；`profiles/<active>/records/` 的 schema 投影成目標的 `records/`。機制見 [ADR 0005](docs/adr/0005-core-profile-isolation.md)；experimental profile 三個 skill（`evidence-review`／`experiment-design`／`experiment-lint`）的 upstream 取捨見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)。
+`core/AGENTS.md` + `profiles/<active>/AGENTS.md` 串接成目標專案唯一一份 `AGENTS.md`；`.claude/settings.json` 同樣是 core + profile 合併；`profiles/<active>/records/` 的 schema 投影成 `records/`；profile tools 投影成 `.agents/tools/`。機制見 [ADR 0005](docs/adr/0005-core-profile-isolation.md)；experimental profile 三個 skill（`evidence-review`／`experiment-design`／`experiment-lint`）的 upstream 取捨見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)。
 
 ## 套用
 
@@ -25,7 +25,7 @@ profiles/experimental/ 實驗型專案（RAG、agent 架構、ML/DL、模擬、�
 
 不帶 `--profile` 預設 `software`。加 `--dry-run` 先看會做什麼。已存在的檔案一律跳過，可重複執行。
 
-它做的事：`git init` → skills 投影（core + profile 聯集）→ `.claude/` 設定（core + profile 合併）→ `AGENTS.md`（core + profile 串接）/ `CLAUDE.md` → `docs/agents/` 議題追蹤設定 → `records/`（profile 擁有的 schema，沒有就跳過）→ `LICENSES/` → `.gitignore`（core + profile 串接）。
+它做的事：`git init` → skills 與 profile tools 投影→ `.claude/` 設定（core + profile 合併）→ `AGENTS.md`（core + profile 串接）/ `CLAUDE.md` → `docs/agents/` 議題追蹤設定 → `records/`（profile 擁有的 schema，沒有就跳過）→ `docs/THIRD_PARTY_LICENSES.md` → `.gitignore`（core + profile 串接）。
 
 也可以用來把既有專案納入本規範。
 
@@ -46,7 +46,7 @@ profiles/experimental/ 實驗型專案（RAG、agent 架構、ML/DL、模擬、�
 /handoff      交接給下一個 session      寫在 OS 暫存目錄
 ```
 
-`experimental` profile 的日常換成：`/evidence-review`（重大選型前先看證據）→ `/experiment-design`（凍結 Experiment Contract）→ `experiment-lint`（確定性檢查 Contract 可不可識別，通過才 lock）→ 跑 → 記錄進 `records/experiments/runs/` → `compare-runs`（確定性判定可比較性，再算指標差異，取捨依據見 [ADR 0007](docs/adr/0007-compare-runs-design.md)）→ `claim-audit`（機械核對數字跟引用，agent 判斷結論有沒有超出證據範圍，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)）。要不要升到下一個 Compute Gate 等級（L0-L5）用 `compute-gate` 技能機械判定，規則怎麼翻成可比對的參數見 [ADR 0009](docs/adr/0009-compute-gate-design.md)。結果不好時先用 `diagnose-experiment`（探測 → 假設 → smoke → 控制變因 → 下結論，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)），不得直接調參。細節見 `profiles/experimental/AGENTS.md`。
+`experimental` profile 的日常換成：`/evidence-review`（重大選型前先看證據）→ `/experiment-design`（凍結 Experiment Contract）→ `experiment-lint`（呼叫 canonical validator，通過才 lock）→ 跑 → 記錄進 `records/experiments/runs/` → `compare-runs`（確定性判定可比較性，再算指標差異，取捨依據見 [ADR 0007](docs/adr/0007-compare-runs-design.md)）→ `claim-audit`（機械核對數字跟引用，agent 判斷結論有沒有超出證據範圍，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)）。要不要升到下一個 Compute Gate 等級（L0-L5）用 `compute-gate` 技能機械判定，規則怎麼翻成可比對的參數見 [ADR 0009](docs/adr/0009-compute-gate-design.md)。結果不好時先用 `diagnose-experiment`（探測 → 假設 → smoke → 控制變因 → 下結論，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)），不得直接調參。細節見 `profiles/experimental/AGENTS.md`。
 
 系統長相改變時另外跑 `/project-docs`；詞彙或架構決策改變時跑 `/domain-modeling`；HTTP API 動到契約時跑 `/api-contract`。
 
@@ -115,6 +115,7 @@ memsearch search "為什麼契約用 spec-first"
 ```
 core/skills/<name>/              core skill canonical source
 profiles/<name>/skills/<name>/   該 profile 特化 skill canonical source
+profiles/<name>/tools/<name>/    該 profile 確定性工具 canonical source
 .claude/skills                   → ../.agents/skills（symlink，聯集後的投影，這包自己也吃這套機制）
 ```
 
@@ -122,6 +123,7 @@ profiles/<name>/skills/<name>/   該 profile 特化 skill canonical source
 
 ```
 .agents/skills/       真實檔案（core + active profile 聯集），Codex 直接掃這裡
+.agents/tools/        active profile 的確定性工具
 .claude/skills        → ../.agents/skills（symlink）
 ```
 
@@ -131,7 +133,7 @@ symlink 在 Windows 原生環境不可靠；WSL、macOS、Linux 正常。
 
 ## vendored skills
 
-以下取自 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT，授權全文在 `LICENSES/`），逐字保留：
+以下取自 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT，授權全文在 [`docs/THIRD_PARTY_LICENSES.md`](docs/THIRD_PARTY_LICENSES.md)），逐字保留：
 
 - **core**（`core/skills/`）：`grilling` `grill-me` `grill-with-docs` `writing-for-agents` `domain-modeling` `handoff`
 - **software profile**（`profiles/software/skills/`）：`codebase-design` `to-spec` `to-tickets` `tdd` `implement` `code-review`
@@ -145,7 +147,7 @@ symlink 在 Windows 原生環境不可靠；WSL、macOS、Linux 正常。
 
 本包自有：`asd-ste100` `project-docs` `rule-check` `zh-lint`（core）、`project-bootstrap` `api-contract`（software profile）
 
-另從 [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT，授權全文在 `LICENSES/`）**裁切改編**（不是逐字保留）三個技能到 `profiles/experimental/skills/`：`experiment-design`（最小修改）、`evidence-review`（裁自上游 `literature-research`，砍掉找論文缺口的部分，換成本包的 Research Gate 輸出格式）、`diagnose-experiment`（裁自上游 `debug`，五步紀律整段保留，探測清單跟 smoke 對照表從 ML 訓練專屬泛化成 RAG／agent 架構／模擬／最佳化與演算法比較都適用的 failure taxonomy，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)）。取捨依據跟哪些段落改了什麼，記在 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)，不在這裡重述。`experiment-lint`、`compare-runs`、`claim-audit`、`compute-gate` 是本包自寫的，不是 vendor 來的——`compare-runs` 只借了 phd-skills/compare 兩條規則的精神（見 [ADR 0007](docs/adr/0007-compare-runs-design.md)），`claim-audit` 只借了 ARA 論文的 claim→experiment→evidence 綁定概念（ARA 本身沒有可 vendor 的實作，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)），`compute-gate` 只借了 Scholar Loop 的分級漏斗形狀（不碰它的自動決策機制，見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)、[ADR 0009](docs/adr/0009-compute-gate-design.md)）。判定邏輯與輸出格式都是自己設計。
+另從 [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT，授權全文在 [`docs/THIRD_PARTY_LICENSES.md`](docs/THIRD_PARTY_LICENSES.md)）**裁切改編**（不是逐字保留）三個技能到 `profiles/experimental/skills/`：`experiment-design`（最小修改）、`evidence-review`（裁自上游 `literature-research`，砍掉找論文缺口的部分，換成本包的 Research Gate 輸出格式）、`diagnose-experiment`（裁自上游 `debug`，五步紀律整段保留，探測清單跟 smoke 對照表從 ML 訓練專屬泛化成 RAG／agent 架構／模擬／最佳化與演算法比較都適用的 failure taxonomy，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)）。取捨依據跟哪些段落改了什麼，記在 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)，不在這裡重述。`experiment-lint`、`compare-runs`、`claim-audit`、`compute-gate` 是本包自寫的，不是 vendor 來的——`compare-runs` 只借了 phd-skills/compare 兩條規則的精神（見 [ADR 0007](docs/adr/0007-compare-runs-design.md)），`claim-audit` 只借了 ARA 論文的 claim→experiment→evidence 綁定概念（ARA 本身沒有可 vendor 的實作，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)），`compute-gate` 只借了 Scholar Loop 的分級漏斗形狀（不碰它的自動決策機制，見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)、[ADR 0009](docs/adr/0009-compute-gate-design.md)）。判定邏輯與輸出格式都是自己設計。
 
 ### 更新 vendored skill
 
@@ -161,7 +163,7 @@ diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/
 
 - **加規則** → 跨所有 profile 都成立就改 `core/AGENTS.md`；只有某個 profile 需要就改 `profiles/<name>/AGENTS.md`。不要複製到別的檔案。
 - **加能力** → 通用就在 `core/skills/<name>/SKILL.md` 新增，某個 profile 特有就放 `profiles/<name>/skills/<name>/SKILL.md`。先確認沒有既有 skill 已經涵蓋——同一能力不得存在兩份，也不得同一份重複出現在 core 跟某個 profile 裡。
-- **從別處借 skill** → vendor 進對應層的 `skills/`，出處寫進 `metadata`，授權放 `LICENSES/`。
+- **從別處借 skill** → vendor 進對應層的 `skills/`，出處寫進 `metadata`，授權加入 `docs/THIRD_PARTY_LICENSES.md`。
 - **加文件骨架** → 通用放 `core/.claude/templates/`，profile 特化放 `profiles/<name>/.claude/templates/`。
 - **這台機器/這個人專屬的規範覆寫** → 專案根目錄 `CLAUDE.local.md`，Claude Code 原生機制，已在 `.gitignore` 排除。Codex 目前沒有對應機制。
 
@@ -170,3 +172,5 @@ diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/
 ## 規範
 
 見 [AGENTS.md](AGENTS.md)。這包自己也遵守它。
+
+第三方授權請參閱 [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md)

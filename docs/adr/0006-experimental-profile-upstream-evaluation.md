@@ -13,7 +13,7 @@ Phase B 要做 evidence-review、experiment-design、experiment-lint 三個 skil
   - `launch` 的執行前檢查清單（跟參考設定的差異比對、run 命名規則、路徑存在性檢查、監控設定、預估完成時間）跟關機清理順序（本機檢查點 → 遠端產物 → 追蹤器裡的 run 記錄 → 排程器預約，四步驟依序清）——該收進未來的 `pilot-planning`／`compute-gate` skill。
   - 兩者都掛在 phd-skills 自己的 Claude Code Stop hook 上（靠特定訊號觸發自動路由），這部分不引入——我們不裝 hook，這包的「optional 工具不做成 mandatory lifecycle」原則。
 
-授權：MIT，全文放 `LICENSES/fcakyon-phd-skills-MIT.txt`。
+授權：MIT，全文收錄於 [`docs/THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md)。
 
 ## ARA（Agent-Native Research Artifact，arXiv 2604.24658）—— 只借概念，沒有東西可以 vendor
 
@@ -38,6 +38,6 @@ Phase B 要做 evidence-review、experiment-design、experiment-lint 三個 skil
 |---|---|
 | `experiment-design` | vendor `phd-skills/experiment-design`，加輸出 Contract 檔案 + 串 lint |
 | `evidence-review` | vendor `phd-skills/literature-research` 的搜尋方法論 + citation integrity，砍掉缺口分析部分，換成 Research Gate 輸出格式 |
-| `experiment-lint` | 自寫，確定性 script + JSON Schema，不是 prompt skill——能機械判定的規則（必填欄位、baseline／treatment 是否有未宣告的差異）不交給 LLM 自由判斷，SKILL.md 只負責觸發跟解釋結果 |
+| `experiment-lint` | SKILL.md 只負責觸發與解釋結果。機械規則已收斂到 `.agents/tools/experiment-records` 的 canonical CLI。舊獨立 script 已移除，避免兩套 Schema validator。 |
 
 `compare-runs`（Phase C）借 `compare` 的同一 epoch 對齊規則；`pilot-planning`／`compute-gate`（Phase C）借 `launch` 的執行前檢查清單跟 Scholar Loop 的初篩→驗證→完整輪形狀。都不是這輪的範圍。

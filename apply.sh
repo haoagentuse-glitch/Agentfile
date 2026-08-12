@@ -154,8 +154,14 @@ copy_tree "$PACK/core/.claude/templates/agents" "$TARGET/docs/agents" "docs/agen
 # definitions/runs 這類使用者產生的內容不預建，只投影 schema 這種本包自己 authored 的固定參照。
 copy_tree "$PACK/profiles/$PROFILE/records" "$TARGET/records" "records/"
 
-# 8. 授權：vendored skill 為 MIT，需隨行
-copy_tree "$PACK/LICENSES" "$TARGET/LICENSES" "LICENSES/"
+# 8. 第三方授權：單一文件隨專案交付。
+if [[ -e "$TARGET/docs/THIRD_PARTY_LICENSES.md" ]]; then
+  echo "跳過（已存在）：docs/THIRD_PARTY_LICENSES.md"
+else
+  echo "複製：docs/THIRD_PARTY_LICENSES.md"
+  run mkdir -p "$TARGET/docs"
+  run cp "$PACK/docs/THIRD_PARTY_LICENSES.md" "$TARGET/docs/THIRD_PARTY_LICENSES.md"
+fi
 
 # 9. .gitignore：core + profile 串接組裝
 concat_file "$PACK/core/.claude/templates/gitignore.base" "$PACK/profiles/$PROFILE/.claude/templates/gitignore.base" "$TARGET/.gitignore" ".gitignore"
