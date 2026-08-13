@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "run-envelope.schema.json",
   "title": "Run Envelope",
-  "description": "所有 run 共同固定的欄位。experiment type 特有的量測值放 metrics 底下，格式由 metric-definition.schema.json 描述的各個 metric 自行決定。Append-only：跑錯了標 invalid，不刪除、不改寫既有 run。",
+  "description": "所有 run 共同固定的欄位。experiment type 特有的量測值放 metrics 底下，格式由 metric-definition.schema.json 描述的各個 metric 自行決定。Append-only：跑錯了標 invalid，不刪除、不改寫既有 run。跑失敗也是正式結果，填 failure 區塊，不得用空 metrics 偽裝成功。",
   "type": "object",
   "required": [
     "run_id", "experiment_id", "experiment_type", "created_at",
@@ -13,7 +13,25 @@
     "experiment_id": { "type": "string" },
     "experiment_type": { "type": "string" },
     "created_at": { "type": "string", "format": "date-time" },
+    "stage": {
+      "type": "string",
+      "enum": ["pilot", "tune", "main", "ablation", "replication", "diagnostic"],
+      "description": "這次 run 在算力階梯上的位置。分階段是為了讓便宜的測試先排除錯誤與沒希望的方向，不是為了建通用樹狀搜尋"
+    },
+    "parent_run_id": {
+      "type": "string",
+      "description": "這次 run 衍生自哪一次 run。replication、retry 與 ablation 靠它組成 lineage，不需要另建 tree framework"
+    },
+    "attempt_kind": {
+      "type": "string",
+      "enum": ["initial", "retry", "replication", "ablation_variant", "diagnostic_probe"],
+      "description": "相對 parent_run_id 這次是什麼性質的再跑一次"
+    },
     "code_commit": { "type": "string" },
+    "dirty_worktree": {
+      "type": "boolean",
+      "description": "true 代表 code_commit 不足以重現這次 run——工作目錄有未提交的變更"
+    },
     "dataset_version": { "type": "string" },
     "config_hash": {
       "type": "string",
@@ -21,8 +39,58 @@
     },
     "config_ref": {
       "type": "string",
+      "format": "project-ref",
       "description": "指向這次 run 實際使用的設定檔路徑，供 compare-runs 讀取內容做逐欄位可比較性檢查；不填的話 compare-runs 只能靠 config_hash 判斷有沒有差異，不能指出差在哪一個欄位"
     },
+    "data_identity": {
+      "type": "object",
+      "description": "這次 run 實際吃到的資料身分。key 是資料角色——dataset、evaluation_set、corpus_snapshot 是常見角色，其他角色直接加 key，不必為每種資料在最外層開新欄位",
+      "properties": {
+        "dataset": { "$ref": "#/$defs/dataIdentity" },
+        "evaluation_set": { "$ref": "#/$defs/dataIdentity" },
+        "corpus_snapshot": { "$ref": "#/$defs/dataIdentity" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/dataIdentity" }
+    },
+    "components": {
+      "type": "object",
+      "description": "pipeline 各個可替換零件的身分。key 是角色——retriever、reranker、generator、evaluator、embedding_model、index_build 都是常見角色。prompt 是最常被當成隱藏設定的東西，所以 prompt_id 與 prompt_hash 放在這裡，讓它進得了 config diff",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "version": { "type": "string" },
+          "model": { "type": "string" },
+          "config_hash": { "type": "string" },
+          "prompt_id": { "type": "string" },
+          "prompt_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "temperature": { "type": "number", "minimum": 0 },
+          "tool_policy": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "seed": {
+      "type": ["integer", "null"],
+      "description": "隨機種子。真的沒有種子可固定時填 null，並在 nondeterminism_sources 明列不確定性來源"
+    },
+    "nondeterminism_sources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "無法由 seed 固定的不確定性來源，例如 API 取樣、平行歸約順序、外部服務版本"
+    },
+    "command": {
+      "type": "string",
+      "description": "重現這次 run 的單一可複製指令。終端是傳輸層，不是儲存層——跑過但沒有名字的操作不算可重現"
+    },
+    "environment": {
+      "type": "string",
+      "description": "執行環境摘要，例如 OS、硬體、runtime 版本"
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
     "metric_definitions": {
       "type": "object",
       "description": "key 是 metric 名稱，value 是這次 run 計算該 metric 時實際用的 metric-definition 檔案路徑或內容 hash；用來偵測兩個 run 是不是用同一套算法算出同名指標",
@@ -42,7 +110,52 @@
       "type": "string",
       "description": "status 為 invalid 時必填——記錄 dead end 的原因，不是刪掉重跑"
     },
-    "duration_seconds": { "type": "number", "minimum": 0 },
+    "failure": {
+      "type": "object",
+      "description": "跑失敗的結構化紀錄。分類與確定性事實分開：class 與 phase 是給後續分析用的具名分類，不是自由敘述",
+      "required": ["class", "phase"],
+      "properties": {
+        "class": { "$ref": "failure-taxonomy.schema.json#/$defs/failureClass" },
+        "phase": { "$ref": "failure-taxonomy.schema.json#/$defs/failurePhase" },
+        "exit_code": { "type": "integer" },
+        "retriable": { "type": "boolean" },
+        "error_artifact": { "type": "string", "format": "project-ref" }
+      },
+      "additionalProperties": false
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "牆鐘耗時的唯一來源。resource_usage 不重複這個數字"
+    },
+    "resource_usage": {
+      "type": "object",
+      "description": "牆鐘耗時以外的資源消耗。牆鐘時間在 duration_seconds，不在這裡重複一份",
+      "properties": {
+        "cpu_seconds": { "type": "number", "minimum": 0 },
+        "gpu_seconds": { "type": "number", "minimum": 0 },
+        "tokens_in": { "type": "integer", "minimum": 0 },
+        "tokens_out": { "type": "integer", "minimum": 0 },
+        "cost_usd": { "type": "number", "minimum": 0 },
+        "samples": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "budget_limit": {
+      "type": "object",
+      "description": "這次 run 被授權的上限。超過上限就必須有 abort_reason，不得靜默跑完",
+      "properties": {
+        "max_wall_clock_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "max_samples": { "type": "integer", "exclusiveMinimum": 0 },
+        "max_cost_usd": { "type": "number", "exclusiveMinimum": 0 },
+        "max_tokens": { "type": "integer", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "abort_reason": {
+      "type": "string",
+      "description": "中止原因。超出 budget_limit 卻沒有這欄，代表預算不是真的預算"
+    },
     "metrics": {
       "type": "object",
       "description": "key 是 metric name，須對應到已定義的 metric-definition"
@@ -54,10 +167,28 @@
     },
     "notes": { "type": "string" }
   },
+  "$defs": {
+    "dataIdentity": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
   "allOf": [
     {
-      "if": { "properties": { "status": { "const": "invalid" } } },
+      "if": { "properties": { "status": { "const": "invalid" } }, "required": ["status"] },
       "then": { "required": ["invalid_reason"] }
+    },
+    {
+      "if": { "required": ["failure"] },
+      "then": {
+        "properties": { "status": { "const": "invalid" } },
+        "description": "有 failure 就不是成功的 run。跑失敗必須反映在 status，不得只藏在 failure 區塊裡"
+      }
     }
   ],
   "additionalProperties": false

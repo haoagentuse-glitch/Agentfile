@@ -1,0 +1,13 @@
+{
+  "run_id": "edge-invalid-run",
+  "experiment_id": "edge-exp",
+  "experiment_type": "misc",
+  "created_at": "2026-01-08T02:00:00Z",
+  "config_hash": "sha256:invalid222",
+  "schema_version": "1",
+  "baseline_run": "edge-good-run",
+  "status": "invalid",
+  "invalid_reason": "跑到一半 OOM，資料不可信，標 invalid 不刪除",
+  "metrics": {},
+  "artifacts": []
+}

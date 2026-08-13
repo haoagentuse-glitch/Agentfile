@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-rerank-depth-0006",
+  "experiment_id": "rag-rerank-depth",
+  "sequence": 6,
+  "from_state": "promoted",
+  "to_state": "main_running",
+  "occurred_at": "2026-01-07T10:00:00Z",
+  "reason": "開始完整執行",
+  "evidence_refs": []
+}

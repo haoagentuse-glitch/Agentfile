@@ -5,13 +5,21 @@ import type {
   CanonicalClaim,
   CanonicalClaimAuditResult,
   CanonicalComparison,
+  CanonicalDerivation,
+  CanonicalDiagnosis,
+  CanonicalEvidenceRef,
   CanonicalExperiment,
   CanonicalGateHistoryEntry,
   CanonicalGateState,
+  CanonicalMetricDefinition,
   CanonicalMetricDiff,
+  CanonicalProducer,
   CanonicalRun,
+  CanonicalRunFailure,
+  ClaimStatus,
   ClaimVerdict,
   GateLevel,
+  MetricDirection,
   RunStatus,
 } from "./canonical";
 
@@ -32,11 +40,76 @@ function requireField(obj: Record<string, unknown>, field: string, sourcePath: s
   return obj[field];
 }
 
-// experiment-contract.schema.json → CanonicalExperiment（runs／claims／gateState 留空，由 storage-adapter 填入）
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function list(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+// provenance.schema.json#/$defs/producer → CanonicalProducer。
+// 沒有 producer 是合法的（人手寫的紀錄不必假造一個），回 null 讓 UI 照實說「未記錄」。
+function adaptProducer(value: unknown): CanonicalProducer | null {
+  const raw = record(value);
+  if (!raw) return null;
+  return {
+    kind: String(raw.kind ?? "unknown"),
+    name: String(raw.name ?? "unknown"),
+    model: raw.model as string | undefined,
+    promptId: raw.prompt_id as string | undefined,
+    promptHash: raw.prompt_hash as string | undefined,
+    inputRefs: list(raw.input_refs).map(String),
+    toolCallsArtifact: raw.tool_calls_artifact as string | undefined,
+    createdAt: raw.created_at as string | undefined,
+  };
+}
+
+// experiment-contract.schema.json 的 derivation 區塊 → CanonicalDerivation。
+function adaptDerivation(value: unknown): CanonicalDerivation | null {
+  const raw = record(value);
+  if (!raw) return null;
+  const mechanism = record(raw.mechanism_model) ?? {};
+  return {
+    primitives: list(raw.primitives).map((item) => {
+      const p = record(item) ?? {};
+      return { id: String(p.id ?? ""), definition: String(p.definition ?? "") };
+    }),
+    assumptions: list(raw.assumptions).map((item) => {
+      const a = record(item) ?? {};
+      return {
+        id: String(a.id ?? ""),
+        statement: String(a.statement ?? ""),
+        status: String(a.status ?? "unverified"),
+      };
+    }),
+    mechanismSummary: String(mechanism.summary ?? ""),
+    mechanismVariables: list(mechanism.variables).map(String),
+    tension: String(raw.tension ?? ""),
+    falsifier: String(raw.falsifier ?? ""),
+    minimalDecisiveTest: String(raw.minimal_decisive_test ?? ""),
+    expectedObservations: list(raw.expected_observations).map(String),
+    failureUpdate: list(raw.failure_update).map((item) => {
+      const f = record(item) ?? {};
+      return {
+        when: String(f.when ?? ""),
+        updateAssumptionId: String(f.update_assumption_id ?? ""),
+        to: String(f.to ?? ""),
+      };
+    }),
+    sourceRefs: list(raw.source_refs).map(String),
+    counterexamples: list(raw.counterexamples).map(String),
+    noveltyStatus: String(raw.novelty_status ?? "unverified"),
+  };
+}
+
+// experiment-contract.schema.json → CanonicalExperiment（runs／claims／gateState／diagnoses 留空，由 canonical-adapter 填入）
 export function adaptExperimentContract(
   raw: Record<string, unknown>,
   sourcePath: string
-): Omit<CanonicalExperiment, "runs" | "claims" | "gateState"> {
+): Omit<CanonicalExperiment, "runs" | "claims" | "gateState" | "diagnoses"> {
   const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
   const question = requireField(raw, "question", sourcePath) as string;
   const hypothesis = requireField(raw, "hypothesis", sourcePath) as string;
@@ -51,6 +124,57 @@ export function adaptExperimentContract(
     contractHash: raw.contract_hash as string | undefined,
     primaryMetric,
     secondaryMetrics: (raw.secondary_metrics as string[]) ?? [],
+    derivation: adaptDerivation(raw.derivation),
+    producer: adaptProducer(raw.producer),
+    sourcePath,
+  };
+}
+
+// failure-diagnosis.schema.json → CanonicalDiagnosis
+export function adaptFailureDiagnosis(
+  raw: Record<string, unknown>,
+  sourcePath: string
+): CanonicalDiagnosis {
+  const diagnosisId = requireField(raw, "diagnosis_id", sourcePath) as string;
+  const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
+  const diagnosedAt = requireField(raw, "diagnosed_at", sourcePath) as string;
+  const subject = record(requireField(raw, "subject", sourcePath)) ?? {};
+  const nextTest = record(requireField(raw, "cheapest_next_test", sourcePath)) ?? {};
+
+  return {
+    diagnosisId,
+    experimentId,
+    diagnosedAt,
+    subject: { kind: String(subject.kind ?? ""), ref: String(subject.ref ?? "") },
+    deterministicFacts: list(raw.deterministic_facts).map((item) => {
+      const f = record(item) ?? {};
+      return {
+        fact: String(f.fact ?? ""),
+        sourceRef: String(f.source_ref ?? ""),
+        locator: f.locator as string | undefined,
+      };
+    }),
+    hypotheses: list(raw.hypotheses).map((item) => {
+      const h = record(item) ?? {};
+      return {
+        id: String(h.id ?? ""),
+        failureClass: String(h.failure_class ?? ""),
+        statement: String(h.statement ?? ""),
+        confidence: String(h.confidence ?? ""),
+        discriminatingObservation: h.discriminating_observation as string | undefined,
+      };
+    }),
+    excludedClasses: list(raw.excluded_classes).map((item) => {
+      const e = record(item) ?? {};
+      return { failureClass: String(e.failure_class ?? ""), reason: String(e.reason ?? "") };
+    }),
+    cheapestNextTest: {
+      description: String(nextTest.description ?? ""),
+      command: nextTest.command as string | undefined,
+      distinguishes: list(nextTest.distinguishes).map(String),
+      estimatedCost: nextTest.estimated_cost as string | undefined,
+    },
+    producer: adaptProducer(raw.producer),
     sourcePath,
   };
 }
@@ -77,9 +201,26 @@ export function adaptRunEnvelope(raw: Record<string, unknown>, sourcePath: strin
     baselineRun: (raw.baseline_run as string | null) ?? null,
     treatment: raw.treatment as string | undefined,
     configHash,
+    stage: raw.stage as string | undefined,
+    parentRunId: raw.parent_run_id as string | undefined,
+    attemptKind: raw.attempt_kind as string | undefined,
+    failure: adaptRunFailure(raw.failure),
     metrics: (raw.metrics as Record<string, number>) ?? {},
+    artifacts: (raw.artifacts as string[]) ?? [],
     invalidReason: raw.invalid_reason as string | undefined,
     sourcePath,
+  };
+}
+
+function adaptRunFailure(value: unknown): CanonicalRunFailure | undefined {
+  const raw = record(value);
+  if (!raw) return undefined;
+  return {
+    failureClass: String(raw.class ?? ""),
+    phase: String(raw.phase ?? ""),
+    exitCode: raw.exit_code as number | undefined,
+    retriable: raw.retriable as boolean | undefined,
+    errorArtifact: raw.error_artifact as string | undefined,
   };
 }
 
@@ -115,6 +256,7 @@ export function adaptComparisonResult(
     comparisonValid,
     confounded,
     confoundedReasons: (raw.confounded_reasons as string[]) ?? [],
+    notes: (raw.notes as string[]) ?? [],
     metrics,
     sourcePath,
   };
@@ -145,7 +287,23 @@ export function adaptClaim(raw: Record<string, unknown>, sourcePath: string): Ca
     magnitudeType: raw.magnitude_type as "absolute" | "relative" | undefined,
     scope,
     createdAt,
+    claimType: raw.claim_type as string | undefined,
+    // 沒寫 status 就是 candidate（schema 的 default）；refuted 與 inconclusive
+    // 是正式終態，載進來照實顯示，不因為不好看就過濾掉。
+    status: (raw.status as ClaimStatus) ?? "candidate",
+    supersededBy: raw.superseded_by as string | undefined,
+    evidenceRefs: list(raw.evidence_refs).map((item) => {
+      const e = record(item) ?? {};
+      return {
+        kind: String(e.kind ?? "artifact") as CanonicalEvidenceRef["kind"],
+        ref: String(e.ref ?? ""),
+        locator: e.locator as string | undefined,
+        hash: e.hash as string | undefined,
+      };
+    }),
+    producer: adaptProducer(raw.producer),
     sourcePath,
+    auditResult: null,
   };
 }
 
@@ -157,10 +315,8 @@ export function adaptClaimAuditResult(
   const claimId = requireField(raw, "claim_id", sourcePath) as string;
   const auditedAt = requireField(raw, "audited_at", sourcePath) as string;
   const mechanical = requireField(raw, "mechanical", sourcePath) as Record<string, unknown>;
-  const finalVerdict = requireField(raw, "final_verdict", sourcePath) as Exclude<
-    ClaimVerdict,
-    "pending"
-  >;
+  // scope_verdict 還是 pending 時 schema 規定不得寫 final_verdict——缺這欄不是壞資料。
+  const finalVerdict = (raw.final_verdict as ClaimVerdict | undefined) ?? "pending";
 
   if (!("mechanical_pass" in mechanical)) {
     throw new SchemaAdapterError('mechanical 底下缺少 "mechanical_pass"', sourcePath);
@@ -179,7 +335,40 @@ export function adaptClaimAuditResult(
     scopeVerdict: (raw.scope_verdict as ClaimVerdict) ?? "pending",
     scopeReasoning: raw.scope_reasoning as string | undefined,
     finalVerdict,
+    entailment: adaptVerdictAxis(raw.entailment),
+    intendedQuestionFit: adaptVerdictAxis(raw.intended_question_fit),
+    novelty: adaptNovelty(raw.novelty),
+    reviewIndependence: adaptIndependence(raw.review_independence),
+    producer: adaptProducer(raw.producer),
     sourcePath,
+  };
+}
+
+function adaptVerdictAxis(value: unknown): { verdict: string; reasoning?: string } | undefined {
+  const raw = record(value);
+  if (!raw) return undefined;
+  return { verdict: String(raw.verdict ?? ""), reasoning: raw.reasoning as string | undefined };
+}
+
+function adaptNovelty(value: unknown): { status: string; sourceRefs: string[]; reasoning?: string } | undefined {
+  const raw = record(value);
+  if (!raw) return undefined;
+  return {
+    status: String(raw.status ?? "unverified"),
+    sourceRefs: list(raw.source_refs).map(String),
+    reasoning: raw.reasoning as string | undefined,
+  };
+}
+
+function adaptIndependence(
+  value: unknown
+): { independent: boolean; reviewerKind?: string; reason?: string } | undefined {
+  const raw = record(value);
+  if (!raw) return undefined;
+  return {
+    independent: Boolean(raw.independent),
+    reviewerKind: raw.reviewer_kind as string | undefined,
+    reason: raw.reason as string | undefined,
   };
 }
 
@@ -204,4 +393,20 @@ export function adaptGateState(raw: Record<string, unknown>, sourcePath: string)
     updatedAt,
     sourcePath,
   };
+}
+
+// metric-definition.schema.json → CanonicalMetricDefinition
+// direction 是「只有 comparison_valid=true 且 metric 有方向定義才顯示 improvement/regression」
+// 這條規則唯一的資料來源——沒有這份定義就只能顯示中性的 change。
+export function adaptMetricDefinition(
+  raw: Record<string, unknown>,
+  sourcePath: string
+): CanonicalMetricDefinition {
+  const name = requireField(raw, "name", sourcePath) as string;
+  const type = requireField(raw, "type", sourcePath) as CanonicalMetricDefinition["type"];
+  const direction = requireField(raw, "direction", sourcePath) as MetricDirection;
+  const aggregation = requireField(raw, "aggregation", sourcePath) as string;
+  const implementation = requireField(raw, "implementation", sourcePath) as string;
+
+  return { name, type, direction, aggregation, implementation, sourcePath };
 }

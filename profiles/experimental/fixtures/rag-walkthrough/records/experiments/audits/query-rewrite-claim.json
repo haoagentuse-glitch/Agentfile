@@ -1,0 +1,42 @@
+{
+  "claim_id": "query-rewrite-claim",
+  "audited_at": "2026-01-08T16:00:00Z",
+  "mechanical": {
+    "reference_exists": true,
+    "comparison_valid": true,
+    "comparison_confounded": false,
+    "metric_exists": true,
+    "direction_matches": true,
+    "magnitude_matches": true,
+    "evidence_hashes_match": null,
+    "numeric_recomputed": true,
+    "mechanical_pass": true
+  },
+  "mechanical_reasons": [],
+  "entailment": {
+    "verdict": "not_entailed",
+    "reasoning": "數字本身正確，但只有單一 seed 的一次執行，沒有變異估計。0.013 的差距無法與取樣雜訊分開，因此證據推不出「改寫造成提升」。",
+    "alternative_explanations": [
+      "單次執行的取樣雜訊",
+      "評估集中少數幾筆查詢的偶然命中"
+    ]
+  },
+  "scope_verdict": "unsupported",
+  "scope_reasoning": "claim 已經誠實限定在單一 seed 的一次執行。問題不在範圍寫太寬，而在這個範圍內的證據本身不足以支持因果陳述。",
+  "intended_question_fit": {
+    "verdict": "partially_answers",
+    "reasoning": "回答的是「這次量到多少」，不是 definition.question 問的「能不能提升」。"
+  },
+  "novelty": { "status": "not_applicable" },
+  "review_independence": {
+    "independent": true,
+    "reason": "由人工審核者覆核，未使用產出這個 claim 的 prompt",
+    "reviewer_kind": "human"
+  },
+  "final_verdict": "unsupported",
+  "producer": {
+    "kind": "human",
+    "name": "reviewer-01",
+    "created_at": "2026-01-08T16:00:00Z"
+  }
+}

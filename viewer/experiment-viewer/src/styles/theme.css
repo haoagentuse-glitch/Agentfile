@@ -1,0 +1,156 @@
+/* Solarized Light 衍生色——研究儀器／IDE 工作台的視覺語言：等寬字體、緊湊密度、
+   細邊框、清楚的 focus/hover/selected，不做漸層、玻璃效果或商業 dashboard 卡片。
+   色票來源：https://ethanschoonover.com/solarized/ */
+
+:root {
+  --color-bg: #fdf6e3; /* base3 */
+  --color-bg-alt: #eee8d5; /* base2 */
+  --color-border: #d3cbb2;
+  --color-text: #657b83; /* base00 */
+  --color-text-muted: #93a1a1; /* base1 */
+  --color-heading: #073642; /* base02 */
+  --color-accent: #268bd2; /* blue */
+  --color-good: #859900; /* green */
+  --color-bad: #dc322f; /* red */
+  --color-warn: #b58900; /* yellow */
+
+  --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --radius: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-heading);
+  font-weight: 600;
+  margin: 0 0 var(--space-2) 0;
+}
+
+code {
+  font-family: var(--font-mono);
+  background: var(--color-bg-alt);
+  padding: 0 3px;
+  border-radius: var(--radius);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+th,
+td {
+  border: 1px solid var(--color-border);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--color-bg-alt);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+tbody tr:hover {
+  background: rgba(38, 139, 210, 0.08);
+  cursor: pointer;
+}
+
+tbody tr.selected {
+  background: rgba(38, 139, 210, 0.16);
+}
+
+button,
+select {
+  font-family: inherit;
+  font-size: 12px;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  color: var(--color-text);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-heading);
+}
+
+button:focus-visible,
+select:focus-visible,
+a:focus-visible,
+tr:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.errors {
+  color: var(--color-bad);
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  font-size: 11px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.badge-good {
+  color: var(--color-good);
+  border-color: var(--color-good);
+}
+
+.badge-bad {
+  color: var(--color-bad);
+  border-color: var(--color-bad);
+}
+
+.badge-warn {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}

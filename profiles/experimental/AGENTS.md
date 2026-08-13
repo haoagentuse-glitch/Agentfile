@@ -27,9 +27,32 @@
 
 每個實驗動手前用 `experiment-design` 技能凍結一份 Contract（`records/experiments/definitions/`），lock 後算 hash。改 `top_k`／模型／資料集／檢索預算／指標算法／評估集等控制變因不算同一個條件，必須開新條件或新實驗——用 `experiment-lint` 技能機械檢查這件事，不是自己讀過去覺得像就算數。
 
+Contract 的 `status` 為 `locked` 時必須有 `derivation`（研究問題憑證）。lock 是開始花算力的那一刻，此時題目推導必須已可稽核。
+
+唯一機械驗證入口：`uv run --project .agents/tools/experiment-records python -m experiment_records validate .`。
+生命週期只能用 `uv run --project .agents/tools/experiment-records python -m experiment_records transition . <EXPERIMENT_ID> <TO_STATE> --reason "<REASON>"` 新增事件。不得手動覆寫既有事件。
+
+### Provenance
+
+agent 產生或修改的 definition、claim、audit、diagnosis 都要填 `producer`：`kind`、`name`、`model`、`prompt_id`、`prompt_hash`、`input_refs`。回溯不到 model 與 prompt 版本的 agent 產物，稽核無法重現當初的判斷。
+
+prompt role 放 `records/experiments/prompts/<role>@<version>.md`，雜湊用 `experiment_records prompts .` 查，不要自己算。改了 prompt 內容就是新版本——沿用舊 `prompt_id` 而不更新雜湊會被 validator 擋下。
+
+### 獨立審核
+
+稽核的語意段不得由寫這個 claim 的同一個 context 完成。先用 `experiment_records review-package . <CLAIM_ID>` 組出審核包，它不含 `producer`，審核者看不到是誰寫的。
+
+Contract 的 `review_policy.required_reviewer_kind` 跟 Contract 一起凍結，validator 會比對稽核紀錄的 `reviewer_kind`。看到結果之後才放寬審核標準，等於沒有審核。
+
+### 失敗是正式結果
+
+跑失敗、混雜、證據不足都是正式終態，不得刪除、不得改寫成弱版本的成功。失敗的 run 標 `invalid` 並填 `failure`（分類見 `failure-taxonomy.schema.json`）。走到終態時把診斷寫成 `records/experiments/diagnoses/`：確定性事實與推測分欄，並給出能分辨假設的最便宜下一步。`hypothesis_refuted` 要先排除其他分類才能用，不是兜底選項。
+
 ### Compute Gate
 
-L0 理論／靜態檢查 → L1 合成資料／確定性測試 → L2 小型資料集 → L3 小規模試跑 → L4 消融／敏感度分析 → L5 完整規模執行。往上升級要 Contract 裡的 `scale_up_rule` 允許，不是「看起來有戲就繼續跑」；沒有協調器自動幫你升級，人或呼叫的 agent 自己讀規則判斷。昂貴的實驗不是預設權利。用 `compute-gate` 技能機械執行這件事：不准跳級，`abort_rule` 觸發直接中止，`scale_up_rule` 沒滿足就擋在原地——但那句規則怎麼翻成可比對的數字，是呼叫的人的責任，不是技能自動解析自然語言猜的。
+L0 理論／靜態檢查 → L1 合成資料／確定性測試 → L2 小型資料集 → L3 小規模試跑 → L4 消融／敏感度分析 → L5 完整規模執行。昂貴的實驗不是預設權利，沒有協調器自動幫你升級。
+
+用 `compute-gate` 技能機械執行：不准跳級，中止條件觸發直接終止，升級條件沒滿足就擋在原地。每一級的預算、升級條件與中止條件寫在 Contract 的 `compute_cascade`，跟 Contract 一起凍結——把 `scale_up_rule`／`abort_rule` 那兩句自然語言翻成可比對的數字是寫 Contract 的人的責任，技能不自動解析；但翻譯結果必須落在 Contract 裡，不是散在某次呼叫的參數，否則同一組紀錄重跑不出同一個判定。
 
 ### Canonical Records
 

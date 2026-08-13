@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-package.schema.json",
+  "title": "Independent Review Package",
+  "description": "獨立審核者收到的完整輸入，由 `experiment_records review-package` 組出來。不是 record 類型——沒有 records/experiments/review-packages/ 目錄；它是一次審核的輸入快照，寫到哪裡由呼叫端決定。\n\n包裡刻意沒有 producer 區塊。審核者不該知道這個主張是哪個 agent、用哪版 prompt 寫的：知道了就會被它帶著走，而獨立性正是這裡要保住的東西。同理，包裡只有凍結的事實與證據摘錄，沒有寫的人的推理。\n\n審核者只能看這個包。要回答的問題若包裡沒有答案，正確做法是回 unauditable，不是回頭翻專案。",
+  "type": "object",
+  "required": ["claim_id", "experiment_id", "assembled_at", "policy", "question", "claim", "comparison", "evidence_excerpts", "mechanical"],
+  "properties": {
+    "claim_id": { "type": "string" },
+    "experiment_id": { "type": "string" },
+    "assembled_at": { "type": "string", "format": "date-time" },
+    "policy": {
+      "type": "object",
+      "description": "從凍結的 Contract 抄過來的審核政策。看到結果之後才放寬審核標準，等於沒有審核",
+      "required": ["required_reviewer_kind"],
+      "properties": {
+        "required_reviewer_kind": {
+          "type": "string",
+          "enum": ["human", "second_model", "any_independent"]
+        },
+        "min_reviewers": { "type": "integer", "minimum": 1, "default": 1 }
+      },
+      "additionalProperties": false
+    },
+    "question": {
+      "type": "object",
+      "description": "凍結的研究問題。判斷 intended_question_fit 需要它——不給的話審核者只能判數字對不對",
+      "required": ["question", "hypothesis", "primary_metric"],
+      "properties": {
+        "question": { "type": "string" },
+        "hypothesis": { "type": "string" },
+        "primary_metric": { "type": "string" },
+        "secondary_metrics": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "decision_rule": { "type": "string" },
+        "contract_hash": { "type": "string" },
+        "falsifier": { "type": "string" },
+        "tension": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "claim": {
+      "type": "object",
+      "description": "候選主張本身，不含 producer",
+      "required": ["statement", "scope"],
+      "properties": {
+        "statement": { "type": "string" },
+        "scope": { "type": "string" },
+        "claim_type": { "type": "string" },
+        "metric": { "type": "string" },
+        "expected_direction": { "type": "string" },
+        "stated_magnitude": { "type": "number" },
+        "magnitude_type": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "comparison": {
+      "type": "object",
+      "description": "比較結果的判定欄位。三個可比較性判斷都給，讓審核者看得出不可引用是哪一種原因",
+      "required": ["ref", "comparison_valid", "confounded", "structurally_comparable", "controlled_variables_match"],
+      "properties": {
+        "ref": { "type": "string", "format": "project-ref" },
+        "comparison_valid": { "type": "boolean" },
+        "confounded": { "type": "boolean" },
+        "structurally_comparable": { "type": "boolean" },
+        "controlled_variables_match": { "type": "boolean" },
+        "confounded_reasons": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "differences": { "type": "array", "items": { "type": "object" }, "default": [] },
+        "metrics": { "type": "object", "default": {} },
+        "notes": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "additionalProperties": false
+    },
+    "evidence_excerpts": {
+      "type": "array",
+      "default": [],
+      "description": "把 claim.evidence_refs 每一筆的 locator 實際取出來的值。審核者因此不必相信主張對數字的轉述",
+      "items": {
+        "type": "object",
+        "required": ["kind", "ref", "resolved"],
+        "properties": {
+          "kind": { "type": "string" },
+          "ref": { "type": "string", "format": "project-ref" },
+          "locator": { "type": "string" },
+          "resolved": {
+            "type": "boolean",
+            "description": "false 代表 ref 或 locator 取不到值；審核者應據此往 unauditable 判"
+          },
+          "value": {},
+          "problem": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "mechanical": {
+      "type": "object",
+      "description": "機械段的結果原樣附上。審核者只補語意段，不覆寫這裡的任何值",
+      "default": {}
+    },
+    "runs": {
+      "type": "array",
+      "default": [],
+      "description": "比較與主張引用到的 run 摘要。失敗與作廢的 run 一併列出，不隱藏",
+      "items": {
+        "type": "object",
+        "required": ["run_id", "status"],
+        "properties": {
+          "run_id": { "type": "string" },
+          "status": { "type": "string" },
+          "stage": { "type": "string" },
+          "seed": { "type": ["integer", "null"] },
+          "invalid_reason": { "type": "string" },
+          "failure_class": { "type": "string" },
+          "metrics": { "type": "object", "default": {} }
+        },
+        "additionalProperties": false
+      }
+    },
+    "omitted": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "刻意沒放進包裡的東西，寫出來讓審核者知道自己看不到什麼"
+    }
+  },
+  "additionalProperties": false
+}

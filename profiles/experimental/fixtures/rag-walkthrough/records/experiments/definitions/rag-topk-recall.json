@@ -1,0 +1,100 @@
+{
+  "experiment_id": "rag-topk-recall",
+  "question": "把取回數量從 5 提高到 20，能不能提升本評估集的 recall_at_10，而不讓 p95 延遲超出 guardrail？",
+  "hypothesis": "提高 top_k 會提升 recall_at_10 至少 0.05，延遲上升幅度在 guardrail 內",
+  "baseline": {
+    "description": "top_k=5 的既有檢索管線",
+    "config_ref": "records/experiments/configs/topk-baseline.yaml"
+  },
+  "treatment": {
+    "description": "只把 top_k 改成 20，其他零件完全相同",
+    "config_ref": "records/experiments/configs/topk-treatment.yaml",
+    "variable": "top_k"
+  },
+  "controlled_variables": ["dataset", "evaluation_set", "model", "embedding_model", "judge_prompt", "seed"],
+  "primary_metric": "recall_at_10",
+  "secondary_metrics": ["latency_ms"],
+  "expected_failure_modes": [
+    "取回更多片段但都是低相關內容，覆蓋率不動而延遲上升",
+    "評估集有片段洩漏到索引裡，recall 提升是假的"
+  ],
+  "decision_rule": "recall_at_10 絕對提升 ≥ 0.05 且 latency_ms p95 增幅 ≤ 60ms 視為成功",
+  "compute_budget": {
+    "pilot_max_minutes": 10,
+    "pilot_max_samples": 200
+  },
+  "abort_rule": "latency_ms p95 超過 400ms 立即中止，不再往上加算力",
+  "scale_up_rule": "pilot 的 recall_at_10 提升 ≥ 0.03 才申請完整執行的算力",
+  "compute_cascade": [
+    { "stage": "preflight", "level": "L0" },
+    {
+      "stage": "pilot",
+      "level": "L3",
+      "budget": { "max_wall_clock_seconds": 600, "max_samples": 200 },
+      "abort": {
+        "metric": "latency_ms", "source": "run", "field": "value",
+        "comparator": ">", "threshold": 400,
+        "reason": "latency_ms p95 超過 400ms，依 abort_rule 終止這條路線"
+      }
+    },
+    {
+      "stage": "main",
+      "level": "L4",
+      "budget": { "max_wall_clock_seconds": 5400, "max_cost_usd": 18.0, "max_runs": 4 },
+      "promotion": {
+        "metric": "recall_at_10", "source": "comparison", "field": "absolute_diff",
+        "comparator": ">=", "threshold": 0.03
+      },
+      "abort": {
+        "metric": "latency_ms", "source": "run", "field": "value",
+        "comparator": ">", "threshold": 400,
+        "reason": "latency_ms p95 超過 400ms，依 abort_rule 終止這條路線"
+      }
+    }
+  ],
+  "review_policy": { "required_reviewer_kind": "any_independent", "min_reviewers": 1 },
+  "status": "locked",
+  "contract_hash": "sha256:1f0c6a2b9d4e7c3a5b8f1e0d2c4a6b8d0f2e4c6a8b0d2f4e6c8a0b2d4f6e8c0a",
+  "created_at": "2026-01-02T09:00:00Z",
+  "producer": {
+    "kind": "software_agent",
+    "name": "question-builder",
+    "model": "anthropic/claude-opus-5",
+    "prompt_id": "question-builder@1",
+    "prompt_hash": "sha256:279d4a9b8c1e3803db6d71b9686af26504e2daa8cc2ddc8480c6d8e4465227e9",
+    "input_refs": ["records/experiments/artifacts/topk-prior-art.md"],
+    "created_at": "2026-01-02T09:00:00Z"
+  },
+  "derivation": {
+    "primitives": [
+      { "id": "retrieval_coverage", "definition": "回答所需片段出現在取回結果中的比例" },
+      { "id": "context_noise", "definition": "取回結果中與問題無關、卻佔用 context 額度的片段比例" }
+    ],
+    "assumptions": [
+      { "id": "a1", "statement": "評估集的標準答案片段沒有洩漏進索引", "status": "unverified" },
+      { "id": "a2", "statement": "生成端能忽略低相關片段，不被干擾內容帶偏", "status": "unverified" },
+      { "id": "a3", "statement": "本語料的相關片段分佈夠分散，提高 top_k 才有覆蓋率可撿", "status": "unverified" }
+    ],
+    "mechanism_model": {
+      "summary": "提高 top_k 讓更多相關片段進入 context，覆蓋率上升；同時帶進更多干擾片段並拉長取回與生成時間，因此覆蓋率的邊際效益會遞減、延遲單調上升",
+      "variables": ["top_k", "retrieval_coverage", "context_noise", "latency_ms"]
+    },
+    "tension": "覆蓋率與干擾雜訊、延遲之間的取捨；兩者都隨 top_k 單調變化但方向相反",
+    "falsifier": "在預先指定的 slice 中 recall_at_10 沒有提升，或提升幅度可由評估集洩漏完全解釋",
+    "minimal_decisive_test": "固定語料、查詢、嵌入模型與生成模型，只掃 top_k∈{5,20}，各重複三個 seed",
+    "expected_observations": [
+      "recall_at_10 隨 top_k 上升後趨於平緩",
+      "latency_ms p95 隨 top_k 單調上升"
+    ],
+    "failure_update": [
+      { "when": "移除疑似洩漏片段後提升消失", "update_assumption_id": "a1", "to": "refuted" },
+      { "when": "覆蓋率上升但下游正確率下降", "update_assumption_id": "a2", "to": "refuted" },
+      { "when": "top_k=20 相對 top_k=5 的覆蓋率完全沒動", "update_assumption_id": "a3", "to": "refuted" }
+    ],
+    "source_refs": ["records/experiments/artifacts/topk-prior-art.md"],
+    "counterexamples": [
+      "長文件語料上提高 top_k 讓 context 被低相關片段佔滿，下游正確率反而下降"
+    ],
+    "novelty_status": "novel_claimed"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "diagnosis_id": "query-rewrite-inconclusive",
+  "experiment_id": "rag-query-rewrite",
+  "diagnosed_at": "2026-01-08T16:40:00Z",
+  "subject": {
+    "kind": "comparison",
+    "ref": "records/experiments/comparisons/query-rewrite-main.json"
+  },
+  "deterministic_facts": [
+    {
+      "fact": "comparison 合法且非混雜：comparison_valid 為 true，confounded 為 false",
+      "source_ref": "records/experiments/comparisons/query-rewrite-main.json",
+      "locator": "comparison_valid"
+    },
+    {
+      "fact": "recall_at_10 的 absolute_diff 為 0.013，低於 decision_rule 的 0.03 門檻",
+      "source_ref": "records/experiments/comparisons/query-rewrite-main.json",
+      "locator": "metrics.recall_at_10.absolute_diff"
+    },
+    {
+      "fact": "這個 experiment 只有兩個 run，各一個 seed，沒有複現",
+      "source_ref": "records/experiments/runs/rewrite-main-treatment.json",
+      "locator": "seed"
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "h-noise",
+      "failure_class": "insufficient_power",
+      "statement": "0.013 落在單次執行的取樣雜訊範圍內，無法分辨是不是真的效應",
+      "confidence": "high",
+      "discriminating_observation": "各跑三個 seed 拿到變異估計；若標準差大於 0.013，這個假設成立"
+    },
+    {
+      "id": "h-slice",
+      "failure_class": "scope_mismatch",
+      "statement": "改寫只在用詞落差大的 slice 有效，整體平均把效應稀釋掉了",
+      "confidence": "medium",
+      "discriminating_observation": "按用詞落差分 slice 後，高落差 slice 的提升明顯高於整體"
+    }
+  ],
+  "cheapest_next_test": {
+    "description": "baseline 與 treatment 各跑三個 seed，取得變異估計。先做這個，因為分 slice 分析在沒有變異估計的情況下一樣讀不出結論。",
+    "command": "python -m rag_lab pipeline run --stage replication --seeds 43,44,45 --config records/experiments/configs/rewrite-treatment.yaml",
+    "distinguishes": ["h-noise", "h-slice"],
+    "estimated_cost": "六次執行，約 5.5 小時"
+  }
+}

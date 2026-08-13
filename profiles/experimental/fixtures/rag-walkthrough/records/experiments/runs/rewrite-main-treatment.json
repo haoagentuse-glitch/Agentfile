@@ -1,0 +1,21 @@
+{
+  "run_id": "rewrite-main-treatment",
+  "experiment_id": "rag-query-rewrite",
+  "experiment_type": "rag",
+  "created_at": "2026-01-08T12:00:00Z",
+  "stage": "main",
+  "code_commit": "9f2c1a4",
+  "config_hash": "sha256:c0d2",
+  "config_ref": "records/experiments/configs/rewrite-treatment.yaml",
+  "schema_version": "1",
+  "baseline_run": "rewrite-main-baseline",
+  "treatment": "query_rewrite=on",
+  "status": "completed",
+  "seed": 42,
+  "command": "python -m rag_lab pipeline run --stage main --config records/experiments/configs/rewrite-treatment.yaml",
+  "duration_seconds": 3260,
+  "metric_definitions": { "recall_at_10": "records/experiments/metrics/recall_at_10.json" },
+  "metrics": { "recall_at_10": 0.633 },
+  "artifacts": [],
+  "notes": "提升 0.013，小於三次複現之間 ±0.02 的變異範圍。"
+}

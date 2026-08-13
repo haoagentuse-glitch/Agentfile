@@ -1,0 +1,15 @@
+{
+  "experiment_id": "edge-exp",
+  "question": "邊界情境測試用",
+  "hypothesis": "測試壞資料不會拖垮其他資料",
+  "baseline": { "description": "baseline", "config_ref": "configs/edge-baseline.yaml" },
+  "treatment": { "description": "treatment", "config_ref": "configs/edge-treatment.yaml", "variable": "x" },
+  "controlled_variables": ["seed"],
+  "primary_metric": "score",
+  "secondary_metrics": [],
+  "decision_rule": "score 提升即可",
+  "compute_budget": { "pilot_max_minutes": 1, "pilot_max_samples": 10 },
+  "abort_rule": "無",
+  "status": "locked",
+  "created_at": "2026-01-08T00:00:00Z"
+}

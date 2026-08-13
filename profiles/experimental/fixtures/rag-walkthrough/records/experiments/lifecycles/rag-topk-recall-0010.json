@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0010",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 10,
+  "from_state": "awaiting_review",
+  "to_state": "accepted",
+  "occurred_at": "2026-01-05T12:00:00Z",
+  "reason": "獨立審核通過；範圍限定在本組零件，未外推",
+  "evidence_refs": []
+}

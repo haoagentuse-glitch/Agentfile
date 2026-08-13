@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0007",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 7,
+  "from_state": "main_running",
+  "to_state": "awaiting_comparison",
+  "occurred_at": "2026-01-05T08:00:00Z",
+  "reason": "完整執行與三次複現完成；第四次複現因 GPU 記憶體耗盡標為 invalid，保留紀錄",
+  "evidence_refs": []
+}

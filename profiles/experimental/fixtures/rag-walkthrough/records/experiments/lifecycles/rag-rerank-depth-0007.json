@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-rerank-depth-0007",
+  "experiment_id": "rag-rerank-depth",
+  "sequence": 7,
+  "from_state": "main_running",
+  "to_state": "execution_failed",
+  "occurred_at": "2026-01-07T10:02:00Z",
+  "reason": "評估集雜湊與 Contract 鎖定當下不符，abort_rule 觸發。不用部分資料硬跑，也不改 Contract 遷就資料",
+  "evidence_refs": []
+}

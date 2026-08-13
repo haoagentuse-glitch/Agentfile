@@ -1,0 +1,4 @@
+interface:
+  display_name: "ASD-STE100"
+  short_description: "使用簡化技術寫作原則產生短句且術語一致的中文技術內容"
+  default_prompt: "使用 $asd-ste100 改寫這段技術內容。"

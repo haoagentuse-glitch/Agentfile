@@ -1,0 +1,12 @@
+{
+  "event_id": "rag-topk-recall-0009",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 9,
+  "from_state": "awaiting_claim",
+  "to_state": "awaiting_review",
+  "occurred_at": "2026-01-05T11:30:00Z",
+  "reason": "claim 已寫出並完成機械與語意稽核",
+  "evidence_refs": [
+    "records/experiments/audits/topk-recall-claim.json"
+  ]
+}

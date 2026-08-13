@@ -1,0 +1,15 @@
+{
+  "run_id": "algo-sort-compare-treatment",
+  "experiment_id": "algo-sort-compare",
+  "experiment_type": "algorithm-comparison",
+  "created_at": "2026-01-06T02:00:00Z",
+  "config_hash": "sha256:ddd444",
+  "config_ref": "configs/sort-treatment.yaml",
+  "schema_version": "1",
+  "baseline_run": "algo-sort-compare-baseline",
+  "treatment": "algorithm",
+  "status": "completed",
+  "metrics": { "duration_ms": 350.0 },
+  "metric_definitions": { "duration_ms": "metrics/duration_ms.json" },
+  "artifacts": []
+}

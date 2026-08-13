@@ -1,0 +1,38 @@
+{
+  "run_id": "topk-replication-4-oom",
+  "experiment_id": "rag-topk-recall",
+  "experiment_type": "rag",
+  "created_at": "2026-01-05T07:00:00Z",
+  "stage": "replication",
+  "attempt_kind": "replication",
+  "parent_run_id": "topk-main-treatment",
+  "code_commit": "9f2c1a4",
+  "dirty_worktree": false,
+  "config_hash": "sha256:e2b5c8f1a4d7e0b3c6f9a2d5e8b1c4f7a0d3e6b9c2f5a8d1e4b7c0f3a6d9e2b5",
+  "config_ref": "records/experiments/configs/topk-treatment.yaml",
+  "schema_version": "1",
+  "baseline_run": "topk-main-baseline",
+  "status": "invalid",
+  "invalid_reason": "第四次複現在第 900 筆查詢時 GPU 記憶體耗盡；已產出的部分結果不併入複現統計",
+  "seed": 46,
+  "command": "python -m rag_lab pipeline run --stage replication --seed 46 --config records/experiments/configs/topk-treatment.yaml",
+  "environment": "Linux 6.18 / Python 3.12 / 1x A10G",
+  "duration_seconds": 1240,
+  "failure": {
+    "class": "execution",
+    "phase": "execution",
+    "exit_code": 137,
+    "retriable": true,
+    "error_artifact": "records/experiments/artifacts/topk-main-treatment-errors.jsonl"
+  },
+  "data_identity": {
+    "dataset": { "id": "nq-open-2026-01", "hash": "sha256:aa01" },
+    "evaluation_set": { "id": "nq-open-eval-v3", "hash": "sha256:bb03" }
+  },
+  "metric_definitions": {
+    "recall_at_10": "records/experiments/metrics/recall_at_10.json"
+  },
+  "metrics": {},
+  "artifacts": ["records/experiments/artifacts/topk-main-treatment-errors.jsonl"],
+  "notes": "失敗的 run 保留在紀錄裡。刪掉它會讓複現次數看起來剛好是三次成功，那是選擇性報告。"
+}

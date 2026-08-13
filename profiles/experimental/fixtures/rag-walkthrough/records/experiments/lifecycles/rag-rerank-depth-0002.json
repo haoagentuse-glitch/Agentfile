@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-rerank-depth-0002",
+  "experiment_id": "rag-rerank-depth",
+  "sequence": 2,
+  "from_state": "draft",
+  "to_state": "ready_to_lock",
+  "occurred_at": "2026-01-07T08:30:00Z",
+  "reason": "derivation 齊備",
+  "evidence_refs": []
+}

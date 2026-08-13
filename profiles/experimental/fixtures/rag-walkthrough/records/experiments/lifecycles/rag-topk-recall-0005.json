@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0005",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 5,
+  "from_state": "pilot_running",
+  "to_state": "promoted",
+  "occurred_at": "2026-01-04T00:30:00Z",
+  "reason": "pilot 的 recall_at_10 提升 0.06 達到 scale_up_rule 門檻 0.03",
+  "evidence_refs": []
+}

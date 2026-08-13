@@ -1,0 +1,4 @@
+{
+  "meta": { "id": "run-a2", "experiment": "exp-a", "status": "done", "created_at": "2026-02-01T01:00:00Z" },
+  "results": { "metrics": { "accuracy": 0.93, "cost_usd": 1.5 }, "artifacts": [] }
+}

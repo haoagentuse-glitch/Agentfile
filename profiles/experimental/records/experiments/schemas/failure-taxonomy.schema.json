@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "failure-taxonomy.schema.json",
+  "title": "Failure Taxonomy",
+  "description": "失敗分類的唯一來源。run 的 failure.class、prompt role 的診斷輸出與 failure-diagnosis record 都 $ref 這裡，不各自抄一份 enum。\n\n抄第二份的後果不是不同步而已：同一個失敗在兩個地方被分成不同類，之後就無法統計「我們最常敗在哪一步」。",
+  "$defs": {
+    "failureClass": {
+      "type": "string",
+      "enum": [
+        "execution", "data", "metric", "confound",
+        "insufficient_power", "hypothesis_refuted", "scope_mismatch"
+      ],
+      "description": "execution：程式沒跑完。data：資料本身有問題。metric：指標算錯或定義不一致。confound：跑完了但條件沒守住，效應無法歸因。insufficient_power：條件守住了，但樣本或複現次數不足以分辨效應與雜訊。hypothesis_refuted：一切正常，假說就是被推翻了。scope_mismatch：執行的東西跟 Contract 問的問題對不上。"
+    },
+    "failurePhase": {
+      "type": "string",
+      "enum": ["setup", "data_load", "execution", "metric_computation", "artifact_write"],
+      "description": "失敗發生在流程的哪一段"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    }
+  }
+}

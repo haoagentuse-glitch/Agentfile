@@ -56,11 +56,7 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 
 ## 輸出
 
-**語言**：對使用者的一切輸出使用中文——回覆、`docs/`、README、commit、issue、本包自有技能檔。
-
-- 有通行中文譯名就用中文；無譯名或翻譯妨礙查找則保留原文（frontmatter、OpenAPI、embedding）。
-- 套件、指令、檔名、技術與模型名稱、程式碼識別符一律保留原文。
-- vendored 檔案不翻譯。
+所有自然語言輸出使用中文，並採用 `ASD-STE100` skill 的簡化技術寫作原則。
 
 ## 職責邊界
 
@@ -90,7 +86,7 @@ Code / Tests → Current Docs / ADR → AGENTS.md → Handoff → Conversation M
 
 - 每個能力只保留一份實作。外部技能 vendor 進本包，不依賴使用者層級外掛。
 - vendored 檔案保留上游內文，只允許注入來源 metadata、將上游 per-repo 設定引用改指向本包設定檔。
-- `metadata.source` 記來源 repo 與 commit；授權在頂層 `license` 或 `metadata.license` 擇一宣告，全文放 `LICENSES/`。
+- `metadata.source` 記來源 repo 與 commit；授權在頂層 `license` 或 `metadata.license` 擇一宣告，全文集中在 `docs/THIRD_PARTY_LICENSES.md`。
 - 更新須手動 diff 上游後決定是否採納，不自動同步。
 
 canonical source 為 `core/skills/<name>/` 或 `profiles/<name>/skills/<name>/`；`.claude/skills` 以 symlink 指向投影後的聯集；Codex 直接掃 `.agents/skills`。

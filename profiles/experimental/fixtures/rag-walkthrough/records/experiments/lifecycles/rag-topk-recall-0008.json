@@ -1,0 +1,12 @@
+{
+  "event_id": "rag-topk-recall-0008",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 8,
+  "from_state": "awaiting_comparison",
+  "to_state": "awaiting_claim",
+  "occurred_at": "2026-01-05T09:30:00Z",
+  "reason": "compare-runs 判定可比較且非混雜",
+  "evidence_refs": [
+    "records/experiments/comparisons/topk-main.json"
+  ]
+}

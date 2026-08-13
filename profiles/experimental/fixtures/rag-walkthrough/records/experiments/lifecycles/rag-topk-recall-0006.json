@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0006",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 6,
+  "from_state": "promoted",
+  "to_state": "main_running",
+  "occurred_at": "2026-01-04T01:00:00Z",
+  "reason": "L4 授權完整執行，含三次複現",
+  "evidence_refs": []
+}

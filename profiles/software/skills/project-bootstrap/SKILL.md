@@ -22,7 +22,7 @@ description: 用這包建立新專案的骨架——套用技能與規範、建�
 <隨身包路徑>/apply.sh <目標資料夾>
 ```
 
-`git init`（若尚未是 repo）→ 投影 skills 到 `.agents/skills/` 並連結 `.claude/skills` → 複製 `.claude/`、`AGENTS.md`、`CLAUDE.md`、`docs/agents/`、`LICENSES/` → 放入 `.gitignore`。
+`git init`（若尚未是 repo）→ 投影 skills 到 `.agents/skills/`、profile tools 到 `.agents/tools/`，並連結 `.claude/skills` → 複製 `.claude/`、`AGENTS.md`、`CLAUDE.md`、`docs/agents/`、`docs/THIRD_PARTY_LICENSES.md` → 放入 `.gitignore`。
 已存在的檔案一律跳過不覆寫。先加 `--dry-run` 給使用者看過再實跑。
 
 把輸出貼給使用者。

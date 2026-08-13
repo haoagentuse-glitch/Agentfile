@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-query-rewrite-0003",
+  "experiment_id": "rag-query-rewrite",
+  "sequence": 3,
+  "from_state": "ready_to_lock",
+  "to_state": "locked",
+  "occurred_at": "2026-01-08T09:00:00Z",
+  "reason": "Contract 凍結",
+  "evidence_refs": []
+}

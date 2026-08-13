@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prompt-output.schema.json",
+  "title": "Prompt Role Output",
+  "description": "六個版本化 prompt role 各自的輸出型別。不是 record 類型——沒有 records/experiments/prompt-outputs/ 目錄；這些結構是 agent 交回來的中間產物，由呼叫端決定要不要寫進 definition、claim 或 audit。\n\n共同硬規則：沒有任何一個 role 的輸出包含 gate level、gate status、comparison_valid、confounded 或 lifecycle state。提示詞提出候選、批評與診斷；閘門、比較判定與狀態轉移由確定性程式負責。這條界線寫在 schema 裡，不只寫在提示詞裡——提示詞可以被忽略，schema 不行。",
+  "$defs": {
+    "confidence": {
+      "$ref": "failure-taxonomy.schema.json#/$defs/confidence",
+      "description": "agent 對這一項的把握。低把握不是不能輸出，是必須標示出來"
+    },
+    "questionBuilderOutput": {
+      "type": "object",
+      "title": "question-builder 輸出",
+      "description": "研究問題憑證的候選內容。呼叫端決定要不要寫進 definition.derivation；agent 不直接寫檔案。",
+      "required": ["primitives", "assumptions", "mechanism_model", "tension", "falsifier", "minimal_decisive_test"],
+      "properties": {
+        "primitives": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "definition"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+              "definition": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "assumptions": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "statement"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+              "statement": { "type": "string", "minLength": 1 },
+              "why_unverified": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "mechanism_model": {
+          "type": "object",
+          "required": ["summary", "variables"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1 },
+            "variables": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "tension": { "type": "string", "minLength": 1 },
+        "falsifier": { "type": "string", "minLength": 1 },
+        "minimal_decisive_test": { "type": "string", "minLength": 1 },
+        "expected_observations": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "failure_update": {
+          "type": "array", "default": [],
+          "items": {
+            "type": "object",
+            "required": ["when", "update_assumption_id", "to"],
+            "properties": {
+              "when": { "type": "string", "minLength": 1 },
+              "update_assumption_id": { "type": "string" },
+              "to": { "type": "string", "enum": ["unverified", "supported", "refuted"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "open_questions": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "additionalProperties": false
+    },
+    "counterexampleReviewerOutput": {
+      "type": "object",
+      "title": "counterexample-reviewer 輸出",
+      "description": "反方研究者的結構化批評。blocks_execution 固定為 false 且不可寫成 true——批評不阻擋執行，是否執行由閘門與人決定。",
+      "required": ["searched", "counterexamples", "alternative_mechanisms", "blocks_execution"],
+      "properties": {
+        "searched": {
+          "type": "boolean",
+          "description": "這次是否真的做了外部搜尋。false 時所有 novelty 相關判斷都只能是 unverified"
+        },
+        "search_queries": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "source_refs": {
+          "type": "array", "items": { "type": "string", "format": "project-ref" }, "default": [],
+          "description": "查到並保存下來的來源。空陣列代表沒有可覆核的來源"
+        },
+        "counterexamples": {
+          "type": "array", "default": [],
+          "items": {
+            "type": "object",
+            "required": ["statement", "confidence"],
+            "properties": {
+              "statement": { "type": "string", "minLength": 1 },
+              "confidence": { "$ref": "#/$defs/confidence" },
+              "source_ref": { "type": "string", "format": "project-ref" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "alternative_mechanisms": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "hidden_variables": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "measurement_leakage_risks": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "adversarial_slices": {
+          "type": "array", "items": { "type": "string" }, "default": [],
+          "description": "最可能讓假說失效的資料切面，供預先指定"
+        },
+        "blocks_execution": {
+          "const": false,
+          "description": "固定 false。反方批評是輸入，不是否決權"
+        }
+      },
+      "additionalProperties": false
+    },
+    "experimentDesignCriticOutput": {
+      "type": "object",
+      "title": "experiment-design-critic 輸出",
+      "description": "對實驗設計的批評與補強建議。只提候選，不改 Contract。",
+      "required": ["identifiability_risks", "suggested_controls"],
+      "properties": {
+        "identifiability_risks": {
+          "type": "array", "default": [],
+          "description": "會讓處理效應無法歸因的地方",
+          "items": {
+            "type": "object",
+            "required": ["risk", "confidence"],
+            "properties": {
+              "risk": { "type": "string", "minLength": 1 },
+              "confidence": { "$ref": "#/$defs/confidence" },
+              "suggested_fix": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "suggested_controls": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "suggested_slices": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "suggested_ablations": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "metric_risks": {
+          "type": "array", "default": [],
+          "items": {
+            "type": "object",
+            "required": ["metric", "risk"],
+            "properties": {
+              "metric": { "type": "string" },
+              "risk": { "type": "string", "minLength": 1 },
+              "failure_case": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "budget_concerns": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "additionalProperties": false
+    },
+    "failureDiagnoserOutput": {
+      "type": "object",
+      "title": "failure-diagnoser 輸出",
+      "description": "失敗分類與最便宜的下一個測試。deterministic_facts 是從紀錄讀出來的事實，hypotheses 是 agent 的推測——兩者分欄，不得混寫。",
+      "required": ["deterministic_facts", "hypotheses", "cheapest_next_test"],
+      "properties": {
+        "deterministic_facts": {
+          "type": "array", "default": [],
+          "description": "直接引自 run、comparison 或 gate 紀錄的事實，每一條都要說得出來源",
+          "items": {
+            "type": "object",
+            "required": ["fact", "source_ref"],
+            "properties": {
+              "fact": { "type": "string", "minLength": 1 },
+              "source_ref": { "type": "string", "format": "project-ref" },
+              "locator": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "hypotheses": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["failure_class", "statement", "confidence"],
+            "properties": {
+              "failure_class": { "$ref": "failure-taxonomy.schema.json#/$defs/failureClass" },
+              "statement": { "type": "string", "minLength": 1 },
+              "confidence": { "$ref": "#/$defs/confidence" },
+              "discriminating_observation": {
+                "type": "string",
+                "description": "看到什麼就能把這個假設跟其他假設分開"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "cheapest_next_test": {
+          "type": "object",
+          "description": "能分辨上述假設的最便宜測試。不能分辨假設的測試不算下一步，只是再跑一次",
+          "required": ["description", "distinguishes"],
+          "properties": {
+            "description": { "type": "string", "minLength": 1 },
+            "command": { "type": "string" },
+            "distinguishes": {
+              "type": "array", "minItems": 1, "items": { "type": "string" },
+              "description": "這個測試能分開哪幾個 failure_class 或假設"
+            },
+            "estimated_cost": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "claimWriterOutput": {
+      "type": "object",
+      "title": "claim-writer 輸出",
+      "description": "候選研究主張。status 固定為 candidate——是否成立由稽核決定，不由寫的人決定。",
+      "required": ["statement", "claim_type", "scope", "evidence_refs", "status"],
+      "properties": {
+        "statement": {
+          "type": "string", "minLength": 1,
+          "description": "一次只說一個可驗證命題"
+        },
+        "claim_type": {
+          "type": "string",
+          "enum": ["descriptive", "comparative", "causal", "novelty", "mechanism", "negative_result"]
+        },
+        "metric": { "type": "string" },
+        "expected_direction": { "type": "string", "enum": ["increase", "decrease", "no_change"] },
+        "stated_magnitude": { "type": "number" },
+        "magnitude_type": { "type": "string", "enum": ["absolute", "relative"] },
+        "scope": { "type": "string", "minLength": 1 },
+        "evidence_refs": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "ref"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["comparison", "run", "artifact", "source"] },
+              "ref": { "type": "string", "format": "project-ref" },
+              "locator": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "alternative_explanations": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "status": {
+          "const": "candidate",
+          "description": "固定 candidate。寫的人不得自行宣告成立"
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidenceReviewerOutput": {
+      "type": "object",
+      "title": "evidence-reviewer 輸出",
+      "description": "稽核的語意段。只判斷收到的證據包內容；機械段由 claim_audit.py 產生，reviewer 不覆寫。",
+      "required": ["entailment", "scope_verdict", "scope_reasoning", "intended_question_fit", "novelty"],
+      "properties": {
+        "entailment": {
+          "type": "object",
+          "required": ["verdict", "reasoning"],
+          "properties": {
+            "verdict": { "type": "string", "enum": ["entailed", "partially_entailed", "not_entailed", "unauditable"] },
+            "reasoning": { "type": "string", "minLength": 1 },
+            "alternative_explanations": { "type": "array", "items": { "type": "string" }, "default": [] }
+          },
+          "additionalProperties": false
+        },
+        "scope_verdict": {
+          "type": "string",
+          "enum": ["fully_supported", "partially_supported", "overreaching", "unsupported", "unauditable"]
+        },
+        "scope_reasoning": { "type": "string", "minLength": 1 },
+        "intended_question_fit": {
+          "type": "object",
+          "required": ["verdict", "reasoning"],
+          "properties": {
+            "verdict": { "type": "string", "enum": ["answers", "partially_answers", "vacuous", "off_target", "unauditable"] },
+            "reasoning": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "novelty": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["unverified", "novel_confirmed", "prior_art_found", "not_applicable"] },
+            "source_refs": { "type": "array", "items": { "type": "string", "format": "project-ref" }, "default": [] },
+            "reasoning": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "unresolved_uncertainties": {
+          "type": "array", "items": { "type": "string" }, "default": [],
+          "description": "判不出來的地方要列出來。「解不出來」是合法輸出，比硬給一個結論有用"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

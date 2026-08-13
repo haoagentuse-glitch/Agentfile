@@ -1,0 +1,33 @@
+{
+  "experiment_id": "rag-topk-recall",
+  "run_a": "topk-main-baseline",
+  "run_b": "topk-main-treatment",
+  "generated_at": "2026-01-05T09:00:00Z",
+  "comparability": {
+    "dimensions": {
+      "dataset": { "status": "PASS", "run_a_value": "nq-open-2026-01", "run_b_value": "nq-open-2026-01" },
+      "evaluation_set": { "status": "PASS", "run_a_value": "nq-open-eval-v3", "run_b_value": "nq-open-eval-v3" },
+      "model": { "status": "PASS", "run_a_value": "claude-opus-5", "run_b_value": "claude-opus-5" },
+      "embedding_model": { "status": "PASS", "run_a_value": "text-embed-3", "run_b_value": "text-embed-3" },
+      "judge_prompt": { "status": "PASS", "run_a_value": "answer-grader@4", "run_b_value": "answer-grader@4" },
+      "seed": { "status": "PASS", "run_a_value": 42, "run_b_value": 42 }
+    },
+    "declared_variable": { "name": "top_k", "run_a_value": 5, "run_b_value": 20, "changed": true }
+  },
+  "structurally_comparable": true,
+  "controlled_variables_match": true,
+  "differences": [
+    { "category": "config", "key": "top_k", "run_a_value": 5, "run_b_value": 20, "severity": "informational", "declared": true }
+  ],
+  "comparison_valid": true,
+  "confounded": false,
+  "confounded_reasons": [],
+  "metrics": {
+    "recall_at_10": { "definition_consistent": true, "computed": true, "baseline": 0.62, "treatment": 0.71, "absolute_diff": 0.09, "relative_diff": 0.1452 },
+    "latency_ms": { "definition_consistent": true, "computed": true, "baseline": 178, "treatment": 226, "absolute_diff": 48, "relative_diff": 0.2697 }
+  },
+  "diagnostic_suggestions": [
+    "延遲增幅 48ms 已接近 guardrail 的 60ms。若要再提高 top_k，先量測取回階段與生成階段各佔多少增幅"
+  ],
+  "notes": []
+}

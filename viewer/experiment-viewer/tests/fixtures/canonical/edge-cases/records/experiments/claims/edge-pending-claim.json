@@ -1,0 +1,12 @@
+{
+  "claim_id": "edge-pending-claim",
+  "statement": "處理組的 score 高於基準組",
+  "experiment_id": "edge-exp",
+  "comparison_ref": "records/experiments/comparisons/edge-confounded.json",
+  "metric": "score",
+  "expected_direction": "increase",
+  "scope": "僅限這個資料集",
+  "created_at": "2026-01-08T05:30:00Z",
+  "claim_type": "comparative",
+  "status": "candidate"
+}

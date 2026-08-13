@@ -1,0 +1,26 @@
+{
+  "experiment_id": "edge-exp",
+  "run_a": "edge-good-run",
+  "run_b": "edge-invalid-run",
+  "generated_at": "2026-01-08T05:00:00Z",
+  "comparability": {
+    "dimensions": {
+      "dataset": { "status": "DIFF", "run_a_value": "v1", "run_b_value": "v2" }
+    },
+    "declared_variable": { "name": "x", "run_a_value": 1, "run_b_value": 2, "changed": true }
+  },
+  "structurally_comparable": true,
+  "controlled_variables_match": false,
+  "differences": [
+    { "category": "data", "key": "dataset", "run_a_value": "v1", "run_b_value": "v2", "severity": "blocking", "declared": false },
+    { "category": "config", "key": "seed", "run_a_value": 1, "run_b_value": 99, "severity": "blocking", "declared": false },
+    { "category": "config", "key": "x", "run_a_value": 1, "run_b_value": 2, "severity": "informational", "declared": true }
+  ],
+  "comparison_valid": false,
+  "confounded": true,
+  "confounded_reasons": ["dataset 維度 DIFF：v1 vs v2", "未宣告的差異：seed 從 1 變成 99"],
+  "metrics": {
+    "score": { "definition_consistent": true, "computed": false, "baseline": null, "treatment": null, "absolute_diff": null, "relative_diff": null }
+  },
+  "notes": ["confounded，不得下因果性結論"]
+}

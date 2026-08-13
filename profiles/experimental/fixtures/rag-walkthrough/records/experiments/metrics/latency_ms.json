@@ -1,0 +1,7 @@
+{
+  "name": "latency_ms",
+  "type": "duration",
+  "direction": "lower_is_better",
+  "aggregation": "p95",
+  "implementation": "rag_lab/metrics/latency.py::end_to_end_p95"
+}

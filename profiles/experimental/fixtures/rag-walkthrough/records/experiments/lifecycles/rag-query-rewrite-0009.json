@@ -1,0 +1,12 @@
+{
+  "event_id": "rag-query-rewrite-0009",
+  "experiment_id": "rag-query-rewrite",
+  "sequence": 9,
+  "from_state": "awaiting_claim",
+  "to_state": "awaiting_review",
+  "occurred_at": "2026-01-08T16:30:00Z",
+  "reason": "claim 已完成稽核",
+  "evidence_refs": [
+    "records/experiments/audits/query-rewrite-claim.json"
+  ]
+}

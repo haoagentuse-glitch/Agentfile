@@ -1,0 +1,14 @@
+{
+  "run_id": "algo-sort-compare-baseline",
+  "experiment_id": "algo-sort-compare",
+  "experiment_type": "algorithm-comparison",
+  "created_at": "2026-01-06T01:00:00Z",
+  "config_hash": "sha256:ccc333",
+  "config_ref": "configs/sort-baseline.yaml",
+  "schema_version": "1",
+  "baseline_run": null,
+  "status": "completed",
+  "metrics": { "duration_ms": 420.0 },
+  "metric_definitions": { "duration_ms": "metrics/duration_ms.json" },
+  "artifacts": []
+}

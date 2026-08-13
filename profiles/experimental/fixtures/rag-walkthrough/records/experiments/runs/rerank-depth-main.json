@@ -1,0 +1,32 @@
+{
+  "run_id": "rerank-depth-main",
+  "experiment_id": "rag-rerank-depth",
+  "experiment_type": "rag",
+  "created_at": "2026-01-07T10:00:00Z",
+  "stage": "main",
+  "attempt_kind": "initial",
+  "code_commit": "9f2c1a4",
+  "config_hash": "sha256:b0c2",
+  "config_ref": "records/experiments/configs/rerank-treatment.yaml",
+  "schema_version": "1",
+  "baseline_run": null,
+  "status": "invalid",
+  "invalid_reason": "評估集雜湊跟 Contract 鎖定當下的 nq-open-eval-v3 對不上；abort_rule 觸發，不用部分資料硬跑",
+  "seed": 42,
+  "command": "python -m rag_lab pipeline run --stage main --config records/experiments/configs/rerank-treatment.yaml",
+  "duration_seconds": 95,
+  "abort_reason": "評估集雜湊不符，依 abort_rule 立即中止",
+  "failure": {
+    "class": "data",
+    "phase": "data_load",
+    "exit_code": 2,
+    "retriable": false
+  },
+  "data_identity": {
+    "evaluation_set": { "id": "nq-open-eval-v3", "hash": "sha256:bb99" }
+  },
+  "metric_definitions": { "recall_at_10": "records/experiments/metrics/recall_at_10.json" },
+  "metrics": {},
+  "artifacts": [],
+  "notes": "資料層的失敗不可重試——先查清楚評估集為什麼變了，再決定是修資料還是開新 experiment。"
+}

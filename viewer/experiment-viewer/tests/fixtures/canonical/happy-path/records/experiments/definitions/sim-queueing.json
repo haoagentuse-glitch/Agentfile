@@ -1,0 +1,15 @@
+{
+  "experiment_id": "sim-queueing",
+  "question": "把服務台從 1 台加到 2 台能不能降低平均等待時間？",
+  "hypothesis": "雙服務台在相同到達率下平均等待時間顯著下降",
+  "baseline": { "description": "單服務台 M/M/1 模擬", "config_ref": "configs/queue-baseline.yaml" },
+  "treatment": { "description": "雙服務台 M/M/2 模擬", "config_ref": "configs/queue-treatment.yaml", "variable": "server_count" },
+  "controlled_variables": ["arrival_rate", "service_rate", "seed"],
+  "primary_metric": "avg_wait_time_ms",
+  "secondary_metrics": [],
+  "decision_rule": "avg_wait_time_ms 相對下降 > 20% 才算成功",
+  "compute_budget": { "pilot_max_minutes": 10, "pilot_max_samples": 10000 },
+  "abort_rule": "queue 長度超過 1000 就中止",
+  "status": "draft",
+  "created_at": "2026-01-07T00:00:00Z"
+}

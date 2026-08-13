@@ -1,0 +1,9 @@
+{
+  "name": "recall_at_10",
+  "type": "ratio",
+  "direction": "higher_is_better",
+  "numerator": "前 10 筆取回結果中命中標準答案片段的查詢數",
+  "denominator": "評估集的查詢總數",
+  "aggregation": "mean",
+  "implementation": "rag_lab/metrics/recall.py::recall_at_k(k=10)"
+}

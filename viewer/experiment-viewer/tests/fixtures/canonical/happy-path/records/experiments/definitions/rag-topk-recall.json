@@ -1,0 +1,15 @@
+{
+  "experiment_id": "rag-topk-recall",
+  "question": "增加 top-k 檢索數量能不能提升 recall@10？",
+  "hypothesis": "top_k 從 20 提高到 50 會提升 recall@10，且不明顯拖慢延遲",
+  "baseline": { "description": "top_k=20 的 RAG pipeline", "config_ref": "configs/rag-baseline.yaml" },
+  "treatment": { "description": "top_k=50 的 RAG pipeline", "config_ref": "configs/rag-treatment.yaml", "variable": "top_k" },
+  "controlled_variables": ["dataset", "model", "seed"],
+  "primary_metric": "recall_at_10",
+  "secondary_metrics": ["latency_ms"],
+  "decision_rule": "recall_at_10 絕對提升 > 0.03 才算成功",
+  "compute_budget": { "pilot_max_minutes": 30, "pilot_max_samples": 500 },
+  "abort_rule": "latency_ms p95 超過 800ms 就中止",
+  "status": "locked",
+  "created_at": "2026-01-05T00:00:00Z"
+}

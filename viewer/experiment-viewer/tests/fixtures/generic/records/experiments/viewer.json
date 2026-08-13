@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "experiments": {
+    "dir": "experiments",
+    "id": "meta.id",
+    "displayName": "meta.title",
+    "status": "meta.status"
+  },
+  "runs": {
+    "dir": "runs",
+    "id": "meta.id",
+    "experimentId": "meta.experiment",
+    "status": "meta.status",
+    "createdAt": "meta.created_at",
+    "metricsPath": "results.metrics",
+    "artifactsPath": "results.artifacts"
+  },
+  "metrics": [
+    { "name": "accuracy", "displayName": "Accuracy", "unit": "ratio", "format": ".2%", "direction": "higher_is_better" },
+    { "name": "cost_usd", "displayName": "Cost (USD)", "unit": "usd", "direction": "lower_is_better" },
+    { "name": "neutral_score", "displayName": "Neutral score" }
+  ],
+  "collections": {
+    "notes": { "dir": "notes", "id": "meta.id", "columns": ["meta.title", "body"] }
+  }
+}

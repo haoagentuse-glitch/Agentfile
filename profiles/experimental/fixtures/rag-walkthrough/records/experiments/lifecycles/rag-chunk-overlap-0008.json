@@ -1,0 +1,12 @@
+{
+  "event_id": "rag-chunk-overlap-0008",
+  "experiment_id": "rag-chunk-overlap",
+  "sequence": 8,
+  "from_state": "awaiting_comparison",
+  "to_state": "confounded",
+  "occurred_at": "2026-01-06T14:30:00Z",
+  "reason": "評分器在兩次執行之間從 answer-grader@4 換到 @5，是未宣告的控制變因差異；recall 的提升無法歸因於切塊重疊",
+  "evidence_refs": [
+    "records/experiments/comparisons/chunk-overlap-main.json"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "claim_id": "rag-topk-recall-claim",
+  "statement": "把 top_k 從 20 提升到 50，在這個資料集與模型下 recall@10 提升 9 個百分點",
+  "experiment_id": "rag-topk-recall",
+  "comparison_ref": "records/experiments/comparisons/rag-topk-recall-baseline__rag-topk-recall-treatment.json",
+  "metric": "recall_at_10",
+  "expected_direction": "increase",
+  "stated_magnitude": 0.09,
+  "magnitude_type": "absolute",
+  "scope": "此資料集與此 embedding 模型",
+  "created_at": "2026-01-05T04:00:00Z"
+}

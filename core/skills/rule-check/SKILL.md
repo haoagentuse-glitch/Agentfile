@@ -49,7 +49,7 @@ description: 對照本專案的 AGENTS.md 逐條稽核當前變更。用於提�
 - [ ] vendored SKILL.md 的 workflow 內文有沒有被改動？只允許出處 metadata 與設定檔引用的改寫。
 - [ ] 每份 vendored 技能的 frontmatter 都有 `metadata.source` 嗎？授權在頂層 `license` 或 `metadata.license` 擇一宣告，不重複。
 - [ ] 有沒有引用到沒被 vendor 進來的 skill？
-- [ ] `LICENSES/` 有涵蓋所有 vendored 來源嗎？
+- [ ] `docs/THIRD_PARTY_LICENSES.md` 有涵蓋所有 vendored 來源嗎？
 
 ## 變更範圍
 

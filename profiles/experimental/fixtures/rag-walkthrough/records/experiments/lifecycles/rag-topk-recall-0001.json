@@ -1,0 +1,10 @@
+{
+  "event_id": "rag-topk-recall-0001",
+  "experiment_id": "rag-topk-recall",
+  "sequence": 1,
+  "from_state": null,
+  "to_state": "draft",
+  "occurred_at": "2026-01-02T09:00:00Z",
+  "reason": "題目進入實驗流程，開始建立 Research Question Certificate",
+  "evidence_refs": []
+}
