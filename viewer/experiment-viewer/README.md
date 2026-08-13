@@ -1,189 +1,103 @@
 # Experiment Viewer
 
-Windows 原生、完全本機、唯讀的實驗瀏覽器。它把一個 project 的 JSON 實驗紀錄投影成 Overview、experiment workspace、Compare、Records、Artifacts、Claims 與 Diagnostics；不寫回、不刪除、不重跑實驗，也不維護第二份權威資料。失敗與存疑的結果一律照實顯示。
+Windows 原生、完全本機、唯讀的實驗瀏覽器。開啟一個 project，把裡面的 JSON 實驗紀錄畫成畫面。
 
-## 啟動
+它不寫回、不刪除、不重跑實驗，也不重算任何判定——看到的每個結論都來自 `records/` 裡已經存在的檔案。
+
+## 開啟
 
 ```powershell
 experiment-viewer.exe C:\path\to\project
 ```
 
-直接開啟指定 project；相對路徑以啟動當下的工作目錄解析。不帶參數時顯示資料夾選擇器。
+不帶參數會跳資料夾選擇器。指到 project 根目錄或直接指到 `<project>\records\experiments\` 都可以。
+
+從 WSL 啟動時自己轉路徑：
 
 ```bash
 experiment-viewer.exe "$(wslpath -w "$PWD")"
 ```
 
-從 WSL 啟動 Windows 程式時，由 shell 把目前目錄轉成 Windows 路徑。程式本身不 hardcode Windows、Linux 或使用者絕對路徑。
+## 怎麼讀畫面
 
-可選 project root，也可直接選 `<projectRoot>/records/experiments/`；兩者會解析成同一個 project。正式程式是 Tauri WebView 桌面 app，不啟動 localhost。
+四個地方的規則跟直覺不同，值得先知道：
 
-## 資料契約
+**比較圖只在可引用時才畫。** `comparison_valid=false` 一律不畫，也不標 improvement/regression。不可引用有兩種原因，畫面上分開顯示：`confounded`（控制條件沒守住）與「沒有共同基準」（兩邊指標定義對不上）。後者不是混雜，別混為一談。
 
-### Canonical records
+**沒有宣告方向的指標只顯示變化量。** 指標沒定義 higher/lower-is-better 時，Viewer 不猜，只給數字不給好壞。
 
-未提供 manifest 時，Viewer 讀取固定的唯讀目錄慣例：
+**失敗不會被藏起來。** 作廢的 run、`refuted` 與 `inconclusive` 的結論都照實列出。Claims 分頁另外顯示失敗診斷，確定性事實與 agent 推測分兩區——分不清這兩者，猜測久了會被當成事實。
 
-```text
-<projectRoot>/records/experiments/
-├── definitions/<experiment_id>.json
-├── runs/<run_id>.json
-├── comparisons/<run-a>__<run-b>.json
-├── claims/<claim_id>.json
-├── audits/<claim_id>.json
-├── diagnoses/<diagnosis_id>.json
-├── gates/<experiment_id>.json
-├── metrics/<metric_name>.json
-└── artifacts/                         # 實際 artifact 可位於 projectRoot 內其他相對路徑
-```
-
-目錄不存在代表該類資料尚未產生，是空狀態；權限錯誤、路徑跳脫或無法讀取則是錯誤。單一 JSON 壞掉只產生一筆 diagnostic，不阻斷其他檔案。
-
-### Manifest-driven generic JSON
-
-自訂 schema 的 manifest 固定放在：
+**結論可以一路點回去。** 點開任一 claim，Drawer 底部是完整證據鏈：
 
 ```text
-<projectRoot>/records/experiments/viewer.json
+claim → 稽核 → 比較 → runs → 實驗定義 → 研究問題憑證 → 查過的來源 → prompt 版本
 ```
 
-manifest 中的 `dir` 全部相對 `<projectRoot>`，不得用絕對路徑或 `..` 跳脫。第一版只支援 JSON 與受限 dot-path；不支援 JSONPath、萬用字元或腳本表達式。
+接不上的環節會標紅留在鏈上，不會消失。鏈上少一環，跟鏈上有一環接不上，是兩回事。
+
+## 它讀什麼
+
+預設讀這個目錄慣例，缺哪個目錄就是那類資料還沒產生，不是錯誤：
+
+```text
+<project>/records/experiments/
+├── definitions/   實驗契約（含研究問題憑證）
+├── runs/          每次執行
+├── comparisons/   比較結果
+├── claims/        結論
+├── audits/        結論稽核
+├── diagnoses/     失敗診斷
+├── gates/         算力升級歷史
+├── metrics/       指標定義
+└── artifacts/
+```
+
+單一檔案壞掉只會在 Diagnostics 記一筆，其他檔案照常載入。權限錯誤與路徑跳脫則是錯誤，會明講，不會偽裝成空畫面。
+
+### 自訂 schema
+
+資料不是上面的格式時，放一份 `<project>/records/experiments/viewer.json` 描述欄位對應：
 
 ```json
 {
   "version": 1,
-  "experiments": {
-    "dir": "experiments",
-    "id": "meta.id",
-    "displayName": "meta.title",
-    "status": "meta.status"
-  },
-  "runs": {
-    "dir": "runs",
-    "id": "meta.id",
-    "experimentId": "meta.experiment",
-    "status": "meta.status",
-    "createdAt": "meta.created_at",
-    "metricsPath": "results.metrics",
-    "artifactsPath": "results.artifacts"
-  },
-  "metrics": [
-    {
-      "name": "accuracy",
-      "displayName": "Accuracy",
-      "unit": "ratio",
-      "format": ".2%",
-      "direction": "higher_is_better"
-    }
-  ],
-  "collections": {
-    "notes": {
-      "dir": "notes",
-      "id": "meta.id",
-      "columns": ["meta.title", "body"]
-    }
-  }
+  "experiments": { "dir": "experiments", "id": "meta.id", "displayName": "meta.title" },
+  "runs": { "dir": "runs", "id": "meta.id", "experimentId": "meta.experiment",
+            "metricsPath": "results.metrics" },
+  "metrics": [{ "name": "accuracy", "format": ".2%", "direction": "higher_is_better" }],
+  "collections": { "notes": { "dir": "notes", "id": "meta.id", "columns": ["meta.title", "body"] } }
 }
 ```
 
-`viewer.json` 不存在時使用 canonical adapter；存在但格式錯誤時顯示 manifest error，不偷偷退回 canonical。缺少 metric direction 時保持中性，不猜 higher/lower-is-better。
+`dir` 一律相對 project 根目錄，不接受絕對路徑或 `..`。只支援 JSON 與這種簡單的點號路徑，不支援萬用字元或運算式。
 
-## 架構與安全邊界
+新增欄位只要改這份檔案，不必改程式。`viewer.json` 格式錯誤時會直接說，不會安靜退回預設慣例。
 
-```text
-project path
-    ↓
-Rust path resolution + containment + read-only I/O
-    ↓
-loadProject(root) → ProjectSnapshot
-    ├── Canonical Records Adapter
-    └── Manifest Adapter
-    ↓
-Vue views / tables / ECharts
-```
+## 安全邊界
 
-`loadProject(root) -> ProjectSnapshot` 是 UI 唯一資料入口。Vue 不讀原始 JSON 欄位、不拼 OS path；所有列目錄、讀檔與 artifact path 解析都經 Rust command。Rust 拒絕絕對的相對參數、`..` traversal 與 symlink escape。Viewer 只開啟已存在的 comparison-result，不自行重算比較或改寫判定。
+所有檔案存取都在 Rust 端做，前端拿不到檔案系統。絕對路徑、`..` 跳脫、指到 project 外的 symlink 一律拒絕。UI 只有一個資料入口 `loadProject(root)`，Vue 不直接讀原始 JSON 欄位，也不自己拼路徑。
 
-## 資訊架構
+## 建置 exe
 
-- Overview：全部 experiments、run/claim 狀態、有效比較、可信 improvement/regression、最近更新與錯誤摘要。
-- Experiments：可篩選、排序的 project experiment 列表。
-- Experiment workspace：Summary、Runs、Compare、Records、Artifacts、Claims tabs；單筆細節使用右側 Drawer。
-- Records：metric definitions 與 manifest 定義的動態 collections/columns；支援篩選、排序與 group by。
-- Diagnostics / About：project/records roots、adapter、path kind 與逐檔錯誤。
-
-Compare 只有在 `comparison_valid=true`、非 confounded，且 metric 明確宣告 direction 時，才標示 improvement/regression。invalid 與 confounded 是不同狀態，均不畫比較圖。
-
-### 不隱藏失敗
-
-作廢的 run、`refuted` 與 `inconclusive` 的 claim、失敗診斷都照實顯示。Claims 分頁除了稽核結論，另外列出 `records/experiments/diagnoses/` 的結構化診斷，確定性事實與 agent 推測分兩區。
-
-### 研究 lineage
-
-Claim 的 Drawer 底部顯示完整證據鏈：
-
-```text
-claim → audit → comparison → runs → definition → certificate → sources → prompts
-```
-
-接不上的環節保留在鏈上並標紅，不從鏈上拿掉——鏈上少一環跟鏈上有一環接不上，讀的人要分得出來。組鏈邏輯在 `src/lib/lineage.ts`，是純函式，不依賴 Vue。
-
-### 通用欄位顯示
-
-manifest 宣告的欄位值可以是任何東西。`src/lib/cell-value.ts` 統一決定顯示規則：缺值、物件、陣列、超長字串各有明確 fallback，不會出現 `[object Object]`。長值截斷後可開 Drawer 看完整內容；排序與篩選對未知型別不拋例外。
-
-## 開發與驗收
-
-```bash
-cd viewer/experiment-viewer && npm ci
-```
-
-在 WSL 使用 Linux Node/npm 安裝鎖定依賴，不混用 Windows npm 與 WSL UNC 路徑。
-
-```bash
-cd viewer/experiment-viewer && npm test
-```
-
-執行 Vitest：`src/lib/` 的純邏輯（adapter、manifest、dot-path、comparison status、cell-value、lineage）走 node environment；`src/components/` 與 `src/views/` 真的掛載元件，走 jsdom。資料層測試不能取代元件測試——排序、篩選、缺值與物件欄位的顯示規則只有掛起來才驗得到。
-
-lineage 測試直接讀 `profiles/experimental/fixtures/rag-walkthrough/`，不在這裡複製第二份 fixture。
-
-```bash
-cd viewer/experiment-viewer && npm run build
-```
-
-執行 `vue-tsc --noEmit` 與 Vite production build。
-
-```bash
-cd viewer/experiment-viewer && cargo test --manifest-path src-tauri/Cargo.toml
-```
-
-執行 Rust 路徑 containment、Windows/UNC/WSL UNC 分類與 IPC serialization 測試。
-
-```bash
-cd viewer/experiment-viewer && npm run tauri dev
-```
-
-啟動開發用 Tauri 視窗；Linux 需 WebKitGTK/GTK 等系統依賴，見 [ADR 0012](../../docs/adr/0012-experiment-viewer-toolchain.md)。
-
-## Windows portable release
-
-正式 `.exe` 必須在 Windows NTFS checkout 建置；不要在 WSL UNC 路徑直接執行 Windows npm/cargo。
+必須在 Windows 本機 NTFS checkout（不能是 `\\wsl$\...`）：
 
 ```powershell
 cd viewer\experiment-viewer; npm run release:windows
 ```
 
-這個具名入口完成乾淨依賴安裝、前端測試、Rust 測試、unsigned release build、PE 檢查與 SHA-256 輸出。
+這個指令會裝依賴、跑完前端與 Rust 測試、建置、驗證產物是合法的 Windows 執行檔，最後輸出到 `viewer\experiment-viewer.exe`。任何一步失敗就中止。
 
-產物固定複製到 `viewer\experiment-viewer.exe`；它是可重建且不進版控的衍生產物，權威來源仍是本目錄的 source、`package-lock.json` 與 `Cargo.lock`。
+exe 不進版控——它隨時可以從原始碼重建，權威來源是 source 加上兩份鎖檔。
 
-### 已知建置
+## 開發
 
-| 日期 | 原始碼 commit | SHA-256 |
-|---|---|---|
-| 2026-08-13 | `43865d0` | `7b7d2ab9c837fd2fe68a1ea8dec74c0659ffc5bc16b270ca582dbed70f739ad4` |
+| 指令 | 做什麼 |
+|---|---|
+| `npm ci` | 裝鎖定的依賴（在 WSL 用 Linux Node，不混用 Windows npm） |
+| `npm test` | Vitest：資料層邏輯 + 掛載元件的 jsdom 測試 |
+| `npm run build` | 型別檢查與 production build |
+| `cargo test --manifest-path src-tauri/Cargo.toml` | 路徑 containment 與 IPC 契約測試 |
+| `npm run tauri dev` | 開發視窗（Linux 需 WebKitGTK，見 [ADR 0012](../../docs/adr/0012-experiment-viewer-toolchain.md)） |
 
-這是一次建置的紀錄，**不是可比對的期望值**。Rust 與 Tauri 的 release build 預設不是位元可重現的（嵌入絕對路徑、建置環境資訊等），換一台機器或換一次建置就會得到不同雜湊。雜湊不符不代表產物被竄改，只代表那是另一次建置。
-
-`release:windows` 每次都會自行比對 release 來源與 portable 副本的雜湊是否一致——那是這支腳本真正在驗的東西（同一次建置的兩份檔案沒有在複製過程中損壞），跟上表無關。
+工具鏈與資訊架構的取捨理由都在 [ADR 0012](../../docs/adr/0012-experiment-viewer-toolchain.md)，不在這裡重述。
