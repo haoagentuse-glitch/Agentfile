@@ -71,7 +71,14 @@
 
 ```bash
 uv tool install "memsearch[onnx]"
-memsearch config set embedding.provider onnx    # 不設定的話預設 OpenAI，缺金鑰會在第一次索引失敗
+memsearch config set embedding.provider onnx
+```
+
+第二行必跑。memsearch 預設 embedding provider 是 OpenAI，不切成本機模型的話，第一次索引會因為缺 `OPENAI_API_KEY` 直接失敗。本機模型首次索引要下載約 558 MB，之後快取在 `~/.cache/huggingface/`。
+
+查詢：
+
+```bash
 memsearch search "為什麼契約用 spec-first"
 ```
 
