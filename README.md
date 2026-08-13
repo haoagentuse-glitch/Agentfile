@@ -10,11 +10,11 @@
 ./apply.sh <目標資料夾> [--profile software|experimental] [--dry-run]
 ```
 
-不帶 `--profile` 預設 `software`。已存在的檔案一律跳過，可重複執行，也可以拿來把既有專案納入本規範。
+不帶 `--profile` 預設 `software`。可重複執行，也可以拿來把既有專案納入本規範。
 
 之後在目標專案裡跑 `/kickoff` 完成 GitHub repo 與標籤設定。
 
-要更新既有專案，重跑 `apply.sh` 只補新檔；覆蓋舊檔請手動處理（腳本刻意不覆寫）。
+要更新既有專案，直接重跑同一行。沒被你改過的投影檔會換成新版，你改過的不動並列在摘要裡等你處理；`AGENTS.md` 與 `.gitignore` 末尾的專案特化段一律保留。機制見 [ADR 0014](docs/adr/0014-apply-manifest-based-update.md)。
 
 ## 兩種模式
 

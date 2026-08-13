@@ -1,0 +1,18 @@
+[project]
+name = "agentfile"
+version = "0.1.0"
+description = "隨身包本身的驗收測試。這個 repo 不是 Python 套件，只用 pytest 當 apply.sh 的測試入口。"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"

@@ -10,7 +10,8 @@
 | `core/.claude/`、`profiles/<name>/.claude/` | Claude Code 設定與 command 的 core／profile 來源 | `apply.sh` 合併（`settings.json` 用 `jq`，其餘用檔案聯集）|
 | `profiles/<name>/records/` | 該 profile 擁有的權威 schema（例如 experimental 的實驗、run、指標三份 schema） | `apply.sh` 複製進目標的 `records/`；`definitions/`／`runs/` 這類使用者產生的內容不預建，用到才生 |
 | `profiles/<name>/tools/` | active profile 的確定性工具 canonical source | `apply.sh` 複製進目標的 `.agents/tools/`；不混入 prompt skill |
-| `apply.sh` | 依 `--profile` 投射規則、skills、tools、records 與第三方授權文件；已存在檔案一律跳過 | 人工執行，一次性、可重跑 |
+| `apply.sh` | 依 `--profile` 投射規則、skills、tools、records 與第三方授權文件；重跑時依投影雜湊決定更新或保留 | 人工執行，可重跑 |
+| 目標專案的 `.agentfile/` | `source.json` 記來源 revision 與 profile；`manifest.tsv` 記每個投影檔的雜湊、受管長度與模式 | `source.json` 給 agent 讀，`manifest.tsv` 只給 `apply.sh` 讀 |
 | `.memsearch/memory/*.md` | 跨 session 記憶 SSoT，預設本機、不進版控 | memsearch CLI（機器層依賴，見下） |
 
 agentfile 自己的根目錄 `AGENTS.md`／`.gitignore`／`.claude/settings.json`／`.claude/skills` 是手動組裝出跟 `apply.sh --profile software` 相同邏輯的結果——`apply.sh` 拒絕以自己為目標（見 [ADR 0003](adr/0003-apply-copies-not-symlinks-to-dotfiles.md)），所以這四個產物不會自動同步，改了 `core/` 或 `profiles/software/` 底下的來源要記得手動重跑組裝。
@@ -20,6 +21,7 @@ agentfile 自己的根目錄 `AGENTS.md`／`.gitignore`／`.claude/settings.json
 - `apply.sh` 只複製檔案與建 symlink，不安裝、不修改使用者層外掛設定——理由見 [ADR 0001](adr/0001-memsearch-two-layer-memory.md)。
 - 跨 session 記憶預設不進版控，需要攜帶時使用者手動選擇追蹤——理由見 [ADR 0002](adr/0002-memsearch-memory-not-tracked-by-default.md)。
 - `apply.sh` 複製整棵樹進目標專案，不 symlink 指回這包所在的家目錄——理由見 [ADR 0003](adr/0003-apply-copies-not-symlinks-to-dotfiles.md)。改成全域 symlink 是常見的「優化」，但會破壞規範與記憶只隨專案走的前提，改動前先讀這條 ADR。
+- 重跑 `apply.sh` 會覆寫「與投影當下逐位元相同」的檔，只有這種檔。下游改過的一律不動並列進摘要，`AGENTS.md` 與 `.gitignore` 末尾的專案特化段在更新時保留——判定表與兩種 mode 見 [ADR 0014](adr/0014-apply-manifest-based-update.md)。行為由 `tests/test_apply.py` 逐格驗證，改 `apply.sh` 前先跑 `pytest tests/test_apply.py`。
 - `.claude/skills` 與（投影後的）`.agents/skills` 都是 symlink 指回 core／profile 的 `skills/`，不是第二份拷貝；改 skill 只改一處。
 - 記憶與文件都要主動策展，不是無限堆積——context 越大越雜，agent 表現越差。`docs/` 只在系統長相改變時才寫（不是每張票都跑），語意索引只收 `docs/`，不收整個對話逐字稿，都是把這個邊界落實成具體規則，而非一次性宣告。
 - Graphify 是列為 optional 的未來結構檢索層，v1 未安裝——見 [ADR 0004](adr/0004-graphify-optional-structural-layer.md)。啟用門檻與範圍限制都在那裡，不要因為看到別人在用就直接開。
