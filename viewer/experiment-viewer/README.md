@@ -177,3 +177,13 @@ cd viewer\experiment-viewer; npm run release:windows
 這個具名入口完成乾淨依賴安裝、前端測試、Rust 測試、unsigned release build、PE 檢查與 SHA-256 輸出。
 
 產物固定複製到 `viewer\experiment-viewer.exe`；它是可重建且不進版控的衍生產物，權威來源仍是本目錄的 source、`package-lock.json` 與 `Cargo.lock`。
+
+### 已知建置
+
+| 日期 | 原始碼 commit | SHA-256 |
+|---|---|---|
+| 2026-08-13 | `43865d0` | `7b7d2ab9c837fd2fe68a1ea8dec74c0659ffc5bc16b270ca582dbed70f739ad4` |
+
+這是一次建置的紀錄，**不是可比對的期望值**。Rust 與 Tauri 的 release build 預設不是位元可重現的（嵌入絕對路徑、建置環境資訊等），換一台機器或換一次建置就會得到不同雜湊。雜湊不符不代表產物被竄改，只代表那是另一次建置。
+
+`release:windows` 每次都會自行比對 release 來源與 portable 副本的雜湊是否一致——那是這支腳本真正在驗的東西（同一次建置的兩份檔案沒有在複製過程中損壞），跟上表無關。
