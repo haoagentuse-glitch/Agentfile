@@ -16,20 +16,21 @@ description: 用這包建立新專案的骨架——套用技能與規範、建�
 
 ## 步驟
 
-### 1. 套用隨身包
+### 1. 確認隨身包已套用
+
+正常情況下這步已經完成——使用者是跑完 `apply.sh` 之後才被導到這裡的。確認目標資料夾有 `AGENTS.md` 與 `.agents/skills/` 即可，不要重跑。
+
+真的還沒套用才跑，並先用 `--dry-run` 給使用者看過：
 
 ```bash
-<隨身包路徑>/apply.sh <目標資料夾>
+<隨身包路徑>/apply.sh <目標資料夾> --profile <software|experimental>
 ```
 
-`git init`（若尚未是 repo）→ 投影 skills 到 `.agents/skills/`、profile tools 到 `.agents/tools/`，並連結 `.claude/skills` → 複製 `.claude/`、`AGENTS.md`、`CLAUDE.md`、`docs/agents/`、`docs/THIRD_PARTY_LICENSES.md` → 放入 `.gitignore`。
-已存在的檔案一律跳過不覆寫。先加 `--dry-run` 給使用者看過再實跑。
+`--profile` 必須跟使用者要做的專案類型一致；不帶會退回 `software`。已存在的檔案一律跳過不覆寫。
 
-把輸出貼給使用者。
+### 2. GitHub 議題追蹤
 
-### 2. GitHub tracker
-
-`to-spec`、`to-tickets`、`code-review` 都讀 `docs/agents/issue-tracker.md`，該檔已由 apply.sh 交付並設定為 GitHub Issues。還缺的是實際的 repo 與標籤。
+`docs/agents/issue-tracker.md` 已由 `apply.sh` 交付並設定為 GitHub Issues。還缺的是實際的 repo 與標籤。
 
 **建立遠端 repo 屬對外操作，執行前必須取得使用者明確同意**，並先問清楚公開或私有：
 
@@ -41,7 +42,7 @@ gh repo create <名稱> --private --source=<目標資料夾> --remote=origin
 gh label create ready-for-agent --description "Ready for an agent to pick up" --color 0E8A16
 ```
 
-`ready-for-agent` 是 vendored skill 唯一使用的 triage 標籤。沒有它，`to-spec` 與 `to-tickets` 發 issue 時會失敗。
+`ready-for-agent` 是 `to-spec` 與 `to-tickets` 唯一使用的 triage 標籤，沒有它那兩個指令發 issue 會失敗。這兩個技能只存在於 `software` profile；其他 profile 仍建議建標籤，但不是必要的。
 
 ### 3. 跨 session 記憶
 
@@ -73,7 +74,8 @@ HTTP API 專案再加契約工具鏈：
 uv add fastapi && uv add --dev schemathesis datamodel-code-generator
 ```
 
-然後把 `.claude/templates/python-pyproject.snippet.toml` 的設定段併進 `pyproject.toml`。
+`software` profile 另外交付 `.claude/templates/python-pyproject.snippet.toml`，把裡面的設定段併進 `pyproject.toml`。其他 profile 沒有這份樣板，跳過即可。
+
 版本一律釘選並提交鎖檔，禁 `latest`。
 
 ### 5. 語言無關骨架
@@ -97,4 +99,4 @@ uv add fastapi && uv add --dev schemathesis datamodel-code-generator
 
 ## 完成後
 
-列出實際產生的檔案樹，並說明下一步是 `/grill-me`。
+列出實際產生的檔案樹，並說明下一步：`software` profile 是 `/grill-me` 把需求問到收斂，`experimental` profile 是 `/evidence-review` 先看證據再選型。

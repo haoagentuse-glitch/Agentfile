@@ -16,7 +16,7 @@ argument-hint: [目標資料夾路徑]
    - 完成後列出實際產生的檔案樹給使用者確認。
 
 3. **交棒**
-   - 骨架就緒後停下，告訴使用者下一步是 `/grill-me` 把需求問到收斂，再由 `/to-spec` 發成 GitHub Issue。
-   - **不要自己開始訪談，也不要自己寫規格。** 那是 `grill-me` 與 `to-spec` 的職責。
+   - 骨架就緒後停下，告訴使用者下一步：`software` profile 是 `/grill-me` 把需求問到收斂，再由 `/to-spec` 發成 GitHub Issue；`experimental` profile 是 `/evidence-review` 先看證據，再 `/experiment-design` 凍結 Contract。
+   - **不要自己開始訪談，也不要自己寫規格。** 那是後續技能的職責。
 
 規範以目標專案的 `AGENTS.md` 為準。
