@@ -21,6 +21,7 @@ agentfile 自己的根目錄 `AGENTS.md`／`.gitignore`／`.claude/settings.json
 - `apply.sh` 只複製檔案與建 symlink，不安裝、不修改使用者層外掛設定——理由見 [ADR 0001](adr/0001-memsearch-two-layer-memory.md)。
 - 跨 session 記憶預設不進版控，需要攜帶時使用者手動選擇追蹤——理由見 [ADR 0002](adr/0002-memsearch-memory-not-tracked-by-default.md)。
 - `apply.sh` 複製整棵樹進目標專案，不 symlink 指回這包所在的家目錄——理由見 [ADR 0003](adr/0003-apply-copies-not-symlinks-to-dotfiles.md)。改成全域 symlink 是常見的「優化」，但會破壞規範與記憶只隨專案走的前提，改動前先讀這條 ADR。
+- 資料流只有兩條，方向相反且不得混用：`apply.sh` 由上游投影到下游；回饋由下游經 GitHub Issue 回到上游（`upstream-feedback` 技能，label `agentfile-feedback`）。下游不得改寫投影下來的上游條文，專案特化只追加於末尾——理由見 [ADR 0015](adr/0015-upstream-feedback-via-issues.md)。
 - 重跑 `apply.sh` 會覆寫「與投影當下逐位元相同」的檔，只有這種檔。下游改過的一律不動並列進摘要，`AGENTS.md` 與 `.gitignore` 末尾的專案特化段在更新時保留——判定表與兩種 mode 見 [ADR 0014](adr/0014-apply-manifest-based-update.md)。行為由 `tests/test_apply.py` 逐格驗證，改 `apply.sh` 前先跑 `pytest tests/test_apply.py`。
 - `.claude/skills` 與（投影後的）`.agents/skills` 都是 symlink 指回 core／profile 的 `skills/`，不是第二份拷貝；改 skill 只改一處。
 - 記憶與文件都要主動策展，不是無限堆積——context 越大越雜，agent 表現越差。`docs/` 只在系統長相改變時才寫（不是每張票都跑），語意索引只收 `docs/`，不收整個對話逐字稿，都是把這個邊界落實成具體規則，而非一次性宣告。
