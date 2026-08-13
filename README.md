@@ -106,6 +106,7 @@ profiles/<name>/skills/<name>/ ┴──→  .agents/skills/   Codex 直接掃�
 profiles/<name>/tools/<name>/  ───→  .agents/tools/
 profiles/<name>/records/       ───→  records/
                                      .claude/skills → ../.agents/skills（symlink）
+（apply.sh 產生）              ───→  .agentfile/      來源 revision 與投影紀錄
 ```
 
 不做 `.codex/skills/` 投影——Codex 會從 cwd 往上掃 `.agents/skills`。symlink 在 Windows 原生環境不可靠，WSL、macOS、Linux 正常。
@@ -123,9 +124,19 @@ profiles/<name>/records/       ───→  records/
 
 同一能力不得存在兩份，也不得同時出現在 core 與某個 profile。加 skill 不用改 `apply.sh`；新增 profile 才要改腳本裡的合法值檢查。
 
+改完 `apply.sh` 要跑：
+
+```bash
+uv run pytest tests/test_apply.py
+```
+
+那支測試逐格驗證更新判定表。這是這個 repo 唯一的自動測試，沒有它就沒人擋得住「重跑一次把使用者的檔覆寫掉」。
+
 ## 規範
 
 見 [AGENTS.md](AGENTS.md)。這包自己也遵守它。
+
+套用這包的專案在使用中發現規範本身有缺口，用 `upstream-feedback` 技能回報到本 repo 的 Issue（label `agentfile-feedback`），不在下游改寫上游條文。判準與處理流程見該技能，決策理由見 [ADR 0015](docs/adr/0015-upstream-feedback-via-issues.md)。
 
 ## 第三方
 

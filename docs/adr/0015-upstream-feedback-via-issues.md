@@ -6,7 +6,7 @@
 
 ## 為什麼不自建管線
 
-- `gh` 已經是這包的宣告依賴，`apply.sh` 本來就檢查它，software profile 的每日流程整個建在 issue 上。自建一套等於在已有 issue tracker 的專案裡再做一個 issue tracker。
+- `gh` 已經是這包的宣告依賴，`apply.sh` 本來就檢查它，software profile 的每日流程整個建在 issue 上。自建一套等於在已有議題追蹤的專案裡再做一套議題追蹤。
 - `AGENTS.md` 的職責邊界表已經指定「GitHub Issues 回答要做什麼」。回饋就是「上游該做什麼」的候選，放進 issue 不需要新規則，放進 JSONL 反而要新增一個擁有者。
 - `sync` 必須知道有哪些下游 repo，那份清單只能是本機絕對路徑，不能進版控，也不能跨機器。issue 沒有這個問題：下游只要有 repo slug 就送得出去。
 - 生命週期、去重、聚合、lineage 都有現成對應：label 是狀態，`--search` 是去重，同一 fingerprint 的留言串是聚合，關閉時引用的 commit 是 lineage。自訂六個狀態不會比這個更清楚。

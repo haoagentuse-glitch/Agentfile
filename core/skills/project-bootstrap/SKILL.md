@@ -26,7 +26,7 @@ description: 用這包建立新專案的骨架——套用技能與規範、建�
 <隨身包路徑>/apply.sh <目標資料夾> --profile <software|experimental>
 ```
 
-`--profile` 必須跟使用者要做的專案類型一致；不帶會退回 `software`。已存在的檔案一律跳過不覆寫。
+`--profile` 必須跟使用者要做的專案類型一致；不帶會退回 `software`。重跑只會更新沒被改過的投影檔，改過的一律不動並列進摘要。
 
 ### 2. GitHub 議題追蹤
 
