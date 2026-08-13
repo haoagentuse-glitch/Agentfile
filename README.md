@@ -46,11 +46,22 @@ profiles/experimental/ 實驗型專案（RAG、agent 架構、ML/DL、模擬、�
 /handoff      交接給下一個 session      寫在 OS 暫存目錄
 ```
 
-`experimental` profile 的日常換成：`/evidence-review`（重大選型前先看證據）→ `/experiment-design`（凍結 Experiment Contract）→ `experiment-lint`（呼叫 canonical validator，通過才 lock）→ 跑 → 記錄進 `records/experiments/runs/` → `compare-runs`（確定性判定可比較性，再算指標差異，取捨依據見 [ADR 0007](docs/adr/0007-compare-runs-design.md)）→ `claim-audit`（機械核對數字跟引用，agent 判斷結論有沒有超出證據範圍，見 [ADR 0008](docs/adr/0008-claim-audit-design.md)）。要不要升到下一個 Compute Gate 等級（L0-L5）用 `compute-gate` 技能機械判定，規則怎麼翻成可比對的參數見 [ADR 0009](docs/adr/0009-compute-gate-design.md)。結果不好時先用 `diagnose-experiment`（探測 → 假設 → smoke → 控制變因 → 下結論，見 [ADR 0011](docs/adr/0011-diagnose-experiment-design.md)），不得直接調參。細節見 `profiles/experimental/AGENTS.md`。
+`experimental` profile 的日常換成：
+
+1. `/evidence-review` — 重大選型前先看證據。
+2. `/experiment-design` — 凍結 Experiment Contract，含研究問題憑證與算力階梯。
+3. `experiment-lint` — 呼叫 canonical validator，通過才 lock。
+4. 跑，紀錄進 `records/experiments/runs/`。跑失敗也是正式結果，標 `invalid` 並填 `failure`，不刪。
+5. `compute-gate` — 要不要升到下一級由 Contract 的 `compute_cascade` 機械判定（[ADR 0009](docs/adr/0009-compute-gate-design.md)）。
+6. `compare-runs` — 確定性判定可比較性，再算指標差異（[ADR 0007](docs/adr/0007-compare-runs-design.md)）。
+7. `claim-audit` — 機械核對數字與引用，語意段判斷結論有沒有超出證據範圍（[ADR 0008](docs/adr/0008-claim-audit-design.md)）。語意段先用 `review-package` 子命令組出獨立審核包，換一個 context 或換一個人來看。
+8. 結果不好時先 `diagnose-experiment`（探測 → 假設 → smoke → 控制變因 → 下結論，[ADR 0011](docs/adr/0011-diagnose-experiment-design.md)），不得直接調參。診斷可寫成 `records/experiments/diagnoses/` 留存。
+
+生命週期契約、provenance、版本化 prompt role 與失敗分類的設計見 [ADR 0013](docs/adr/0013-frontier-research-agent-methodology-evaluation.md)。完整走過一遍的樣子見 `profiles/experimental/fixtures/rag-walkthrough/`。細節見 `profiles/experimental/AGENTS.md`。
 
 系統長相改變時另外跑 `/project-docs`；詞彙或架構決策改變時跑 `/domain-modeling`；HTTP API 動到契約時跑 `/api-contract`。
 
-要圖形化看 `records/experiments/` 裡的實驗、run、比較結果，用 `viewer/experiment-viewer/`（Tauri + Vue + TypeScript + ECharts，只讀不寫，不維護第二份權威副本）。設計與工具鏈取捨見該目錄 README 與 [ADR 0012](docs/adr/0012-experiment-viewer-toolchain.md)。
+要圖形化看 `records/experiments/` 裡的實驗、run、比較結果與研究 lineage，用 `viewer/experiment-viewer/`（Tauri + Vue + TypeScript + ECharts，只讀不寫，不維護第二份權威副本）。設計與工具鏈取捨見該目錄 README 與 [ADR 0012](docs/adr/0012-experiment-viewer-toolchain.md)。
 
 ## 跨 session 記憶（memsearch）
 

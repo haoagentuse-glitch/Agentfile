@@ -1,6 +1,6 @@
 # Experiment Viewer
 
-Windows 原生、完全本機、唯讀的實驗瀏覽器。它把一個 project 的 JSON 實驗紀錄投影成 Overview、experiment workspace、Compare、Records、Artifacts、Claims 與 Diagnostics；不寫回、不刪除、不重跑實驗，也不維護第二份權威資料。
+Windows 原生、完全本機、唯讀的實驗瀏覽器。它把一個 project 的 JSON 實驗紀錄投影成 Overview、experiment workspace、Compare、Records、Artifacts、Claims 與 Diagnostics；不寫回、不刪除、不重跑實驗，也不維護第二份權威資料。失敗與存疑的結果一律照實顯示。
 
 ## 啟動
 
@@ -31,6 +31,7 @@ experiment-viewer.exe "$(wslpath -w "$PWD")"
 ├── comparisons/<run-a>__<run-b>.json
 ├── claims/<claim_id>.json
 ├── audits/<claim_id>.json
+├── diagnoses/<diagnosis_id>.json
 ├── gates/<experiment_id>.json
 ├── metrics/<metric_name>.json
 └── artifacts/                         # 實際 artifact 可位於 projectRoot 內其他相對路徑
@@ -113,6 +114,24 @@ Vue views / tables / ECharts
 
 Compare 只有在 `comparison_valid=true`、非 confounded，且 metric 明確宣告 direction 時，才標示 improvement/regression。invalid 與 confounded 是不同狀態，均不畫比較圖。
 
+### 不隱藏失敗
+
+作廢的 run、`refuted` 與 `inconclusive` 的 claim、失敗診斷都照實顯示。Claims 分頁除了稽核結論，另外列出 `records/experiments/diagnoses/` 的結構化診斷，確定性事實與 agent 推測分兩區。
+
+### 研究 lineage
+
+Claim 的 Drawer 底部顯示完整證據鏈：
+
+```text
+claim → audit → comparison → runs → definition → certificate → sources → prompts
+```
+
+接不上的環節保留在鏈上並標紅，不從鏈上拿掉——鏈上少一環跟鏈上有一環接不上，讀的人要分得出來。組鏈邏輯在 `src/lib/lineage.ts`，是純函式，不依賴 Vue。
+
+### 通用欄位顯示
+
+manifest 宣告的欄位值可以是任何東西。`src/lib/cell-value.ts` 統一決定顯示規則：缺值、物件、陣列、超長字串各有明確 fallback，不會出現 `[object Object]`。長值截斷後可開 Drawer 看完整內容；排序與篩選對未知型別不拋例外。
+
 ## 開發與驗收
 
 ```bash
@@ -125,7 +144,9 @@ cd viewer/experiment-viewer && npm ci
 cd viewer/experiment-viewer && npm test
 ```
 
-執行 adapter、manifest、dot-path、comparison status 與 project layout 的 Vitest 測試。
+執行 Vitest：`src/lib/` 的純邏輯（adapter、manifest、dot-path、comparison status、cell-value、lineage）走 node environment；`src/components/` 與 `src/views/` 真的掛載元件，走 jsdom。資料層測試不能取代元件測試——排序、篩選、缺值與物件欄位的顯示規則只有掛起來才驗得到。
+
+lineage 測試直接讀 `profiles/experimental/fixtures/rag-walkthrough/`，不在這裡複製第二份 fixture。
 
 ```bash
 cd viewer/experiment-viewer && npm run build
