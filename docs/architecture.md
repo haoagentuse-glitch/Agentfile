@@ -4,15 +4,17 @@
 
 | 部件 | 做什麼 | 誰讀它 |
 |---|---|---|
-| `core/AGENTS.md` | 跨 profile 都成立的不變量，唯一規範來源的 upstream 部分 | `apply.sh` 串接進目標專案的 `AGENTS.md` |
-| `profiles/<name>/AGENTS.md` | active profile 特化規則，追加於 core 之後 | 同上，只有 active profile 那份會被串接 |
-| `core/skills/<name>/`、`profiles/<name>/skills/<name>/` | 技能 canonical source，依 core／profile 分層 | `apply.sh` 聯集複製進目標的 `.agents/skills/` |
-| `core/.claude/`、`profiles/<name>/.claude/` | Claude Code 設定與 command 的 core／profile 來源 | `apply.sh` 合併（`settings.json` 用 `jq`，其餘用檔案聯集）|
-| `profiles/<name>/records/` | 該 profile 擁有的權威 schema（例如 experimental 的實驗、run、指標三份 schema） | `apply.sh` 複製進目標的 `records/`；`definitions/`／`runs/` 這類使用者產生的內容不預建，用到才生 |
-| `profiles/<name>/tools/` | active profile 的確定性工具 canonical source | `apply.sh` 複製進目標的 `.agents/tools/`；不混入 prompt skill |
+| `core/AGENTS.md` | 跨 profile 都成立的不變量，唯一規範來源的 upstream 部分 | Claude Code 與 Codex，讀的是投影後那份 `AGENTS.md` |
+| `profiles/<name>/AGENTS.md` | active profile 特化規則，追加於 core 之後；未啟用的 profile 不會出現在目標專案裡 | 同上 |
+| `core/skills/<name>/`、`profiles/<name>/skills/<name>/` | 技能 canonical source，依 core／profile 分層 | Codex 從 cwd 往上掃 `.agents/skills/`；Claude Code 讀 `.claude/skills`，兩者指向同一份 |
+| `core/.claude/`、`profiles/<name>/.claude/` | Claude Code 設定與 command 的 core／profile 來源 | 只有 Claude Code |
+| `profiles/<name>/records/` | 該 profile 擁有的權威 schema（例如 experimental 的實驗、run、指標三份 schema）；`definitions/`／`runs/` 這類使用者產生的內容不預建，用到才生 | `experiment_records validate` 與 viewer 的 `loadProject()` |
+| `profiles/<name>/tools/` | active profile 的確定性工具 canonical source，不混入 prompt skill | skill 以 `uv run --project .agents/tools/<name>` 呼叫 |
 | `apply.sh` | 依 `--profile` 投射規則、skills、tools、records 與第三方授權文件；重跑時依投影雜湊決定更新或保留 | 人工執行，可重跑 |
 | 目標專案的 `.agentfile/` | `source.json` 記來源 revision 與 profile；`manifest.tsv` 記每個投影檔的雜湊、受管長度與模式 | `source.json` 給 agent 讀，`manifest.tsv` 只給 `apply.sh` 讀 |
 | `.memsearch/memory/*.md` | 跨 session 記憶 SSoT，預設本機、不進版控 | memsearch CLI（機器層依賴，見下） |
+
+本包內每樣東西套用後落到哪、用什麼方式組裝，見 [README.md](../README.md) 的「檔案放哪」一節，那裡是唯一來源。
 
 agentfile 自己的根目錄 `AGENTS.md`／`.gitignore`／`.claude/settings.json`／`.claude/skills` 是手動組裝出跟 `apply.sh --profile software` 相同邏輯的結果——`apply.sh` 拒絕以自己為目標（見 [ADR 0003](adr/0003-apply-copies-not-symlinks-to-dotfiles.md)），所以這四個產物不會自動同步，改了 `core/` 或 `profiles/software/` 底下的來源要記得手動重跑組裝。
 
