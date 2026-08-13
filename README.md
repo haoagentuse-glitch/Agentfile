@@ -99,17 +99,23 @@ git clone https://github.com/zilliztech/memsearch.git && bash memsearch/plugins/
 
 ## 檔案放哪
 
-```
-本包內                              套用後
-core/skills/<name>/            ┐
-profiles/<name>/skills/<name>/ ┴──→  .agents/skills/   Codex 直接掃這裡
-profiles/<name>/tools/<name>/  ───→  .agents/tools/
-profiles/<name>/records/       ───→  records/
-                                     .claude/skills → ../.agents/skills（symlink）
-（apply.sh 產生）              ───→  .agentfile/      來源 revision 與投影紀錄
-```
+`<active>` 是 `--profile` 選中的那個。未啟用的 profile 完全不會出現在套用後的專案裡。
 
-不做 `.codex/skills/` 投影——Codex 會從 cwd 往上掃 `.agents/skills`。symlink 在 Windows 原生環境不可靠，WSL、macOS、Linux 正常。
+| 本包內 | 怎麼過去 | 套用後 |
+|---|---|---|
+| `core/AGENTS.md` + `profiles/<active>/AGENTS.md` | 串接，profile 在後 | `AGENTS.md` |
+| `CLAUDE.md` | 複製 | `CLAUDE.md` |
+| `core/skills/` + `profiles/<active>/skills/` | 聯集複製，同名先到者贏 | `.agents/skills/` |
+| `profiles/<active>/tools/` | 複製 | `.agents/tools/` |
+| `profiles/<active>/records/` | 複製，只有 schema 與 prompt | `records/` |
+| `core/.claude/` + `profiles/<active>/.claude/` | 聯集複製 | `.claude/` |
+| 兩層的 `settings.json` | `jq` 合併允許與拒絕清單 | `.claude/settings.json` |
+| 兩層的 `gitignore.base` | 串接 | `.gitignore` |
+| `core/.claude/templates/agents/` | 複製 | `docs/agents/` |
+| `docs/THIRD_PARTY_LICENSES.md` | 複製 | 同路徑 |
+| —— | `apply.sh` 產生 | `.agentfile/` 來源 revision 與投影紀錄 |
+
+只有一條不是複製而是指標：`.claude/skills → ../.agents/skills`（symlink）。Claude 讀 `.claude/skills`、Codex 從 cwd 往上掃 `.agents/skills`，兩邊指向同一份檔案，改 skill 只改一處。不另做 `.codex/skills/` 投影。symlink 在 Windows 原生環境不可靠，WSL、macOS、Linux 正常。
 
 要加東西：
 
