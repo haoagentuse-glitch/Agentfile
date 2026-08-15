@@ -86,7 +86,7 @@ claim → 稽核 → 比較 → runs → 實驗定義 → 研究問題憑證 →
 cd viewer\experiment-viewer; npm run release:windows
 ```
 
-這個指令會裝依賴、跑完前端與 Rust 測試、建置、驗證產物是合法的 Windows 執行檔，最後輸出到 `viewer\experiment-viewer.exe`。任何一步失敗就中止。
+這個指令會裝依賴、跑完前端與 Rust 測試、建置並驗證兩個 Windows PE 產物：免安裝版 `viewer\experiment-viewer.exe` 與 NSIS 安裝包 `viewer\experiment-viewer-setup.exe`。任何一步失敗就中止。
 
 exe 不進版控——它隨時可以從原始碼重建，權威來源是 source 加上兩份鎖檔。
 

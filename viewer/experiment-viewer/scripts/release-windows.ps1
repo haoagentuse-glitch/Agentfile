@@ -10,7 +10,9 @@ if ($env:OS -ne 'Windows_NT') {
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $viewerRoot = Split-Path -Parent $projectRoot
 $releaseExe = Join-Path $projectRoot 'src-tauri\target\release\experiment-viewer.exe'
+$nsisRoot = Join-Path $projectRoot 'src-tauri\target\release\bundle\nsis'
 $portableExe = Join-Path $viewerRoot 'experiment-viewer.exe'
+$portableInstaller = Join-Path $viewerRoot 'experiment-viewer-setup.exe'
 
 if ($projectRoot -notmatch '^[A-Za-z]:\\') {
     throw 'release:windows 必須從 Windows 本機 NTFS checkout 執行，不接受 UNC 或 WSL 路徑。'
@@ -107,24 +109,39 @@ try {
         '--manifest-path',
         'src-tauri\Cargo.toml'
     ) -Label '執行 Rust/Tauri 測試'
+    $bundleStartedAt = [DateTime]::UtcNow.AddSeconds(-2)
     Invoke-External -Command 'npm.cmd' -Arguments @(
         'run',
         'tauri',
         '--',
         'build',
-        '--no-bundle'
-    ) -Label '建置 Windows release exe'
+        '--bundles',
+        'nsis'
+    ) -Label '建置 Windows release exe 與 NSIS installer'
+
+    $installers = @(
+        Get-ChildItem -LiteralPath $nsisRoot -Filter '*.exe' -File |
+            Where-Object { $_.LastWriteTimeUtc -ge $bundleStartedAt }
+    )
+    if ($installers.Count -ne 1) {
+        throw "本次建置應產生恰好一個 NSIS installer，實際找到 $($installers.Count) 個。"
+    }
 
     Copy-Item -LiteralPath $releaseExe -Destination $portableExe -Force
+    Copy-Item -LiteralPath $installers[0].FullName -Destination $portableInstaller -Force
     Assert-WindowsPe -Path $portableExe
+    Assert-WindowsPe -Path $portableInstaller
     $releaseHash = Get-Sha256 -Path $releaseExe
     $portableHash = Get-Sha256 -Path $portableExe
     if ($releaseHash -ne $portableHash) {
         throw 'portable 副本與 release 來源的 SHA-256 不一致。'
     }
 
-    Write-Output "完成：$portableExe"
-    Write-Output "SHA256：$portableHash"
+    $installerHash = Get-Sha256 -Path $portableInstaller
+    Write-Output "完成 portable：$portableExe"
+    Write-Output "portable SHA256：$portableHash"
+    Write-Output "完成 NSIS：$portableInstaller"
+    Write-Output "NSIS SHA256：$installerHash"
 }
 finally {
     Pop-Location

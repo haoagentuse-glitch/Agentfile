@@ -344,19 +344,19 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 2. **擴充 experiment definition 的 `derivation`（已實作）。** certificate 表示 primitives、assumptions、mechanism_model、tension、falsifier、minimal_decisive_test、expected_observations、failure_update、source_refs、counterexamples 與 novelty_status。`status` 為 `locked` 時 `derivation` 必填。確定性硬檢查：ID 唯一、`failure_update` 指到存在的 assumption、`mechanism_model.variables` 包含 `treatment.variable`、`source_refs` 為空時 `novelty_status` 只能是 `unverified`。
 3. **把 provenance 做成共享小型結構（已實作）。** `provenance.schema.json` 的 `producer` 由 definition／claim／audit 以跨檔 `$ref` 引用。`software_agent` 的 `model` 與 `prompt_id` 必填。run 端由 `command`、`code_commit`、`dirty_worktree`、`config_hash`、`data_identity` 與 `components.*.prompt_hash` 承接。
 4. **補 run stage／lineage／failure／resource usage（已實作）。** `stage`、`parent_run_id`、`attempt_kind`、`data_identity`、`components`、`seed`／`nondeterminism_sources`、`resource_usage`、`budget_limit`、`abort_reason`、`failure`。RAG 特有的身分走 `data_identity` 與 `components` 的具名角色，未在最外層開專屬欄位。確定性硬檢查：有 `failure` 不得標 `completed`、replication 與 retry 必須指名 parent、parent 必須存在且不得成環、超出 `budget_limit` 必須有 `abort_reason`。
-5. **強化 comparison contract（已實作）。** `structurally_comparable`、`controlled_variables_match`、`confounded` 三個判斷分開表示，全部由 `compare_runs.py` 算。`differences` 是具名差異的唯一清單，每筆帶 `category`（config／data／model／prompt／evaluator／sample／unknown）與 `severity`。`diagnostic_suggestions` 與 validity 分欄。
+5. **強化 comparison contract（已實作）。** `structurally_comparable`、`controlled_variables_match`、`confounded` 三個判斷分開表示，全部由 `experiment_records compare-runs` 算。`differences` 是具名差異的唯一清單，每筆帶 `category`（config／data／model／prompt／evaluator／sample／unknown）與 `severity`。`diagnostic_suggestions` 與 validity 分欄。
 6. **強化 claim→evidence audit（已實作）。** claim 補 `claim_type`、`evidence_refs`、`status`、`superseded_by`；audit 補 `entailment`、`intended_question_fit`、`novelty`、`review_independence`，mechanical 段補 `comparison_confounded`、`evidence_hashes_match`、`numeric_recomputed`。確定性硬檢查：`mechanical_pass` 為 false 不得是 supported 結論、審核者不獨立時不得 `fully_supported`、claim 與 audit 的 producer 相同時 `review_independence.independent` 必須是 false、claim 標 `supported` 必須有結論相符的稽核。
-7. **建立完整 RAG 貫穿式骨架 fixture（已實作）。** `profiles/experimental/fixtures/rag-walkthrough/`，62 筆紀錄、四條生命週期鏈，終態分別是 `accepted`、`confounded`、`execution_failed`、`inconclusive`。由 `tests/test_rag_walkthrough_fixture.py` 重放驗證。
+7. **建立完整 RAG 貫穿式骨架 fixture（已實作）。** `profiles/experimental/fixtures/rag-walkthrough/`，62 筆紀錄、四條生命週期鏈，終態分別是 `accepted`、`confounded`、`execution_failed`、`inconclusive`。由 `profiles/experimental/tools/experiment-records/tests/test_rag_walkthrough_fixture.py` 重放驗證。
 
 ### P1：契約成立後加入提示詞與研究執行增強
 
 8. **建立少量版本化 prompt roles（已實作）。** 六個 role 放 `records/experiments/prompts/<role>@<version>.md`。輸出型別在 `prompt-output.schema.json`，其中沒有任何 gate、comparison 判定或 lifecycle 欄位——界線寫在 schema 裡，不只寫在提示詞裡。validator 比對 `producer.prompt_hash` 與 prompt 檔案的實際雜湊，不符即錯誤；`experiment_records prompts` 列出 role 與雜湊。
 9. **實作 evidence-only independent review package（已實作）。** `experiment_records review-package` 組出凍結的研究問題、候選主張、比較判定、由 `locator` 實際取出的證據摘錄與全部 run 摘要。包裡沒有 `producer`，`omitted` 明說看不到什麼。Contract 的 `review_policy.required_reviewer_kind` 與 Contract 一起凍結，validator 比對稽核紀錄的 `reviewer_kind` 是否滿足。
-10. **實作 compute cascade gate（已實作）。** Contract 的 `compute_cascade` 每級有 `stage`、`level`、`budget`、`promotion`、`abort`。`compute_gate.py` 只讀 Contract 與紀錄，不從命令列收門檻，因此同一組輸入重跑得到同一個判定（有測試比對兩次的 `history` 最後一筆）。判定順序固定 `sequence`→`abort`→`budget`→`promotion`，取不到值判 `failed`。詳見 [ADR 0009](0009-compute-gate-design.md) 的後續修訂。
+10. **實作 compute cascade gate（已實作）。** Contract 的 `compute_cascade` 每級有 `stage`、`level`、`budget`、`promotion`、`abort`。`experiment_records compute-gate` 只讀 Contract 與紀錄，不從命令列收門檻，因此同一組輸入重跑得到同一個判定（有測試比對兩次的 `history` 最後一筆）。判定順序固定 `sequence`→`abort`→`budget`→`promotion`，取不到值判 `failed`。詳見 [ADR 0009](0009-compute-gate-design.md) 的後續修訂。
 11. **建立 failure taxonomy 與最便宜 next-test 建議（已實作）。** 七種分類集中在 `failure-taxonomy.schema.json`，其他 schema 一律 `$ref`，有測試確認沒有第二份副本。新增 `diagnoses/` record 類型，`deterministic_facts`（每條有來源）與 `hypotheses`（推測）分欄。validator 擋下：`distinguishes` 指到不存在的假設、facts 的 ref 解析不到、未排除其他分類就判 `hypothesis_refuted`。
 12. **Viewer 呈現研究 lineage（已實作）。** `src/lib/lineage.ts` 從 claim 組出 claim → audit → comparison → runs → definition → certificate → sources → prompts 的完整鏈。接不上的環節保留在鏈上並標紅，不從鏈上拿掉——鏈上少一環跟鏈上有一環接不上，讀的人要分得出來。作廢的 run、`refuted` 與 `inconclusive` 的 claim 一律照實列出。Claims 分頁另外顯示失敗診斷。
 
-#### Viewer 現況與剩餘工作
+#### Viewer 現況與驗收
 
 資訊架構由 [ADR 0012](0012-experiment-viewer-toolchain.md) 擁有。頂層導覽維持 `Overview`、`Experiments`、`Records`、`Diagnostics`。`Compare` 與 `Artifacts` 維持在 experiment workspace。若要改變這個結構，必須先用新 ADR 取代 ADR 0012。
 
@@ -366,11 +366,11 @@ Definition 必須列：primary／guardrail metrics、slices、direction、decisi
 - **Viewer UI 資訊架構與視覺。** 已依 ADR 0012 實作頂層導覽與 experiment workspace tabs。`viewer/experiment-viewer/src/components/Drawer.vue` 提供右側 Detail。`viewer/experiment-viewer/src/styles/theme.css` 提供 Solarized Light 衍生配色、等寬字體與 IDE／terminal 類風格。
 - **Records 動態欄位。** `viewer/experiment-viewer/src/views/RecordsView.vue` 已依 `viewer.json` 的 `collections.*.columns` 建立欄位。新增 dot-path 欄位不需修改 Vue。
 
-剩餘工作依序如下：
+驗收已完成：
 
-1. **補 generic value rendering。** 建立共用 value formatter。它必須處理缺值、純量、object、array 與長字串。object 與 array 不得顯示為 `[object Object]`。長字串必須有截斷與完整內容入口。排序、篩選與分組不得因未知型別拋出例外。
-2. **補 Vue 元件測試。** 為 `DataTable.vue` 與 `RecordsView.vue` 建立測試。驗收範圍包含排序、篩選、分組、選取、Drawer、缺值、object、array 與長字串。目前 `src/lib/__tests__/` 的資料層測試不能取代元件測試。
-3. **補 generic fixture UI 貫穿驗收。** 用 `tests/fixtures/generic/` 驗證 manifest 專案可經 `loadProject(root)` 進入現有 Overview、Experiments、Records 與 experiment workspace。這項驗收不得修改 canonical model，也不得為第二份 schema 建立專用 Vue 元件。
+1. **generic value rendering（已實作）。** 共用 formatter 處理缺值、純量、object、array 與長字串；長字串可展開完整內容，排序、篩選與分組可處理未知型別。
+2. **Vue 元件測試（已實作）。** `DataTable.vue` 與 `RecordsView.vue` 的測試涵蓋排序、篩選、分組、選取、Drawer、缺值、object、array 與長字串。
+3. **generic fixture UI 貫穿驗收（已實作）。** `GenericProjectViews.test.ts` 用同一個 `loadProject(root)` 讓 manifest 專案進入 Overview、Experiments 與 experiment workspace；`RecordsView.test.ts` 驗證 Records。沒有新增第二套 canonical model 或專用 Vue 元件。
 
 研究 lineage 仍由本節上方第 12 項追蹤。不要在此重複建立第二份代辦。
 
