@@ -136,7 +136,20 @@ git clone https://github.com/zilliztech/memsearch.git && bash memsearch/plugins/
 uv run pytest tests/test_apply.py
 ```
 
-那支測試逐格驗證更新判定表。這是這個 repo 唯一的自動測試，沒有它就沒人擋得住「重跑一次把使用者的檔覆寫掉」。
+那支測試逐格驗證更新判定表。完整驗收不只這一套：
+
+| 指令 | 驗收範圍 |
+|---|---|
+| `uv run --frozen ruff check tests profiles/experimental/tools/experiment-records/src profiles/experimental/tools/experiment-records/tests` | Python 語法、import 與未使用名稱 |
+| `uv run --frozen pytest` | `apply.sh` 投影、更新與下游 CLI |
+| `uv run --project profiles/experimental/tools/experiment-records --frozen pytest profiles/experimental/tools/experiment-records/tests` | experimental schema、生命週期與確定性工具 |
+| `npm --prefix viewer/experiment-viewer ci` | 安裝 Viewer 鎖定依賴 |
+| `npm --prefix viewer/experiment-viewer audit --audit-level=high` | 阻擋 Viewer high／critical 已知弱點 |
+| `npm --prefix viewer/experiment-viewer test` | Viewer 資料層與 Vue 元件 |
+| `npm --prefix viewer/experiment-viewer run build` | TypeScript 與 production build |
+| `npm --prefix viewer/experiment-viewer run release:windows` | Windows Rust tests、portable PE 與 NSIS installer；只能在 NTFS checkout 執行 |
+
+`.github/workflows/ci.yml` 在 push 與 pull request 重跑同一組 gate。
 
 ## 規範
 

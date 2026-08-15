@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "0.12.1"
+          python-version: "3.12.12"
+          enable-cache: true
+      - name: Install locked Python environments
+        run: |
+          uv sync --frozen --python 3.12.12
+          uv sync --project profiles/experimental/tools/experiment-records --frozen --python 3.12.12
+      - name: Lint Python
+        run: uv run --frozen ruff check tests profiles/experimental/tools/experiment-records/src profiles/experimental/tools/experiment-records/tests
+      - name: Test apply projection
+        run: uv run --frozen pytest
+      - name: Test experiment records
+        run: uv run --project profiles/experimental/tools/experiment-records --frozen pytest profiles/experimental/tools/experiment-records/tests
+
+  viewer:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: viewer/experiment-viewer
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: viewer/experiment-viewer/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm test
+      - run: npm run build
+
+  windows-release:
+    runs-on: windows-2025
+    defaults:
+      run:
+        working-directory: viewer/experiment-viewer
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: viewer/experiment-viewer/package-lock.json
+      - uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1
+        with:
+          toolchain: "1.95.0"
+      - name: Build and verify portable exe and NSIS installer
+        run: npm run release:windows
