@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from helpers import run_cli, valid_definition, valid_derivation, write_config, write_record
+from helpers import (
+    run_cli,
+    valid_definition,
+    valid_derivation,
+    write_config,
+    write_record,
+)
 
 
 def _project_with_configs(project: Path) -> None:

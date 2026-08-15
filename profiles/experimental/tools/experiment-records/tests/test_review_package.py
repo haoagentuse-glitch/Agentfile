@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from helpers import (
     run_cli,
     valid_audit,

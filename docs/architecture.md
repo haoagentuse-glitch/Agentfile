@@ -53,11 +53,11 @@ agentfile 自己的根目錄 `AGENTS.md`／`.gitignore`／`.claude/settings.json
 - 跨 session 記憶預設不進版控，需要攜帶時使用者手動選擇追蹤——理由見 [ADR 0002](adr/0002-memsearch-memory-not-tracked-by-default.md)。
 - `apply.sh` 複製整棵樹進目標專案，不 symlink 指回這包所在的家目錄——理由見 [ADR 0003](adr/0003-apply-copies-not-symlinks-to-dotfiles.md)。改成全域 symlink 是常見的「優化」，但會破壞規範與記憶只隨專案走的前提，改動前先讀這條 ADR。
 - 重跑 `apply.sh` 會覆寫「與投影當下逐位元相同」的檔，只有這種檔。下游改過的一律不動並列進摘要，`AGENTS.md` 與 `.gitignore` 末尾的專案特化段在更新時保留——判定表與兩種 mode 見 [ADR 0014](adr/0014-apply-manifest-based-update.md)。行為由 `tests/test_apply.py` 逐格驗證，改 `apply.sh` 前先跑 `pytest tests/test_apply.py`。
-- `.claude/skills` 與（投影後的）`.agents/skills` 都是 symlink 指回 core／profile 的 `skills/`，不是第二份拷貝；改 skill 只改一處。
+- 投影後的 `.agents/skills/` 是 canonical skill 聯集的實體副本；`.claude/skills` 是指向 `../.agents/skills` 的 symlink。兩個 agent 入口讀同一份下游內容，但不指回本包來源。
 - 記憶與文件都要主動策展，不是無限堆積——context 越大越雜，agent 表現越差。`docs/` 只在系統長相改變時才寫（不是每張票都跑），語意索引只收 `docs/`，不收整個對話逐字稿，都是把這個邊界落實成具體規則，而非一次性宣告。
 - Graphify 是列為 optional 的未來結構檢索層，v1 未安裝——見 [ADR 0004](adr/0004-graphify-optional-structural-layer.md)。啟用門檻與範圍限制都在那裡，不要因為看到別人在用就直接開。
 - 只有 active profile 的規則、skill、設定會出現在目標專案裡；未啟用 profile 的東西實體上不存在，不是靠文件告誡 agent 不要用——理由見 [ADR 0005](adr/0005-core-profile-isolation.md)。
-- `experiment-lint` 只負責觸發 `.agents/tools/experiment-records` 的 canonical validator。Schema、project-ref、Contract config diff 與 lifecycle event 都由同一個 CLI 驗證。`compare-runs` 仍由 `compare_runs.py` 負責 run 可比較性。`claim-audit` 維持機械檢查與 agent 語意判斷分工。
+- `experiment-lint` 只負責觸發 `.agents/tools/experiment-records` 的 canonical CLI。Schema、project-ref、Contract config diff、lifecycle event、run 可比較性、claim 機械稽核與 compute gate 都由這個套件提供；`claim-audit` 的語意判斷仍由獨立 reviewer 完成。
 
 ## Experimental profile
 
@@ -85,13 +85,16 @@ P2（第 13–16 項）未動，啟用門檻寫在 ADR 裡。
 
 `profiles/experimental/tools/experiment-records/` 是來源。
 `apply.sh --profile experimental` 將它投射到 `.agents/tools/experiment-records/`。
-公開 CLI 是 `.agents/tools/experiment-records`。它有四個子命令：
+公開 CLI 是 `.agents/tools/experiment-records`。它有七個子命令：
 
 ```bash
 uv run --project .agents/tools/experiment-records python -m experiment_records validate .
 uv run --project .agents/tools/experiment-records python -m experiment_records transition . <EXPERIMENT_ID> <TO_STATE> --reason "<REASON>"
 uv run --project .agents/tools/experiment-records python -m experiment_records prompts .
 uv run --project .agents/tools/experiment-records python -m experiment_records review-package . <CLAIM_ID> --output <PATH>
+uv run --project .agents/tools/experiment-records python -m experiment_records compare-runs <RUN_A> <RUN_B> --output <PATH>
+uv run --project .agents/tools/experiment-records python -m experiment_records claim-audit <CLAIM> --output <PATH>
+uv run --project .agents/tools/experiment-records python -m experiment_records compute-gate <GATE_STATE> --contract <CONTRACT> --request-level <LEVEL>
 ```
 
 `validate` 除了 schema 與 project-ref，還做跨檔的確定性檢查：run lineage 不得成環、claim 標 `supported` 必須有結論相符的稽核、稽核者身分必須滿足 Contract 凍結的 `review_policy`、`producer.prompt_hash` 必須對得上 prompt 檔案的實際內容。

@@ -1,13 +1,13 @@
 # RAG 貫穿式骨架 fixture
 
-一份可重放的完整研究紀錄，涵蓋 [ADR 0013](../../../docs/adr/0013-frontier-research-agent-methodology-evaluation.md) 定義的整條生命週期。用途是回答「這套契約長出來的紀錄實際上是什麼樣子」，不是示範怎麼做 RAG。
+一份可重放的完整研究紀錄，涵蓋 [ADR 0013](../../../../docs/adr/0013-frontier-research-agent-methodology-evaluation.md) 定義的整條生命週期。用途是回答「這套契約長出來的紀錄實際上是什麼樣子」，不是示範怎麼做 RAG。
 
 這裡沒有 `records/experiments/schemas/`。schema 只有 `profiles/experimental/records/experiments/schemas/` 一份，驗證時在暫存目錄組起來。
 
 ## 跑驗證
 
 ```bash
-uv run --project profiles/experimental/tools/experiment-records pytest tests/test_rag_walkthrough_fixture.py
+uv run --project profiles/experimental/tools/experiment-records pytest profiles/experimental/tools/experiment-records/tests/test_rag_walkthrough_fixture.py
 ```
 
 ## 四條鏈
@@ -27,7 +27,7 @@ uv run --project profiles/experimental/tools/experiment-records pytest tests/tes
 
 **新穎性以查過的來源為準。** 同一份稽核的 `novelty.status` 是 `prior_art_found`，附 `source_refs`。definition 的 `derivation.novelty_status` 當初標 `novel_claimed`，稽核把它降級——這正是稽核該做的事。
 
-**不可引用有兩種原因。** `rag-chunk-overlap` 是 `confounded`（條件沒守住）。另一種是 `structurally_comparable=false`（沒有共同基準），本 fixture 沒有這條，因為它在 `compare_runs.py` 的端到端測試裡涵蓋了。
+**不可引用有兩種原因。** `rag-chunk-overlap` 是 `confounded`（條件沒守住）。另一種是 `structurally_comparable=false`（沒有共同基準），本 fixture 沒有這條，因為它在 `experiment_records compare-runs` 的端到端測試裡涵蓋了。
 
 **證據不足沒有被改寫成弱版本的成功。** `query-rewrite-claim` 的 `status` 是 `inconclusive`，稽核 `final_verdict` 是 `unsupported`，`entailment.verdict` 是 `not_entailed`。數字正確但推不出因果。
 

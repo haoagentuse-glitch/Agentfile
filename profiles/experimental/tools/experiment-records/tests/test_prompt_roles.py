@@ -12,7 +12,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from helpers import run_cli, valid_definition, write_config, write_record
 
 EXPECTED_ROLES = {

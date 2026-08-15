@@ -9,23 +9,10 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
-
 from helpers import run_cli
-
-
-def _find_compare_runs() -> Path:
-    for candidate in Path(__file__).resolve().parents:
-        probe = candidate / "skills" / "compare-runs" / "compare_runs.py"
-        if probe.is_file():
-            return probe
-    raise RuntimeError("找不到 compare_runs.py")
-
-
-COMPARE_RUNS = _find_compare_runs()
 
 BASELINE_CONFIG = {"dataset": "corpus-a", "model": "embed-v1", "top_k": 5, "seed": 42}
 METRIC_DEFINITIONS = {"recall_at_10": "records/experiments/metrics/recall_at_10.json"}
@@ -98,18 +85,13 @@ def scenario(project: Path):
 def _compare(project: Path) -> tuple[subprocess.CompletedProcess[str], dict | None]:
     output = project / "records" / "experiments" / "comparisons" / "smoke.json"
     output.parent.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(
-        [
-            sys.executable,
-            str(COMPARE_RUNS),
-            "records/experiments/runs/smoke-baseline.json",
-            "records/experiments/runs/smoke-treatment.json",
-            "--output",
-            str(output),
-        ],
+    result = run_cli(
+        "compare-runs",
+        "records/experiments/runs/smoke-baseline.json",
+        "records/experiments/runs/smoke-treatment.json",
+        "--output",
+        str(output),
         cwd=project,
-        capture_output=True,
-        text=True,
     )
     written = json.loads(output.read_text(encoding="utf-8")) if output.is_file() else None
     return result, written

@@ -8,11 +8,12 @@ import sys
 from pathlib import Path
 
 
-def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+def run_cli(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "experiment_records", *args],
         capture_output=True,
         text=True,
+        cwd=cwd,
     )
 
 

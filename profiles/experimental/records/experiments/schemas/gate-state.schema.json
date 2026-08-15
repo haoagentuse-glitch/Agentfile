@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "gate-state.schema.json",
   "title": "Compute Gate State",
-  "description": "追蹤一個 experiment 目前停在 Compute Gate 的哪一級、怎麼走到這裡的。每次 compute_gate.py 判定完都要更新這份檔案，append 一筆到 history，不覆寫舊紀錄——跟 run 一樣是可稽核的軌跡，不是暫存狀態。",
+  "description": "追蹤一個 experiment 目前停在 Compute Gate 的哪一級、怎麼走到這裡的。這是以原子替換更新的狀態投影；每次判定只可 append 一筆 history，既有 history 不得修改或刪除。",
   "type": "object",
   "required": ["experiment_id", "current_level", "history", "updated_at"],
   "properties": {

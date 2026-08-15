@@ -7,11 +7,18 @@ import json
 import shlex
 import subprocess
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from experiment_records.project_layout import ProjectLayoutError, collect_targets, record_type_for, resolve_layout
+from experiment_records import claim_audit, compare_runs, compute_gate
+from experiment_records.project_layout import (
+    ProjectLayoutError,
+    collect_targets,
+    record_type_for,
+    resolve_layout,
+)
 from experiment_records.prompts import known_prompts, prompts_dir
 from experiment_records.review_package import ReviewPackageError, build_review_package
 from experiment_records.validation import (
@@ -24,6 +31,12 @@ from experiment_records.validation import (
     validate_run_lineage,
     validate_schemas,
 )
+
+DETERMINISTIC_COMMANDS: dict[str, tuple[str, Callable[[list[str] | None], int]]] = {
+    "compare-runs": ("比較兩個 run；先判可比較性再計算差異", compare_runs.main),
+    "claim-audit": ("機械核對 claim 的引用、方向與幅度", claim_audit.main),
+    "compute-gate": ("依 Contract 的凍結門檻判定算力升級", compute_gate.main),
+}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -51,6 +64,8 @@ def build_parser() -> argparse.ArgumentParser:
     review_parser.add_argument("project", help="project root 或 records/experiments")
     review_parser.add_argument("claim_id")
     review_parser.add_argument("--output", help="寫出的路徑；不給就印到標準輸出")
+    for name, (help_text, _) in DETERMINISTIC_COMMANDS.items():
+        sub.add_parser(name, help=help_text, add_help=False)
     return parser
 
 
@@ -309,8 +324,15 @@ def _cmd_review_package(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    command_args = sys.argv[1:] if argv is None else argv
+    if command_args:
+        command = DETERMINISTIC_COMMANDS.get(command_args[0])
+        if command is not None:
+            _, handler = command
+            return handler(command_args[1:])
+
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(command_args)
     if args.command == "validate":
         return _cmd_validate(args.target)
     if args.command == "transition":

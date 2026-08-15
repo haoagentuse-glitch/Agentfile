@@ -11,7 +11,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from helpers import run_cli
 
 

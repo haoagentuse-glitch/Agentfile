@@ -7,23 +7,10 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
-
 from helpers import run_cli, valid_claim, valid_comparison, write_record
-
-
-def _find_claim_audit() -> Path:
-    for candidate in Path(__file__).resolve().parents:
-        probe = candidate / "skills" / "claim-audit" / "claim_audit.py"
-        if probe.is_file():
-            return probe
-    raise RuntimeError("找不到 claim_audit.py")
-
-
-CLAIM_AUDIT = _find_claim_audit()
 
 
 def _metric(**overrides: object) -> dict:
@@ -51,15 +38,12 @@ def scenario(project: Path):
 def _audit(project: Path) -> tuple[subprocess.CompletedProcess[str], dict | None]:
     output = project / "records" / "experiments" / "audits" / "demo-audit.json"
     output.parent.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(
-        [
-            sys.executable, str(CLAIM_AUDIT),
-            "records/experiments/claims/demo-claim.json",
-            "--output", str(output),
-        ],
+    result = run_cli(
+        "claim-audit",
+        "records/experiments/claims/demo-claim.json",
+        "--output",
+        str(output),
         cwd=project,
-        capture_output=True,
-        text=True,
     )
     written = json.loads(output.read_text(encoding="utf-8")) if output.is_file() else None
     return result, written
@@ -79,6 +63,27 @@ def test_pending_audit_output_validates(scenario) -> None:
     validate = run_cli("validate", str(project))
     assert validate.returncode == 0, validate.stdout + validate.stderr
 
+
+def test_existing_reviewed_audit_is_not_overwritten(scenario) -> None:
+    project = scenario({}, {})
+    first, written = _audit(project)
+    assert first.returncode == 0
+    assert written is not None
+
+    output = project / "records" / "experiments" / "audits" / "demo-audit.json"
+    written.update({
+        "scope_verdict": "fully_supported",
+        "scope_reasoning": "證據與主張範圍一致",
+        "final_verdict": "fully_supported",
+    })
+    output.write_text(json.dumps(written, ensure_ascii=False, indent=2), encoding="utf-8")
+    reviewed = output.read_text(encoding="utf-8")
+
+    second, _ = _audit(project)
+
+    assert second.returncode == 2
+    assert "已存在" in second.stdout
+    assert output.read_text(encoding="utf-8") == reviewed
 
 def test_confounded_comparison_produces_unsupported_verdict(scenario) -> None:
     project = scenario(

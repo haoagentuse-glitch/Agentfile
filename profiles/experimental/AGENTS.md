@@ -58,7 +58,7 @@ L0 理論／靜態檢查 → L1 合成資料／確定性測試 → L2 小型資�
 
 ### Canonical Records
 
-`records/experiments/` 是持久紀錄唯一來源，只能新增不能覆寫，schema 見 `records/experiments/schemas/`。Viewer、MLflow 與任何分析工具都只是使用方，不得另外維護一份權威副本。
+`records/experiments/` 是持久紀錄唯一來源，schema 見 `records/experiments/schemas/`。Run 與 lifecycle event 建立後不可改；gate state 以原子替換更新，但 `history` 只能附加；audit 只允許從機械 `pending` 完成語意欄位，機械命令不得覆蓋既有檔。Viewer、MLflow 與任何分析工具都只是使用方，不得另存權威副本。
 
 ### 驗證層級
 

@@ -7,11 +7,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
-import yaml
 
 from experiment_records.project_layout import (
     SUBDIR_TO_SCHEMA,
@@ -20,7 +20,12 @@ from experiment_records.project_layout import (
     record_type_for,
 )
 from experiment_records.prompts import hash_file, prompt_path
-from experiment_records.ref_resolver import RefError, RefInvalid, resolve_ref, validate_ref_syntax
+from experiment_records.ref_resolver import (
+    RefError,
+    RefInvalid,
+    resolve_ref,
+    validate_ref_syntax,
+)
 
 Result = tuple[str, str]
 
@@ -711,6 +716,17 @@ def validate_lifecycle_history_candidate(
         return []
     return [("錯誤", f"{label}: 進入 {candidate['to_state']} 必須引用先前未使用的新證據")]
 
+def _validate_gate(instance: dict[str, Any], label: str) -> list[Result]:
+    history = instance.get("history", [])
+    abort_index = next(
+        (index for index, entry in enumerate(history)
+         if isinstance(entry, dict) and entry.get("status") == "aborted"),
+        None,
+    )
+    if abort_index is not None and abort_index != len(history) - 1:
+        return [("錯誤", f"{label}: aborted 之後不得再有 history；這條路線已終止")]
+    return []
+
 def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
     label = _label(path, layout)
     try:
@@ -755,6 +771,8 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
             results.extend(_validate_audit(instance, label))
         elif record_type == "diagnoses":
             results.extend(_validate_diagnosis(instance, label))
+        elif record_type == "gates":
+            results.extend(_validate_gate(instance, label))
 
     for field_label, ref_value in _extract_refs(schema, instance, layout):
         try:

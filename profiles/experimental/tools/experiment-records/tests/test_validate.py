@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from helpers import (
     run_cli,
     valid_claim,
@@ -24,6 +23,14 @@ def test_help_lists_validate_subcommand() -> None:
     result = run_cli("--help")
     assert result.returncode == 0
     assert "validate" in result.stdout
+
+
+def test_help_lists_every_deterministic_operation() -> None:
+    result = run_cli("--help")
+
+    assert result.returncode == 0
+    for command in ("compare-runs", "claim-audit", "compute-gate"):
+        assert command in result.stdout
 
 
 def test_validate_rejects_nonexistent_target(tmp_path: Path) -> None:
@@ -47,6 +54,28 @@ def test_validate_passes_for_valid_project(project: Path) -> None:
     assert "\n錯誤" not in f"\n{result.stdout}"
     assert result.stdout.count("通過") >= 4
 
+
+def test_validate_rejects_history_after_terminal_abort(project: Path) -> None:
+    write_record(project, "gates", "demo-exp", {
+        "experiment_id": "demo-exp",
+        "current_level": "L3",
+        "history": [
+            {
+                "level": "L3", "stage": "pilot", "status": "aborted",
+                "decided_at": "2026-01-01T00:00:00Z", "reason": "guardrail",
+            },
+            {
+                "level": "L3", "stage": "pilot", "status": "passed",
+                "decided_at": "2026-01-01T00:01:00Z", "reason": "繞過中止",
+            },
+        ],
+        "updated_at": "2026-01-01T00:01:00Z",
+    })
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "aborted 之後不得再有 history" in result.stdout
 
 def test_validate_accepts_single_record_file(project: Path) -> None:
     write_config(project, "records/experiments/configs/baseline.yaml")

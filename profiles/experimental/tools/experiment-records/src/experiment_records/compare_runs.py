@@ -28,7 +28,6 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -126,7 +125,7 @@ def resolve_roles(run_a: dict, run_b: dict) -> tuple[dict, dict]:
     return run_a, run_b
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("run_a")
     ap.add_argument("run_b")
@@ -134,7 +133,7 @@ def main() -> int:
     ap.add_argument("--metrics-dir")
     ap.add_argument("--output")
     ap.add_argument("--json", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     run_a_path = Path(args.run_a).resolve()
     run_b_path = Path(args.run_b).resolve()
@@ -366,7 +365,7 @@ def main() -> int:
             print("  - 沒有任何指標在兩邊都存在且定義一致")
             print("\n這不是 confounded，是沒有共同基準可比。同樣不得據此產生結論。")
         else:
-            print(f"Comparable: YES")
+            print("Comparable: YES")
             print(f"Changed variable: {declared_variable_name}")
         print()
         for name, m in metrics_out.items():
@@ -379,7 +378,3 @@ def main() -> int:
 
     # confounded 與「沒有共同基準」是不同的失敗，但兩者都讓這次比較不可引用。
     return 1 if not comparison_valid else 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

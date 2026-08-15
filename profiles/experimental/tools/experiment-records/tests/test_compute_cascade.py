@@ -8,23 +8,10 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
-
-from helpers import valid_comparison, valid_definition, valid_run
-
-
-def _find_compute_gate() -> Path:
-    for candidate in Path(__file__).resolve().parents:
-        probe = candidate / "skills" / "compute-gate" / "compute_gate.py"
-        if probe.is_file():
-            return probe
-    raise RuntimeError("找不到 compute_gate.py")
-
-
-COMPUTE_GATE = _find_compute_gate()
+from helpers import run_cli, valid_comparison, valid_definition, valid_run
 
 CASCADE = [
     {"stage": "preflight", "level": "L0"},
@@ -78,10 +65,9 @@ def bench(tmp_path: Path):
 
 def _gate(paths: dict[str, Path], level: str, *extra: str) -> subprocess.CompletedProcess[str]:
     command = [
-        sys.executable, str(COMPUTE_GATE), str(paths["gate"]),
+        "compute-gate", str(paths["gate"]),
         "--contract", str(paths["contract"]), "--request-level", level,
         "--decided-at", "2026-01-01T00:00:00Z",
-        "--output", str(paths["gate"]),
     ]
     if "comparison" in paths:
         command.extend(["--comparison", str(paths["comparison"])])
@@ -89,7 +75,7 @@ def _gate(paths: dict[str, Path], level: str, *extra: str) -> subprocess.Complet
         if key.startswith("run"):
             command.extend(["--run", str(path)])
     command.extend(extra)
-    return subprocess.run(command, capture_output=True, text=True)
+    return run_cli(*command)
 
 
 def _comparison(absolute_diff: float) -> dict:
@@ -99,6 +85,19 @@ def _comparison(absolute_diff: float) -> dict:
         "absolute_diff": absolute_diff, "relative_diff": absolute_diff / 0.62,
     }})
 
+
+def test_second_output_path_is_rejected_without_mutating_gate(bench) -> None:
+    paths = bench(current_level="L0", comparison=_comparison(0.06),
+                  runs=[valid_run(duration_seconds=400, metrics={"latency_ms": 200})])
+    before = paths["gate"].read_text(encoding="utf-8")
+    other = paths["gate"].with_name("other-gate.json")
+
+    result = _gate(paths, "L3", "--output", str(other))
+
+    assert result.returncode == 2
+    assert "unrecognized arguments" in result.stderr
+    assert paths["gate"].read_text(encoding="utf-8") == before
+    assert not other.exists()
 
 def test_first_level_passes_with_no_metric_gate(bench) -> None:
     paths = bench()
@@ -157,6 +156,20 @@ def test_abort_rule_terminates_the_route(bench) -> None:
     state = json.loads(paths["gate"].read_text(encoding="utf-8"))
     assert state["history"][-1]["status"] == "aborted"
 
+
+def test_aborted_route_rejects_reentry_without_appending_history(bench) -> None:
+    paths = bench(current_level="L0", comparison=_comparison(0.06),
+                  runs=[valid_run(duration_seconds=400, metrics={"latency_ms": 460})])
+    first = _gate(paths, "L3")
+    assert first.returncode == 1
+    state_before = paths["gate"].read_text(encoding="utf-8")
+
+    _write(paths["run0"], valid_run(duration_seconds=400, metrics={"latency_ms": 200}))
+    retry = _gate(paths, "L3")
+
+    assert retry.returncode == 2
+    assert "已中止" in retry.stdout
+    assert paths["gate"].read_text(encoding="utf-8") == state_before
 
 def test_abort_is_checked_before_promotion(bench) -> None:
     """升級條件過了也不能蓋過中止條件。"""

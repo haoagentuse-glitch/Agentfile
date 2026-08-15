@@ -8,7 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from helpers import run_cli, valid_run, write_config, write_record
 
 

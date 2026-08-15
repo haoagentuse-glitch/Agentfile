@@ -26,6 +26,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from experiment_records.atomic_json import write_json
+
 
 def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
@@ -158,17 +160,21 @@ def audit(claim_path: Path) -> dict[str, Any]:
     return result
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("claim")
     ap.add_argument("--output")
     ap.add_argument("--json", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     result = audit(Path(args.claim).resolve())
 
     if args.output:
-        Path(args.output).write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+        try:
+            write_json(Path(args.output), result, exclusive=True)
+        except FileExistsError:
+            print(f"ERROR 稽核輸出已存在，不覆蓋：{args.output}")
+            return 2
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -194,7 +200,3 @@ def main() -> int:
             print(f"MECHANICAL FAIL —— final_verdict = {result['final_verdict']}，不需要再判斷 scope。")
 
     return 0 if result["scope_verdict"] == "pending" else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

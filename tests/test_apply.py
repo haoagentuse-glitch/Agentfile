@@ -98,6 +98,32 @@ def test_first_apply_writes_provenance(pack, target):
     assert rows[SKILL_REL][2] == "full"
 
 
+def test_experimental_cli_survives_projection(pack, target):
+    """確定性工具投影後仍只能由單一公開 CLI 執行。"""
+    apply(pack, target, profile="experimental")
+    tool = target / ".agents" / "tools" / "experiment-records"
+    package = tool / "src" / "experiment_records"
+
+    for module in ("compare_runs.py", "claim_audit.py", "compute_gate.py"):
+        assert (package / module).is_file()
+    for stale in (
+        ".agents/skills/compare-runs/compare_runs.py",
+        ".agents/skills/claim-audit/claim_audit.py",
+        ".agents/skills/compute-gate/compute_gate.py",
+    ):
+        assert not (target / stale).exists()
+
+    for command in ("compare-runs", "claim-audit", "compute-gate"):
+        result = subprocess.run(
+            [
+                "uv", "run", "--offline", "--frozen", "--project", str(tool),
+                "python", "-m", "experiment_records", command, "--help",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
 def test_rerun_changes_nothing(pack, target):
     apply(pack, target)
     out = apply(pack, target)

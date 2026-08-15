@@ -6,7 +6,7 @@ Phase C 第二個 skill，接上 `compare-runs` 的輸出，封完 `Experiment C
 
 「claim 有沒有引用真的存在、沒有 confounded 的比較，數字方向對不對」是可以機械判定的——同一個 claim 跑兩次要給一樣的答案，這種事不該交給 LLM 自由心證（跟 experiment-lint、compare-runs 一路下來的原則一致）。但「這個結論有沒有超出證據涵蓋的範圍」沒辦法寫成規則——「僅限這個資料集」跟「一般都適用」之間的界線，需要理解語言，機械檢查做不到，勉強寫規則只會變成一堆脆弱的關鍵字比對。
 
-所以 `claim_audit.py` 只做機械段，機械段沒過就直接判定（`unauditable`／`unsupported`），機械段過了則把 `scope_verdict` 留成 `pending`，交給呼叫的 agent 讀 `claim-audit` 技能的判準完成語意段，把結果寫回同一份 audit result。這不是偷工，是刻意的分工邊界。
+所以 `claim_audit.py` 只做機械段，機械段沒過就直接判定（`unauditable`／`unsupported`），機械段過了則把 `scope_verdict` 留成 `pending`，交給呼叫的 agent 讀 `claim-audit` 技能的判準完成語意段，只補語意欄位後原子替換同一份 audit result；機械命令以排他建立輸出，不得覆蓋既有 audit。這不是偷工，是刻意的分工邊界。
 
 ## Claim schema 刻意留小
 

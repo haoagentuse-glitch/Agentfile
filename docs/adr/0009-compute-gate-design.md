@@ -10,9 +10,9 @@ Phase C 最後一項。L0-L5 的分級概念在 `profiles/experimental/AGENTS.md
 
 ## 序列化升級，不准跳級
 
-`gate-state.json` 記录目前在哪一級、升降級的完整歷史（append-only，跟 run 一樣不覆寫）。`compute_gate.py` 硬性要求 `current_level` 的下一級一定是申請的那一級，跳級直接拒絕（exit code 2），沒有「這次特殊情況跳過 pilot」的後門——這是使用者原始規則 12「昂貴的實驗不是預設權利」的直接體現。
+`gate-state.json` 是可更新的狀態投影，記錄目前等級與完整歷史；檔案以原子替換更新，但 `history` 只允許附加，既有項目不得改寫或刪除。`compute_gate.py` 硬性要求 `current_level` 的下一級一定是申請的那一級，跳級直接拒絕（exit code 2），沒有「這次特殊情況跳過 pilot」的後門——這是使用者原始規則 12「昂貴的實驗不是預設權利」的直接體現。
 
-失敗（`failed`）跟中止（`aborted`）刻意分開：`failed` 代表這次帶的證據不夠，可以補證據後重新申請同一級；`aborted` 代表 `abort_rule` 觸發，這條路線視為終止，不是繼續重試的狀態。混在一起會讓人以為 abort 之後還能像 failed 一樣「補證據重來」，但 abort 通常代表方向本身有問題，不是證據不足的問題。
+失敗（`failed`）跟中止（`aborted`）刻意分開：`failed` 代表這次帶的證據不夠，可以補證據後重新申請同一級；`aborted` 代表 `abort_rule` 觸發，這條路線視為終止；後續呼叫一律拒絕且不得再追加 history，不是繼續重試的狀態。混在一起會讓人以為 abort 之後還能像 failed 一樣「補證據重來」，但 abort 通常代表方向本身有問題，不是證據不足的問題。
 
 ## Pilot 預算檢查只在 L3 生效
 

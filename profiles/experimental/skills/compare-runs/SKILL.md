@@ -14,12 +14,12 @@ metadata:
 
 # Compare Runs
 
-這個技能不判斷「哪個 run 比較好」，只負責觸發並解釋 `compare_runs.py` 的結果。真正的可比較性判定跟指標差異計算是確定性腳本，不是 LLM 自由發揮——同一組 run 兩次比較必須給出同樣結果，而且**不確定的時候不下結論**。
+這個技能不判斷「哪個 run 比較好」，只負責觸發並解釋 `experiment_records compare-runs` 的結果。真正的可比較性判定跟指標差異計算是確定性腳本，不是 LLM 自由發揮——同一組 run 兩次比較必須給出同樣結果，而且**不確定的時候不下結論**。
 
 ## 用法
 
 ```bash
-python3 profiles/experimental/skills/compare-runs/compare_runs.py \
+uv run --project .agents/tools/experiment-records python -m experiment_records compare-runs \
   records/experiments/runs/<run-a>.json records/experiments/runs/<run-b>.json
 ```
 

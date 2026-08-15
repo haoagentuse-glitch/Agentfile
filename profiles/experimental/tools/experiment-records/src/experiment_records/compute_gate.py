@@ -5,7 +5,7 @@
   python3 compute_gate.py <gate-state.json> --contract <experiment-contract.json>
       --request-level L3
       [--comparison <comparison-result.json>] [--run <run.json> ...]
-      [--run-ids a,b] [--decided-at 2026-01-01T00:00:00Z] [--output PATH]
+      [--run-ids a,b] [--decided-at 2026-01-01T00:00:00Z]
 
 升級條件、中止條件與各級預算全部讀 Contract 的 `compute_cascade`，不從命令列帶
 門檻。這是刻意的：門檻散在某次呼叫的參數裡，同一組紀錄就無法重跑出同一個判定。
@@ -36,6 +36,8 @@ import json
 import operator
 from pathlib import Path
 from typing import Any
+
+from experiment_records.atomic_json import write_json
 
 LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5"]
 COMPARATORS = {
@@ -135,7 +137,7 @@ def check_budget(budget: dict, runs: list[dict]) -> list[tuple[bool, str]]:
     return checks
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("gate_state")
     ap.add_argument("--contract", required=True, help="Experiment Contract，升級與中止條件的唯一來源")
@@ -144,14 +146,22 @@ def main() -> int:
     ap.add_argument("--run", action="append", default=[], help="可重複；預算檢查與 source 為 run 的規則會用到")
     ap.add_argument("--run-ids", default="", help="逗號分隔，記進這筆 history")
     ap.add_argument("--decided-at", help="RFC 3339 timestamp。省略時使用目前 UTC 時間")
-    ap.add_argument("--output")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     gate_path = Path(args.gate_state).resolve()
     if gate_path.is_file():
         state = load_json(gate_path)
     else:
         state = {"experiment_id": gate_path.stem, "current_level": None, "history": [], "updated_at": now()}
+
+    terminal_abort = next(
+        (entry for entry in state.get("history", [])
+         if isinstance(entry, dict) and entry.get("status") == "aborted"),
+        None,
+    )
+    if terminal_abort is not None:
+        print(f"ERROR 這條實驗路線已中止：{terminal_abort.get('reason', '未記錄原因')}")
+        return 2
 
     contract = load_json(Path(args.contract).resolve())
     cascade = {entry["level"]: entry for entry in contract.get("compute_cascade", [])}
@@ -241,10 +251,7 @@ def main() -> int:
         state["current_level"] = requested
     state["updated_at"] = decided_at
 
-    if args.output:
-        output_path = Path(args.output)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    write_json(gate_path, state)
 
     print(f"{status.upper():8s} {requested}（{rung['stage']}）：{entry['reason']}")
     for check in checks:
@@ -257,7 +264,3 @@ def main() -> int:
         print("aborted：這條實驗路線視為終止，不是重跑就能繼續的")
 
     return 0 if status == "passed" else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
