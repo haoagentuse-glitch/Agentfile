@@ -80,6 +80,7 @@ def valid_definition(**overrides: object) -> dict:
         "decision_rule": "recall 提升至少 0.05 視為成功",
         "compute_budget": {"pilot_max_minutes": 5, "pilot_max_samples": 100},
         "abort_rule": "guardrail 超標立即中止",
+        "evidence_policy": {"eligible_run_stages": ["pilot", "main", "replication"]},
         "status": "draft",
         "created_at": "2026-01-01T00:00:00Z",
     }
@@ -125,7 +126,7 @@ def valid_run(**overrides: object) -> dict:
         "run_id": "demo-run-1", "experiment_id": "demo-exp", "experiment_type": "rag",
         "created_at": "2026-01-01T00:00:00Z", "config_hash": "sha256:abc123",
         "config_ref": "records/experiments/configs/baseline.yaml", "schema_version": "1",
-        "status": "completed",
+        "status": "completed", "stage": "pilot", "baseline_run": None,
     }
     data.update(overrides)
     return data
@@ -138,6 +139,7 @@ def valid_comparison(**overrides: object) -> dict:
         "comparability": {"dimensions": {}, "declared_variable": {}},
         "structurally_comparable": True, "controlled_variables_match": True, "differences": [],
         "comparison_valid": True, "confounded": False, "metrics": {},
+        "evidence_eligible": True, "evidence_reasons": [],
     }
     data.update(overrides)
     return data
@@ -163,6 +165,7 @@ def valid_audit(**overrides: object) -> dict:
         },
         "scope_verdict": "fully_supported", "scope_reasoning": "證據範圍一致",
         "final_verdict": "fully_supported",
+        "evidence_eligible": True, "evidence_reasons": [],
     }
     data.update(overrides)
     return data

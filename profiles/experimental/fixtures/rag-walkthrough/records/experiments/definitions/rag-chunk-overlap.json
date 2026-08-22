@@ -26,6 +26,7 @@
     "pilot_max_samples": 200
   },
   "abort_rule": "索引建置時間超過 30 分鐘立即中止",
+  "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },
   "status": "locked",
   "created_at": "2026-01-06T09:00:00Z",
   "derivation": {
@@ -63,5 +64,5 @@
     "source_refs": [],
     "novelty_status": "unverified"
   },
-  "contract_hash": "0b80f4c9372a73eaa6884c680196297b3e4569c93cf76f6812693f59fa4a06c1"
+  "contract_hash": "5cd11b32e192bb6191c1187c127b6c5420eeacc4dbfd3d8f2ec28010061e784a"
 }

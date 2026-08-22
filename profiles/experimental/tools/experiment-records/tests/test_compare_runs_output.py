@@ -66,6 +66,7 @@ def scenario(project: Path):
             "decision_rule": "recall 提升至少 0.05 視為成功",
             "compute_budget": {"pilot_max_minutes": 5, "pilot_max_samples": 100},
             "abort_rule": "guardrail 超標立即中止",
+            "evidence_policy": {"eligible_run_stages": ["pilot", "main", "replication"]},
             "status": "draft",
             "created_at": "2026-01-01T00:00:00Z",
         })
@@ -107,6 +108,7 @@ def test_clean_comparison_output_validates(scenario) -> None:
     assert written["structurally_comparable"] is True
     assert written["controlled_variables_match"] is True
     assert written["comparison_valid"] is True
+    assert written["evidence_eligible"] is True
     assert written["confounded"] is False
 
     validate = run_cli("validate", str(project))
@@ -183,3 +185,18 @@ def test_diagnostic_suggestions_start_empty(scenario) -> None:
     _, written = _compare(project)
 
     assert written["diagnostic_suggestions"] == []
+
+
+def test_diagnostic_stage_computes_numbers_but_is_not_formal_evidence(scenario) -> None:
+    project = scenario(
+        {"dataset": "corpus-a", "model": "embed-v1", "top_k": 10, "seed": 42},
+        stage="diagnostic",
+    )
+
+    compare, written = _compare(project)
+
+    assert compare.returncode == 1
+    assert written["comparison_valid"] is True
+    assert written["metrics"]["recall_at_10"]["computed"] is True
+    assert written["evidence_eligible"] is False
+    assert any("diagnostic" in reason for reason in written["evidence_reasons"])

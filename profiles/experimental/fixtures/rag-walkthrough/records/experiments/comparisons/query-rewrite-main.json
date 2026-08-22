@@ -3,6 +3,8 @@
   "run_a": "rewrite-main-baseline",
   "run_b": "rewrite-main-treatment",
   "generated_at": "2026-01-08T14:00:00Z",
+  "evidence_eligible": true,
+  "evidence_reasons": [],
   "comparability": {
     "dimensions": {
       "dataset": { "status": "PASS", "run_a_value": "nq-open-2026-01", "run_b_value": "nq-open-2026-01" },

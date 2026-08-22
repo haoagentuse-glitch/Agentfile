@@ -7,7 +7,8 @@
   "required": [
     "experiment_id", "run_a", "run_b", "generated_at",
     "comparability", "structurally_comparable", "controlled_variables_match",
-    "differences", "comparison_valid", "confounded", "metrics"
+    "differences", "comparison_valid", "confounded", "metrics",
+    "evidence_eligible", "evidence_reasons"
   ],
   "properties": {
     "experiment_id": { "type": "string" },
@@ -109,6 +110,8 @@
         "additionalProperties": false
       }
     },
+    "evidence_eligible": { "type": "boolean" },
+    "evidence_reasons": { "type": "array", "items": { "type": "string" }, "default": [] },
     "diagnostic_suggestions": {
       "type": "array",
       "items": { "type": "string" },

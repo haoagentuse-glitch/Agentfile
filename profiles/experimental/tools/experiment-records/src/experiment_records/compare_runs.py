@@ -31,6 +31,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from experiment_records.evidence_policy import evaluate_evidence_policy
+
 
 def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
@@ -164,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     declared_variable_name = contract.get("treatment", {}).get("variable") if contract else None
 
     baseline_run, treatment_run = resolve_roles(run_a, run_b)
+    evidence = evaluate_evidence_policy(contract or {}, [baseline_run, treatment_run])
     cfg_a = resolve_config(baseline_run, records_root)
     cfg_b = resolve_config(treatment_run, records_root)
 
@@ -327,6 +330,8 @@ def main(argv: list[str] | None = None) -> int:
         "controlled_variables_match": controlled_variables_match,
         "differences": differences,
         "comparison_valid": comparison_valid,
+        "evidence_eligible": evidence["eligible"],
+        "evidence_reasons": evidence["reasons"],
         "confounded": confounded,
         "confounded_reasons": confounded_reasons,
         "metrics": metrics_out,
@@ -349,6 +354,9 @@ def main(argv: list[str] | None = None) -> int:
         print()
         print(f"結構可比較：{'是' if structurally_comparable else '否'}")
         print(f"控制條件一致：{'是' if controlled_variables_match else '否'}")
+        print(f"證據資格：{'合格' if evidence['eligible'] else '不合格'}")
+        for reason in evidence["reasons"]:
+            print(f"  - {reason}")
         if differences:
             print("\n具名差異")
             for d in differences:
@@ -377,4 +385,4 @@ def main(argv: list[str] | None = None) -> int:
             print(f"note: {note}")
 
     # confounded 與「沒有共同基準」是不同的失敗，但兩者都讓這次比較不可引用。
-    return 1 if not comparison_valid else 0
+    return 1 if not comparison_valid or not evidence["eligible"] else 0

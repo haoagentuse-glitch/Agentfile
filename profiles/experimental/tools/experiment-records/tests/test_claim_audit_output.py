@@ -10,7 +10,15 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from helpers import run_cli, valid_claim, valid_comparison, write_record
+from helpers import (
+    run_cli,
+    valid_claim,
+    valid_comparison,
+    valid_definition,
+    valid_run,
+    write_config,
+    write_record,
+)
 
 
 def _metric(**overrides: object) -> dict:
@@ -28,6 +36,25 @@ def scenario(project: Path):
     def build(comparison_overrides: dict, claim_overrides: dict) -> Path:
         overrides = {"metrics": {"recall_at_10": _metric()}, **comparison_overrides}
         comparison = valid_comparison(**overrides)
+        write_config(project, "records/experiments/configs/baseline.yaml")
+        write_config(project, "records/experiments/configs/treatment.yaml")
+        write_record(project, "definitions", "demo-exp", valid_definition())
+        write_record(
+            project,
+            "runs",
+            "demo-run-1",
+            valid_run(run_id="demo-run-1", baseline_run=None),
+        )
+        write_record(
+            project,
+            "runs",
+            "demo-run-2",
+            valid_run(
+                run_id="demo-run-2",
+                baseline_run="demo-run-1",
+                config_ref="records/experiments/configs/treatment.yaml",
+            ),
+        )
         write_record(project, "comparisons", "demo-comparison", comparison)
         write_record(project, "claims", "demo-claim", valid_claim(**claim_overrides))
         return project
@@ -145,3 +172,19 @@ def test_missing_comparison_is_unauditable(scenario) -> None:
 
     assert written["mechanical"]["reference_exists"] is False
     assert written["final_verdict"] == "unauditable"
+
+
+def test_audit_rechecks_underlying_runs_instead_of_trusting_comparison(scenario) -> None:
+    project = scenario({"evidence_eligible": True, "evidence_reasons": []}, {})
+    run_path = project / "records" / "experiments" / "runs" / "demo-run-2.json"
+    run = json.loads(run_path.read_text(encoding="utf-8"))
+    run["stage"] = "diagnostic"
+    run_path.write_text(json.dumps(run, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    audit, written = _audit(project)
+
+    assert audit.returncode == 1
+    assert written["evidence_eligible"] is False
+    assert written["mechanical"]["mechanical_pass"] is False
+    assert written["final_verdict"] == "unsupported"
+    assert any("diagnostic" in reason for reason in written["evidence_reasons"])

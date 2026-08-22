@@ -32,6 +32,7 @@ CANONICAL_DEFINITION = (
     '"controlled_variables":["dataset"],'
     '"created_at":"2026-01-01T00:00:00Z",'
     '"decision_rule":"recall 提升至少 0.05 視為成功",'
+    '"evidence_policy":{"eligible_run_stages":["pilot","main","replication"]},'
     '"experiment_id":"demo-exp",'
     '"hypothesis":"提高 top_k 會提升 recall",'
     '"primary_metric":"recall_at_10",'

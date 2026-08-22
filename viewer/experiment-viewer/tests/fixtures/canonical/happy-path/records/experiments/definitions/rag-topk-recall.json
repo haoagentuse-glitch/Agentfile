@@ -10,6 +10,7 @@
   "decision_rule": "recall_at_10 絕對提升 > 0.03 才算成功",
   "compute_budget": { "pilot_max_minutes": 30, "pilot_max_samples": 500 },
   "abort_rule": "latency_ms p95 超過 800ms 就中止",
+  "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },
   "status": "locked",
   "created_at": "2026-01-05T00:00:00Z"
 }

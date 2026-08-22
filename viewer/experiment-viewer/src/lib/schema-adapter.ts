@@ -124,6 +124,8 @@ export function adaptExperimentContract(
     contractHash: raw.contract_hash as string | undefined,
     primaryMetric,
     secondaryMetrics: (raw.secondary_metrics as string[]) ?? [],
+    eligibleRunStages:
+      (record(raw.evidence_policy)?.eligible_run_stages as string[]) ?? [],
     derivation: adaptDerivation(raw.derivation),
     producer: adaptProducer(raw.producer),
     sourcePath,
@@ -233,6 +235,7 @@ export function adaptComparisonResult(
   const runA = requireField(raw, "run_a", sourcePath) as string;
   const runB = requireField(raw, "run_b", sourcePath) as string;
   const comparisonValid = requireField(raw, "comparison_valid", sourcePath) as boolean;
+  const evidenceEligible = requireField(raw, "evidence_eligible", sourcePath) as boolean;
   const confounded = requireField(raw, "confounded", sourcePath) as boolean;
   const rawMetrics = (requireField(raw, "metrics", sourcePath) as Record<
     string,
@@ -254,6 +257,8 @@ export function adaptComparisonResult(
     runA,
     runB,
     comparisonValid,
+    evidenceEligible,
+    evidenceReasons: (raw.evidence_reasons as string[]) ?? [],
     confounded,
     confoundedReasons: (raw.confounded_reasons as string[]) ?? [],
     notes: (raw.notes as string[]) ?? [],
@@ -315,6 +320,7 @@ export function adaptClaimAuditResult(
   const claimId = requireField(raw, "claim_id", sourcePath) as string;
   const auditedAt = requireField(raw, "audited_at", sourcePath) as string;
   const mechanical = requireField(raw, "mechanical", sourcePath) as Record<string, unknown>;
+  const evidenceEligible = requireField(raw, "evidence_eligible", sourcePath) as boolean;
   // scope_verdict 還是 pending 時 schema 規定不得寫 final_verdict——缺這欄不是壞資料。
   const finalVerdict = (raw.final_verdict as ClaimVerdict | undefined) ?? "pending";
 
@@ -326,6 +332,8 @@ export function adaptClaimAuditResult(
     claimId,
     auditedAt,
     mechanicalPass: Boolean(mechanical.mechanical_pass),
+    evidenceEligible,
+    evidenceReasons: (raw.evidence_reasons as string[]) ?? [],
     referenceExists: Boolean(mechanical.reference_exists),
     comparisonValid: (mechanical.comparison_valid as boolean | null) ?? null,
     metricExists: (mechanical.metric_exists as boolean | null) ?? null,
@@ -384,6 +392,8 @@ export function adaptGateState(raw: Record<string, unknown>, sourcePath: string)
     decidedAt: entry.decided_at as string,
     reason: entry.reason as string,
     runIds: (entry.run_ids as string[]) ?? [],
+    evidenceEligible: Boolean(entry.evidence_eligible),
+    evidenceReasons: (entry.evidence_reasons as string[]) ?? [],
   }));
 
   return {

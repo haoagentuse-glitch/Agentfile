@@ -20,7 +20,7 @@ CASCADE = [
         "budget": {"max_wall_clock_seconds": 600, "max_samples": 200},
         "promotion": {"metric": "recall_at_10", "source": "comparison", "field": "absolute_diff",
                       "comparator": ">=", "threshold": 0.03},
-        "abort": {"metric": "latency_ms", "source": "run", "field": "value",
+        "abort": {"metric": "latency_ms", "source": "run", "field": "value", "run_scope": "all",
                   "comparator": ">", "threshold": 400,
                   "reason": "延遲超過 guardrail，這條路線終止"},
     },
@@ -205,7 +205,11 @@ def test_max_runs_budget_is_enforced(bench) -> None:
 
 def test_unreadable_metric_fails_rather_than_passes(bench) -> None:
     """取不到值時不得當成通過。「不知道」不等於「符合」。"""
-    paths = bench(current_level="L0", comparison=_comparison(0.06))
+    paths = bench(
+        current_level="L0",
+        comparison=_comparison(0.06),
+        runs=[valid_run(duration_seconds=400, metrics={})],
+    )
 
     result = _gate(paths, "L3")
 
@@ -252,7 +256,9 @@ def test_decision_records_every_check_it_made(bench) -> None:
     _gate(paths, "L3")
 
     checks = json.loads(paths["gate"].read_text(encoding="utf-8"))["history"][-1]["checks"]
-    assert {check["kind"] for check in checks} == {"sequence", "abort", "budget", "promotion"}
+    assert {check["kind"] for check in checks} == {
+        "sequence", "evidence", "abort", "budget", "promotion"
+    }
     assert all(check["detail"] for check in checks)
 
 
@@ -264,6 +270,59 @@ def test_contract_without_a_cascade_is_a_usage_error(bench) -> None:
 
     assert result.returncode == 2
     assert "沒有 compute_cascade" in result.stdout
+
+
+def test_run_scope_baseline_does_not_apply_abort_to_treatment(bench) -> None:
+    cascade = json.loads(json.dumps(CASCADE))
+    cascade[1]["abort"]["run_scope"] = "baseline"
+    runs = [
+        valid_run(run_id="base", baseline_run=None, metrics={"latency_ms": 200}),
+        valid_run(run_id="treat", baseline_run="base", metrics={"latency_ms": 900}),
+    ]
+    paths = bench(current_level="L0", cascade=cascade, comparison=_comparison(0.06), runs=runs)
+
+    result = _gate(paths, "L3")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_missing_requested_run_role_fails_closed(bench) -> None:
+    cascade = json.loads(json.dumps(CASCADE))
+    cascade[1]["abort"]["run_scope"] = "treatment"
+    paths = bench(current_level="L0", cascade=cascade, comparison=_comparison(0.06),
+                  runs=[valid_run(run_id="base", baseline_run=None, metrics={"latency_ms": 200})])
+
+    result = _gate(paths, "L3")
+
+    assert result.returncode == 1
+    assert "treatment" in result.stdout
+
+
+def test_ineligible_run_stage_cannot_pass_gate(bench) -> None:
+    paths = bench(current_level="L0", comparison=_comparison(0.06), runs=[
+        valid_run(stage="diagnostic", duration_seconds=400, metrics={"latency_ms": 200})
+    ])
+
+    result = _gate(paths, "L3")
+
+    assert result.returncode == 1
+    state = json.loads(paths["gate"].read_text(encoding="utf-8"))
+    assert state["history"][-1]["evidence_eligible"] is False
+
+
+def test_history_run_ids_are_derived_and_run_ids_option_is_removed(bench) -> None:
+    paths = bench(current_level="L0", comparison=_comparison(0.06), runs=[
+        valid_run(run_id="base", baseline_run=None, duration_seconds=400, metrics={"latency_ms": 200})
+    ])
+
+    rejected = _gate(paths, "L3", "--run-ids", "forged")
+    assert rejected.returncode == 2
+    assert not paths["gate"].exists() or json.loads(paths["gate"].read_text())["history"] == []
+
+    passed = _gate(paths, "L3")
+    assert passed.returncode == 0
+    state = json.loads(paths["gate"].read_text(encoding="utf-8"))
+    assert state["history"][-1]["run_ids"] == ["base"]
 
 
 def test_level_absent_from_the_cascade_is_a_usage_error(bench) -> None:

@@ -16,7 +16,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["level", "status", "decided_at", "reason"],
+        "required": ["level", "status", "decided_at", "reason", "evidence_eligible", "evidence_reasons"],
         "properties": {
           "level": { "type": "string", "enum": ["L0", "L1", "L2", "L3", "L4", "L5"] },
           "stage": {
@@ -39,14 +39,16 @@
               "type": "object",
               "required": ["kind", "passed", "detail"],
               "properties": {
-                "kind": { "type": "string", "enum": ["sequence", "budget", "promotion", "abort"] },
+                "kind": { "type": "string", "enum": ["sequence", "evidence", "budget", "promotion", "abort"] },
                 "passed": { "type": "boolean" },
                 "detail": { "type": "string" }
               },
               "additionalProperties": false
             }
           },
-          "run_ids": { "type": "array", "items": { "type": "string" }, "default": [] }
+          "run_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+          "evidence_eligible": { "type": "boolean" },
+          "evidence_reasons": { "type": "array", "items": { "type": "string" }, "default": [] }
         },
         "additionalProperties": false
       }

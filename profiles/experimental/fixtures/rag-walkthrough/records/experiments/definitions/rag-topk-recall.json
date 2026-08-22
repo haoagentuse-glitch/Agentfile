@@ -33,6 +33,7 @@
     "pilot_max_samples": 200
   },
   "abort_rule": "latency_ms p95 超過 400ms 立即中止，不再往上加算力",
+  "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },
   "scale_up_rule": "pilot 的 recall_at_10 提升 ≥ 0.03 才申請完整執行的算力",
   "compute_cascade": [
     {
@@ -50,6 +51,7 @@
         "metric": "latency_ms",
         "source": "run",
         "field": "value",
+        "run_scope": "all",
         "comparator": ">",
         "threshold": 400,
         "reason": "latency_ms p95 超過 400ms，依 abort_rule 終止這條路線"
@@ -74,6 +76,7 @@
         "metric": "latency_ms",
         "source": "run",
         "field": "value",
+        "run_scope": "all",
         "comparator": ">",
         "threshold": 400,
         "reason": "latency_ms p95 超過 400ms，依 abort_rule 終止這條路線"
@@ -85,7 +88,7 @@
     "min_reviewers": 1
   },
   "status": "locked",
-  "contract_hash": "61b4a35b41fcb2840957556df41b7181db0d0b0e19d695cc3f2444cffdfd4728",
+  "contract_hash": "a8d90cf062e1d979959d762ffaa28332d175926263a59660eddec3626688e4c0",
   "created_at": "2026-01-02T09:00:00Z",
   "producer": {
     "kind": "software_agent",

@@ -3,6 +3,8 @@
   "run_a": "topk-main-baseline",
   "run_b": "topk-main-treatment",
   "generated_at": "2026-01-05T09:00:00Z",
+  "evidence_eligible": true,
+  "evidence_reasons": [],
   "comparability": {
     "dimensions": {
       "dataset": { "status": "PASS", "run_a_value": "nq-open-2026-01", "run_b_value": "nq-open-2026-01" },

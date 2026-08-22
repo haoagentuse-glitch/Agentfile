@@ -25,6 +25,7 @@
     "pilot_max_samples": 300
   },
   "abort_rule": "評估集載入失敗或雜湊對不上立即中止，不用部分資料硬跑",
+  "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },
   "status": "locked",
   "created_at": "2026-01-07T09:00:00Z",
   "derivation": {
@@ -62,5 +63,5 @@
     "source_refs": [],
     "novelty_status": "unverified"
   },
-  "contract_hash": "70bb84fd16c1a828a15a1ad2e094c12a5f4c56bba52669f86e8a64c872377ac3"
+  "contract_hash": "90b368e9d59192fde069285ef005ebe6abc1374c2015ec488973168a6299d1d8"
 }

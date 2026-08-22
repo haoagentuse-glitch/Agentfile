@@ -5,7 +5,7 @@
   python3 compute_gate.py <gate-state.json> --contract <experiment-contract.json>
       --request-level L3
       [--comparison <comparison-result.json>] [--run <run.json> ...]
-      [--run-ids a,b] [--decided-at 2026-01-01T00:00:00Z]
+      [--decided-at 2026-01-01T00:00:00Z]
 
 升級條件、中止條件與各級預算全部讀 Contract 的 `compute_cascade`，不從命令列帶
 門檻。這是刻意的：門檻散在某次呼叫的參數裡，同一組紀錄就無法重跑出同一個判定。
@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any
 
 from experiment_records.atomic_json import write_json
+from experiment_records.evidence_policy import evaluate_evidence_policy
 
 LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5"]
 COMPARATORS = {
@@ -76,6 +77,47 @@ def dotted(record: dict, path: str) -> Any:
     return cursor
 
 
+def select_rule_runs(rule: dict, runs: list[dict]) -> tuple[list[dict] | None, str | None]:
+    if rule.get("field") != "value":
+        return None, "run rule 的 field 只能是 'value'"
+    scope = rule.get("run_scope")
+    if scope == "all":
+        return runs, None
+    if scope not in {"baseline", "treatment"}:
+        return None, f"run rule 缺少合法 run_scope：{scope!r}"
+    selected = []
+    for run in runs:
+        if "baseline_run" not in run:
+            return None, f"run {run.get('run_id', '?')!r} 無法判斷 baseline/treatment role"
+        lineage = run["baseline_run"]
+        if lineage is None:
+            role = "baseline"
+        elif isinstance(lineage, str) and lineage:
+            role = "treatment"
+        else:
+            return None, f"run {run.get('run_id', '?')!r} 無法判斷 baseline/treatment role"
+        if role == scope:
+            selected.append(run)
+    if not selected:
+        return None, f"run_scope={scope!r} 沒有選到 run"
+    return selected, None
+
+
+def evidence_decision(contract: dict, rung: dict, comparison: dict | None, runs: list[dict]) -> dict:
+    required_roles = frozenset(
+        rule["run_scope"]
+        for rule in (rung.get("abort"), rung.get("promotion"))
+        if isinstance(rule, dict)
+        and rule.get("source") == "run"
+        and rule.get("run_scope") in {"baseline", "treatment"}
+    )
+    decision = evaluate_evidence_policy(contract, runs, required_roles=required_roles)
+    if comparison is not None and comparison.get("evidence_eligible") is not True:
+        decision["eligible"] = False
+        decision["reasons"].append("comparison evidence_eligible 不是 true")
+    return decision
+
+
 def read_metric(rule: dict, comparison: dict | None, runs: list[dict]) -> tuple[Any, str | None]:
     """依 rule 的 source／metric／field 取值。取不到就回 (None, 原因)，不猜。"""
     metric, field, source = rule["metric"], rule["field"], rule["source"]
@@ -94,12 +136,14 @@ def read_metric(rule: dict, comparison: dict | None, runs: list[dict]) -> tuple[
 
     if not runs:
         return None, "這條規則要讀 run，但沒有提供 --run"
-    values = [run.get("metrics", {}).get(metric) for run in runs]
-    present = [v for v in values if isinstance(v, (int, float)) and not isinstance(v, bool)]
-    if not present:
-        return None, f"提供的 run 都沒有 metric {metric!r}"
-    # 多個 run 時取最差的一邊由 comparator 決定：中止條件看最嚴重，升級條件看最保守。
-    return present, None
+    selected, problem = select_rule_runs(rule, runs)
+    if problem is not None:
+        return None, problem
+    assert selected is not None
+    values = [run.get("metrics", {}).get(metric) for run in selected]
+    if any(not isinstance(v, (int, float)) or isinstance(v, bool) for v in values):
+        return None, f"選中的 run 有缺少或無效的 metric {metric!r}"
+    return values, None
 
 
 def evaluate_rule(rule: dict, comparison: dict | None, runs: list[dict], every: bool) -> tuple[bool | None, str]:
@@ -144,7 +188,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--request-level", required=True, choices=LEVELS)
     ap.add_argument("--comparison", help="promotion／abort 規則的 source 為 comparison 時需要")
     ap.add_argument("--run", action="append", default=[], help="可重複；預算檢查與 source 為 run 的規則會用到")
-    ap.add_argument("--run-ids", default="", help="逗號分隔，記進這筆 history")
     ap.add_argument("--decided-at", help="RFC 3339 timestamp。省略時使用目前 UTC 時間")
     args = ap.parse_args(argv)
 
@@ -193,6 +236,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR 不能跳級：目前在 {current!r}，下一個只能申請 {expected_next!r}，收到 {requested!r}")
         return 2
     checks.append({"kind": "sequence", "passed": True, "detail": f"{current} -> {requested} 是相鄰的一級"})
+
+    needs_evidence = bool(runs or comparison is not None or rung.get("abort") or rung.get("promotion"))
+    evidence = (
+        evidence_decision(contract, rung, comparison, runs)
+        if needs_evidence
+        else {"eligible": True, "reasons": [], "roles": {}}
+    )
+    if not evidence["eligible"]:
+        status = "failed"
+        detail = "；".join(evidence["reasons"])
+        checks.append({"kind": "evidence", "passed": False, "detail": detail})
+        reasons.append(f"證據不合格：{detail}")
+    elif needs_evidence:
+        checks.append({"kind": "evidence", "passed": True, "detail": "Contract evidence policy 檢查通過"})
 
     # 2. abort：觸發就終止，優先於其他檢查
     abort = rung.get("abort")
@@ -244,7 +301,9 @@ def main(argv: list[str] | None = None) -> int:
         "decided_at": decided_at,
         "reason": "；".join(reasons),
         "checks": checks,
-        "run_ids": [r for r in args.run_ids.split(",") if r],
+        "run_ids": [run["run_id"] for run in runs if isinstance(run.get("run_id"), str)],
+        "evidence_eligible": evidence["eligible"],
+        "evidence_reasons": evidence["reasons"],
     }
     state["history"].append(entry)
     if status == "passed":
