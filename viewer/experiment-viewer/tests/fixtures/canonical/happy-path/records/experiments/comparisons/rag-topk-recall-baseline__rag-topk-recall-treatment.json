@@ -25,5 +25,20 @@
     "recall_at_10": { "definition_consistent": true, "computed": true, "baseline": 0.62, "treatment": 0.71, "absolute_diff": 0.09, "relative_diff": 0.145 },
     "latency_ms": { "definition_consistent": true, "computed": true, "baseline": 180, "treatment": 210, "absolute_diff": 30, "relative_diff": 0.167 }
   },
+  "estimates": [
+    {
+      "estimand_id": "effect.primary",
+      "estimator_id": "estimator.primary",
+      "point_estimate": 0.09,
+      "interval": { "lower": 0.031, "upper": 0.147, "confidence_level": 0.95, "method": "percentile" },
+      "sample_size": { "observations": 840, "clusters": 42 },
+      "method_ref": "joint-cluster-bootstrap@1",
+      "component_estimates": [
+        { "id": "baseline", "point_estimate": 0.62, "interval": { "lower": 0.588, "upper": 0.653, "confidence_level": 0.95, "method": "percentile" } },
+        { "id": "treatment", "point_estimate": 0.71, "interval": { "lower": 0.674, "upper": 0.746, "confidence_level": 0.95, "method": "percentile" } }
+      ],
+      "decision": { "rule_id": "decision.primary", "conclusion": "superior", "reason_codes": ["interval_above_null"] }
+    }
+  ],
   "notes": []
 }

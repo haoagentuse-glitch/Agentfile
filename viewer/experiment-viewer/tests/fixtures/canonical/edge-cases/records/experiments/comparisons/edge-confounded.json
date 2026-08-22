@@ -24,5 +24,6 @@
   "metrics": {
     "score": { "definition_consistent": true, "computed": false, "baseline": null, "treatment": null, "absolute_diff": null, "relative_diff": null }
   },
+  "estimates": [],
   "notes": ["confounded，不得下因果性結論"]
 }

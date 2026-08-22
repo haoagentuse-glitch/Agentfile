@@ -18,7 +18,9 @@ import type {
   CanonicalArtifact,
   CanonicalClaim,
   CanonicalComparison,
+  CanonicalComparisonEstimate,
   CanonicalDiagnosis,
+  CanonicalEstimateInterval,
   CanonicalGateHistoryEntry,
   CanonicalMetricDefinition,
   CanonicalRun,
@@ -88,6 +90,20 @@ const metricDefinitionByName = computed(() => {
   return map;
 });
 
+// 缺 interval 是合法狀態，照實說「未估計」，不用點估計替代區間。
+function formatInterval(interval: CanonicalEstimateInterval | null): string {
+  if (!interval) return "未估計";
+  return `[${interval.lower}, ${interval.upper}]（${interval.confidenceLevel}，${interval.method}）`;
+}
+
+// clustered inference 的樣本單位是 cluster 數，observations 不能取代它，兩個都顯示。
+function formatSampleSize(estimate: CanonicalComparisonEstimate): string {
+  const parts: string[] = [];
+  if (estimate.observations !== null) parts.push(`${estimate.observations} 筆`);
+  if (estimate.clusters !== null) parts.push(`${estimate.clusters} 群`);
+  return parts.length > 0 ? parts.join("／") : "—";
+}
+
 const chartOption = computed(() => {
   // 只有 valid 且非 confounded 才畫圖——invalid/confounded 絕不畫，避免暗示可比較。
   if (!selectedComparison.value || comparisonStatus.value !== "valid") return null;
@@ -140,7 +156,7 @@ async function openArtifactExternally(path: string) {
 // --- Claims ---
 const claimColumns = [
   { key: "claimId", label: "主張 ID" },
-  { key: "metric", label: "指標" },
+  { key: "estimandId", label: "估計目標" },
   { key: "status", label: "狀態" },
   { key: "verdict", label: "最終判定" },
 ];
@@ -148,7 +164,7 @@ const claimColumns = [
 const claimRows = computed(() =>
   (experiment.value?.claims ?? []).map((c) => ({
     claimId: c.claimId,
-    metric: c.metric,
+    estimandId: c.estimandId,
     status: c.status,
     verdict: c.auditResult?.finalVerdict ?? "尚未稽核",
   }))
@@ -323,6 +339,35 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
               </tr>
             </tbody>
           </table>
+
+          <h4>估計與判定</h4>
+          <p class="hint">
+            以下是 compare-runs 依凍結的 analysis plan 寫下的結果。點估計的正負不等於結論；
+            區間跨過決策邊界時只會是 inconclusive。
+          </p>
+          <table v-if="selectedComparison.estimates.length > 0">
+            <thead>
+              <tr><th>估計目標</th><th>點估計</th><th>區間</th><th>樣本</th><th>判定</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="e in selectedComparison.estimates" :key="e.estimandId">
+                <td>
+                  <code>{{ e.estimandId }}</code>
+                  <p class="hint">{{ e.methodRef }}</p>
+                </td>
+                <td>{{ e.pointEstimate }}</td>
+                <td>{{ formatInterval(e.interval) }}</td>
+                <td>{{ formatSampleSize(e) }}</td>
+                <td>
+                  <code>{{ e.decision.conclusion }}</code>
+                  <p v-if="e.decision.reasonCodes.length > 0" class="hint">
+                    {{ e.decision.reasonCodes.join("、") }}
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="hint">這份 comparison 沒有任何持久化 estimate。</p>
         </template>
       </template>
       <p v-else-if="experimentComparisons.length === 0" class="hint">這個實驗下還沒有任何比較結果。</p>
@@ -465,15 +510,18 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
         <template v-if="selectedClaim">
           <p>{{ selectedClaim.statement }}</p>
           <p>適用範圍：{{ selectedClaim.scope }}</p>
+          <p>估計目標（estimand_id）：<code>{{ selectedClaim.estimandId }}</code></p>
           <p>預期方向（expected_direction）：<code>{{ selectedClaim.expectedDirection }}</code></p>
+          <p>預期結論（expected_conclusion）：<code>{{ selectedClaim.expectedConclusion }}</code></p>
           <template v-if="selectedClaim.auditResult">
             <h4>機械檢查</h4>
             <table>
               <tbody>
                 <tr><th>reference_exists</th><td>{{ selectedClaim.auditResult.referenceExists }}</td></tr>
                 <tr><th>comparison_valid</th><td>{{ selectedClaim.auditResult.comparisonValid ?? "（未檢查）" }}</td></tr>
-                <tr><th>metric_exists</th><td>{{ selectedClaim.auditResult.metricExists ?? "（未檢查）" }}</td></tr>
+                <tr><th>estimand_exists</th><td>{{ selectedClaim.auditResult.estimandExists ?? "（未檢查）" }}</td></tr>
                 <tr><th>direction_matches</th><td>{{ selectedClaim.auditResult.directionMatches ?? "（未檢查）" }}</td></tr>
+                <tr><th>conclusion_matches</th><td>{{ selectedClaim.auditResult.conclusionMatches ?? "（未檢查）" }}</td></tr>
                 <tr><th>magnitude_matches</th><td>{{ selectedClaim.auditResult.magnitudeMatches ?? "（未填 stated_magnitude）" }}</td></tr>
               </tbody>
             </table>

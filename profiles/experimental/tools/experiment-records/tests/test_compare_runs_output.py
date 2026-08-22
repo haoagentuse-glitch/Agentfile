@@ -64,6 +64,11 @@ def scenario(project: Path):
             "controlled_variables": ["dataset", "model", "seed"],
             "primary_metric": "recall_at_10",
             "decision_rule": "recall 提升至少 0.05 視為成功",
+            "analysis_plan": {
+                "estimands": [{"id": "effect.primary", "metric": "recall_at_10", "population": "固定評估集", "conditions": {"baseline": "baseline", "treatment": "treatment"}, "scale": "raw", "summary_measure": "difference", "orientation": "treatment_minus_baseline"}],
+                "estimators": [{"id": "estimator.primary", "estimand_ref": "effect.primary", "type": "difference", "method_ref": "arithmetic-difference"}],
+                "decision_rules": [{"id": "decision.primary", "estimand_ref": "effect.primary", "type": "superiority", "null_value": 0.0}]
+            },
             "compute_budget": {"pilot_max_minutes": 5, "pilot_max_samples": 100},
             "abort_rule": "guardrail 超標立即中止",
             "evidence_policy": {"eligible_run_stages": ["pilot", "main", "replication"]},
@@ -200,3 +205,32 @@ def test_diagnostic_stage_computes_numbers_but_is_not_formal_evidence(scenario) 
     assert written["metrics"]["recall_at_10"]["computed"] is True
     assert written["evidence_eligible"] is False
     assert any("diagnostic" in reason for reason in written["evidence_reasons"])
+
+
+def test_bootstrap_estimand_without_row_data_says_why_there_is_no_estimate(scenario) -> None:
+    """run envelope 只有彙總指標，重抽 cluster 需要逐筆資料。缺輸入不估計，但不得靜默略過。"""
+    project = scenario({"dataset": "corpus-a", "model": "embed-v1", "top_k": 10, "seed": 42})
+    path = project / "records" / "experiments" / "definitions" / "smoke-exp.json"
+    contract = json.loads(path.read_text(encoding="utf-8"))
+    contract["analysis_plan"]["estimators"] = [{
+        "id": "estimator.primary",
+        "estimand_ref": "effect.primary",
+        "type": "joint_cluster_bootstrap",
+        "method_ref": "joint-cluster-bootstrap@1",
+        "component_a": "baseline",
+        "component_b": "treatment",
+        "uncertainty": {
+            "confidence_level": 0.95,
+            "interval_method": "percentile",
+            "resampling_unit": "query_id",
+            "replicates": 1000,
+            "seed": 1729,
+            "method_reference": "https://doi.org/10.1111/j.1467-9868.2007.00593.x",
+        },
+    }]
+    _write(path, contract)
+
+    _, written = _compare(project)
+
+    assert written["estimates"] == []
+    assert any("joint_cluster_bootstrap" in note for note in written["notes"])

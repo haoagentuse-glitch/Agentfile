@@ -6,8 +6,9 @@
   "mechanical": {
     "reference_exists": true,
     "comparison_valid": true,
-    "metric_exists": true,
+    "estimand_exists": true,
     "direction_matches": true,
+    "conclusion_matches": true,
     "magnitude_matches": true,
     "mechanical_pass": true
   },

@@ -8,6 +8,39 @@
   "primary_metric": "recall_at_10",
   "secondary_metrics": ["latency_ms"],
   "decision_rule": "recall_at_10 絕對提升 > 0.03 才算成功",
+  "analysis_plan": {
+    "estimands": [
+      {
+        "id": "effect.primary",
+        "metric": "recall_at_10",
+        "population": "nq-open-eval-v3 全評估集",
+        "conditions": { "baseline": "top_k=20", "treatment": "top_k=50" },
+        "scale": "raw",
+        "summary_measure": "difference",
+        "orientation": "treatment_minus_baseline"
+      }
+    ],
+    "estimators": [
+      {
+        "id": "estimator.primary",
+        "estimand_ref": "effect.primary",
+        "type": "joint_cluster_bootstrap",
+        "method_ref": "joint-cluster-bootstrap@1",
+        "uncertainty": {
+          "resampling_unit": "query_id",
+          "strata": [],
+          "replicates": 10000,
+          "seed": 1729,
+          "confidence_level": 0.95,
+          "interval_method": "percentile",
+          "method_reference": "https://doi.org/10.1111/j.1467-9868.2007.00593.x"
+        }
+      }
+    ],
+    "decision_rules": [
+      { "id": "decision.primary", "estimand_ref": "effect.primary", "type": "superiority", "null_value": 0.0 }
+    ]
+  },
   "compute_budget": { "pilot_max_minutes": 30, "pilot_max_samples": 500 },
   "abort_rule": "latency_ms p95 超過 800ms 就中止",
   "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },

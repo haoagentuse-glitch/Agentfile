@@ -120,8 +120,8 @@ def test_failed_mechanical_check_cannot_end_supported(project: Path) -> None:
         {},
         {
             "mechanical": {
-                "reference_exists": False, "comparison_valid": None, "metric_exists": None,
-                "direction_matches": None, "magnitude_matches": None, "mechanical_pass": False,
+                "reference_exists": False, "comparison_valid": None, "estimand_exists": None,
+                "direction_matches": None, "conclusion_matches": True, "magnitude_matches": None, "mechanical_pass": False,
             },
             "scope_verdict": "unauditable",
             "final_verdict": "fully_supported",

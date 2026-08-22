@@ -1,0 +1,42 @@
+{
+  "experiment_id": "edge-exp",
+  "run_a": "edge-good-run",
+  "run_b": "edge-good-run-2",
+  "generated_at": "2026-01-08T05:20:00Z",
+  "evidence_eligible": true,
+  "evidence_reasons": [],
+  "comparability": {
+    "dimensions": {
+      "dataset": { "status": "PASS" },
+      "seed": { "status": "PASS" }
+    },
+    "declared_variable": { "name": "x", "run_a_value": 1, "run_b_value": 2, "changed": true }
+  },
+  "structurally_comparable": true,
+  "controlled_variables_match": true,
+  "differences": [
+    { "category": "config", "key": "x", "run_a_value": 1, "run_b_value": 2, "severity": "informational", "declared": true }
+  ],
+  "comparison_valid": true,
+  "confounded": false,
+  "confounded_reasons": [],
+  "metrics": {
+    "score": { "definition_consistent": true, "computed": true, "baseline": 1.0, "treatment": 1.2, "absolute_diff": 0.2, "relative_diff": 0.2 }
+  },
+  "estimates": [
+    {
+      "estimand_id": "effect.primary",
+      "estimator_id": "estimator.primary",
+      "point_estimate": 0.2,
+      "interval": null,
+      "sample_size": {},
+      "method_ref": "arithmetic-difference@1",
+      "component_estimates": [
+        { "id": "baseline", "point_estimate": 1.0 },
+        { "id": "treatment", "point_estimate": 1.2 }
+      ],
+      "decision": { "rule_id": "decision.primary", "conclusion": "inconclusive", "reason_codes": ["interval_missing"] }
+    }
+  ],
+  "notes": []
+}

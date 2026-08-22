@@ -26,6 +26,14 @@ from helpers import (
 # 這是獨立的比對來源：鍵序、無空白、中文不轉義、整數不加小數點，任何一項變了都會失敗。
 CANONICAL_DEFINITION = (
     '{"abort_rule":"guardrail 超標立即中止",'
+    '"analysis_plan":{"decision_rules":[{"estimand_ref":"effect.primary",'
+    '"id":"decision.primary","null_value":0,"type":"superiority"}],'
+    '"estimands":[{"conditions":{"baseline":"baseline","treatment":"treatment"},'
+    '"id":"effect.primary","metric":"recall_at_10",'
+    '"orientation":"treatment_minus_baseline","population":"固定評估集",'
+    '"scale":"raw","summary_measure":"difference"}],'
+    '"estimators":[{"estimand_ref":"effect.primary","id":"estimator.primary",'
+    '"method_ref":"arithmetic-difference","type":"difference"}]},'
     '"baseline":{"config_ref":"records/experiments/configs/baseline.yaml",'
     '"description":"baseline pipeline"},'
     '"compute_budget":{"pilot_max_minutes":5,"pilot_max_samples":100},'
@@ -331,8 +339,9 @@ def _mechanical_failure_project(project: Path) -> None:
             mechanical={
                 "reference_exists": True,
                 "comparison_valid": True,
-                "metric_exists": True,
+                "estimand_exists": True,
                 "direction_matches": False,
+                "conclusion_matches": True,
                 "magnitude_matches": None,
                 "mechanical_pass": False,
             },

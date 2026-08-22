@@ -49,6 +49,32 @@ describe("loadCanonicalProject - happy path (RAG / 演算法比較 / 模擬三�
     expect(snapshot.comparisons[0].confounded).toBe(false);
   });
 
+  it("loads the persisted estimate, interval and decision as written", async () => {
+    // 統計語意屬於 compare-runs。Viewer 只搬紀錄裡的數字與判定，不自己重算。
+    const snapshot = await loadCanonicalFixture(root);
+    const [estimate] = snapshot.comparisons[0].estimates;
+    expect(estimate.estimandId).toBe("effect.primary");
+    expect(estimate.pointEstimate).toBe(0.09);
+    expect(estimate.interval).toEqual({
+      lower: 0.031,
+      upper: 0.147,
+      confidenceLevel: 0.95,
+      method: "percentile",
+    });
+    expect(estimate.clusters).toBe(42);
+    expect(estimate.decision.conclusion).toBe("superior");
+    expect(estimate.decision.reasonCodes).toEqual(["interval_above_null"]);
+    expect(estimate.componentEstimates.map((c) => c.id)).toEqual(["baseline", "treatment"]);
+  });
+
+  it("keeps an estimate without an interval as inconclusive instead of guessing", async () => {
+    const snapshot = await loadCanonicalFixture(path.join(fixturesDir, "canonical/edge-cases"));
+    const comparison = snapshot.comparisons.find((c) => c.runB === "edge-good-run-2")!;
+    expect(comparison.estimates[0].interval).toBeNull();
+    expect(comparison.estimates[0].decision.conclusion).toBe("inconclusive");
+    expect(comparison.estimates[0].decision.reasonCodes).toEqual(["interval_missing"]);
+  });
+
   it("loads metric definitions with direction", async () => {
     const snapshot = await loadCanonicalFixture(root);
     const byName = Object.fromEntries(snapshot.metricDefinitions.map((m) => [m.name, m]));
@@ -109,8 +135,7 @@ describe("loadCanonicalProject - edge cases", () => {
 
   it("marks a confounded comparison as invalid with reasons, not silently dropped", async () => {
     const snapshot = await loadCanonicalFixture(root);
-    expect(snapshot.comparisons).toHaveLength(1);
-    const [comparison] = snapshot.comparisons;
+    const comparison = snapshot.comparisons.find((c) => c.runB === "edge-invalid-run")!;
     expect(comparison.confounded).toBe(true);
     expect(comparison.comparisonValid).toBe(false);
     expect(comparison.evidenceEligible).toBe(false);

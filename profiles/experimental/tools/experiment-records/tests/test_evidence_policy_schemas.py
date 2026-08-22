@@ -3,16 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from jsonschema import Draft202012Validator
-
-
-def _schema(project: Path, name: str) -> dict:
-    path = project / "records" / "experiments" / "schemas" / name
-    return json.loads(path.read_text(encoding="utf-8"))
+from experiment_records.project_layout import resolve_layout
+from experiment_records.validation import validator_for
 
 
 def _errors(project: Path, name: str, instance: dict) -> list:
-    return list(Draft202012Validator(_schema(project, name)).iter_errors(instance))
+    return list(validator_for(resolve_layout(project), name).iter_errors(instance))
 
 
 def _contract() -> dict:

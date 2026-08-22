@@ -29,6 +29,8 @@ SHARED_SCHEMAS = (
     "prompt-output.schema.json",
     "review-package.schema.json",
     "failure-taxonomy.schema.json",
+    "analysis-plan.schema.json",
+    "comparison-estimate.schema.json",
 )
 AUXILIARY_SUBDIRS = frozenset({"schemas", "configs", "artifacts", "prompts"})
 

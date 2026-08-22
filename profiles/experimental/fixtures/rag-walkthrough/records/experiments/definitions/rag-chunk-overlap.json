@@ -26,7 +26,13 @@
     "pilot_max_samples": 200
   },
   "abort_rule": "索引建置時間超過 30 分鐘立即中止",
-  "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },
+  "evidence_policy": {
+    "eligible_run_stages": [
+      "pilot",
+      "main",
+      "replication"
+    ]
+  },
   "status": "locked",
   "created_at": "2026-01-06T09:00:00Z",
   "derivation": {
@@ -64,5 +70,37 @@
     "source_refs": [],
     "novelty_status": "unverified"
   },
-  "contract_hash": "5cd11b32e192bb6191c1187c127b6c5420eeacc4dbfd3d8f2ec28010061e784a"
+  "contract_hash": "e830c3c287a3854fbe6cca52b8f36b214ec30a62ca6612052e409e058865b5ca",
+  "analysis_plan": {
+    "estimands": [
+      {
+        "id": "effect.primary",
+        "metric": "recall_at_10",
+        "population": "凍結評估集",
+        "conditions": {
+          "baseline": "chunk_overlap=0 的既有索引",
+          "treatment": "只把 chunk_overlap 改成 64"
+        },
+        "scale": "raw",
+        "summary_measure": "difference",
+        "orientation": "treatment_minus_baseline"
+      }
+    ],
+    "estimators": [
+      {
+        "id": "estimator.primary",
+        "estimand_ref": "effect.primary",
+        "type": "difference",
+        "method_ref": "arithmetic-difference@1"
+      }
+    ],
+    "decision_rules": [
+      {
+        "id": "decision.primary",
+        "estimand_ref": "effect.primary",
+        "type": "superiority",
+        "null_value": 0
+      }
+    ]
+  }
 }
