@@ -65,7 +65,7 @@ Generate configuration stubs that match the user's existing config format. Read 
 
 跑 `experiment-lint`（見該技能）驗證：必填欄位齊全、baseline 跟 treatment 的設定檔之間沒有 `controlled_variables` 以外的未宣告差異。lint 沒過不要 lock。
 
-過了以後把 `status` 改成 `locked`，對這份 JSON（不含 `contract_hash` 欄位本身）算 sha256 填進 `contract_hash`。lock 之後這份檔案不得再改——要改 `top_k`／model／dataset／budget／metric 實作／evaluation set 等任何一項，開新的 `experiment_id` 或新的 treatment condition，不得原地覆寫。
+過了以後把 `status` 改成 `locked`，跑 `uv run --project .agents/tools/experiment-records python -m experiment_records contract-hash <definition> --write` 算出 `contract_hash` 並寫回——不要手算，雜湊用 RFC 8785 正規化，手算會對不上。lock 之後這份檔案不得再改——要改 `top_k`／model／dataset／budget／metric 實作／evaluation set 等任何一項，開新的 `experiment_id` 或新的 treatment condition，不得原地覆寫。
 
 ## Step 7: Analysis Plan
 

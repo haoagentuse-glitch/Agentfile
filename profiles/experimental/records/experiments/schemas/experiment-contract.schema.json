@@ -152,7 +152,8 @@
     "status": { "type": "string", "enum": ["draft", "locked"] },
     "contract_hash": {
       "type": "string",
-      "description": "lock 後才有值：對 lock 當下的 JSON（不含此欄位本身）算 sha256"
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "lock 後才有值：對 lock 當下的 JSON（不含此欄位本身、RFC 8785 正規化）算 sha256，小寫 64 位 hex，不帶前綴"
     },
     "created_at": { "type": "string", "format": "date-time" },
     "producer": { "$ref": "provenance.schema.json#/$defs/producer" },

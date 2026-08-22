@@ -17,7 +17,11 @@ from experiment_records.project_layout import (
     SUBDIR_TO_SCHEMA,
     ProjectLayout,
     all_schema_names,
-    record_type_for,
+)
+from experiment_records.project_snapshot import (
+    CONTRACT_HASH_FIELD,
+    ProjectSnapshot,
+    Record,
 )
 from experiment_records.prompts import hash_file, prompt_path
 from experiment_records.ref_resolver import (
@@ -207,36 +211,10 @@ def _extract_refs(
     return refs
 
 
-def _evidence_experiment_id(path: Path, subdir: str, layout: ProjectLayout) -> str | None:
-    try:
-        record = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
-    if not isinstance(record, dict):
-        return None
-    if subdir == "comparisons":
-        experiment_id = record.get("experiment_id")
-        return experiment_id if isinstance(experiment_id, str) else None
-    if subdir == "audits":
-        claim_id = record.get("claim_id")
-        if not isinstance(claim_id, str):
-            return None
-        claims_dir = layout.records_root / "claims"
-        for claim_path in sorted(claims_dir.glob("*.json")):
-            try:
-                claim = json.loads(claim_path.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                continue
-            if isinstance(claim, dict) and claim.get("claim_id") == claim_id:
-                experiment_id = claim.get("experiment_id")
-                if isinstance(experiment_id, str):
-                    return experiment_id
-    return None
-
-
 def _validate_lifecycle_event(
-    instance: dict[str, Any], label: str, schema: dict[str, Any], layout: ProjectLayout
+    instance: dict[str, Any], label: str, schema: dict[str, Any], snapshot: ProjectSnapshot
 ) -> list[Result]:
+    layout = snapshot.layout
     initial_state: str = schema["x-initial-state"]
     transitions: dict[str, list[str]] = schema["x-allowed-transitions"]
     from_state = instance["from_state"]
@@ -260,7 +238,10 @@ def _validate_lifecycle_event(
             resolved = resolve_ref(layout.project_root, ref)
         except RefError:
             continue
-        evidence_experiment_id = _evidence_experiment_id(resolved, required_subdir, layout)
+        # 證據歸屬要看全專案，不只看這次的目標；否則「這份證據屬於別的 experiment」
+        # 會因為對方不在範圍內而漏掉。
+        evidence = snapshot.record_at(resolved)
+        evidence_experiment_id = evidence.experiment_id if evidence is not None else None
         if evidence_experiment_id != instance["experiment_id"]:
             results.append(("錯誤", f"{label}: evidence {ref!r} 不屬於 experiment {instance['experiment_id']!r}"))
     return results
@@ -428,7 +409,7 @@ def _validate_audit(instance: dict[str, Any], label: str) -> list[Result]:
     return results
 
 
-def validate_claim_audit_chain(paths: list[Path], layout: ProjectLayout) -> list[Result]:
+def validate_claim_audit_chain(snapshot: ProjectSnapshot) -> list[Result]:
     """跨檔檢查 claim 與 audit 的關係。
 
     兩件事只有把兩份紀錄放在一起才判得出來：claim 標 supported 時是否真的有稽核撐著，
@@ -436,20 +417,14 @@ def validate_claim_audit_chain(paths: list[Path], layout: ProjectLayout) -> list
     """
     claims: dict[str, tuple[str, dict[str, Any]]] = {}
     audits: dict[str, tuple[str, dict[str, Any]]] = {}
-    for path in paths:
-        record_type = record_type_for(path)
-        if record_type not in ("claims", "audits"):
+    for record in snapshot.targets:
+        if record.record_type not in ("claims", "audits") or record.data is None:
             continue
-        try:
-            instance = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            continue
-        if not isinstance(instance, dict):
-            continue
-        claim_id = instance.get("claim_id")
+        claim_id = record.data.get("claim_id")
         if not isinstance(claim_id, str):
             continue
-        (claims if record_type == "claims" else audits)[claim_id] = (_label(path, layout), instance)
+        bucket = claims if record.record_type == "claims" else audits
+        bucket[claim_id] = (record.label, record.data)
 
     results: list[Result] = []
     for claim_id, (label, claim) in sorted(claims.items()):
@@ -467,6 +442,8 @@ def validate_claim_audit_chain(paths: list[Path], layout: ProjectLayout) -> list
         if audit_entry is None:
             continue
         audit_label, audit = audit_entry
+        if not snapshot.semantic_review_applicable(audit):
+            continue
         if _same_producer(claim.get("producer"), audit.get("producer")):
             independence = audit.get("review_independence")
             if not isinstance(independence, dict) or independence.get("independent") is not False:
@@ -480,7 +457,7 @@ def validate_claim_audit_chain(paths: list[Path], layout: ProjectLayout) -> list
         if claim_id not in claims:
             results.append(("錯誤", f"{label}: 稽核的 claim_id {claim_id!r} 不存在"))
 
-    results.extend(_validate_review_policy(claims, audits, layout))
+    results.extend(_validate_review_policy(claims, audits, snapshot))
     return results
 
 
@@ -495,28 +472,30 @@ _POLICY_SATISFIED_BY: dict[str, set[str]] = {
 def _validate_review_policy(
     claims: dict[str, tuple[str, dict[str, Any]]],
     audits: dict[str, tuple[str, dict[str, Any]]],
-    layout: ProjectLayout,
+    snapshot: ProjectSnapshot,
 ) -> list[Result]:
     """稽核者的身分必須滿足 Contract 凍結的審核政策。
 
     政策跟 Contract 一起凍結，正是為了擋掉「看到結果之後才放寬審核標準」。
     在這裡機械比對，才不會變成靠自律遵守的一句話。
+
+    機械檢查沒過的稽核不套用這條政策——那份稽核的語意段本來就不適用，
+    要求它提供獨立審核者的身分，等於逼人在紀錄裡寫假的。
     """
     results: list[Result] = []
     for claim_id, (audit_label, audit) in sorted(audits.items()):
         claim_entry = claims.get(claim_id)
         if claim_entry is None:
             continue
+        if not snapshot.semantic_review_applicable(audit):
+            continue
         experiment_id = claim_entry[1].get("experiment_id")
         if not isinstance(experiment_id, str):
             continue
-        contract_path = layout.records_root / "definitions" / f"{experiment_id}.json"
-        if not contract_path.is_file():
+        contract_record = snapshot.record("definitions", experiment_id)
+        if contract_record is None or contract_record.data is None:
             continue
-        try:
-            contract = json.loads(contract_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            continue
+        contract = contract_record.data
         policy = contract.get("review_policy")
         if not isinstance(policy, dict):
             continue
@@ -549,7 +528,7 @@ def _validate_review_policy(
     return results
 
 
-def validate_run_lineage(paths: list[Path], layout: ProjectLayout) -> list[Result]:
+def validate_run_lineage(snapshot: ProjectSnapshot) -> list[Result]:
     """跨檔 lineage 檢查：parent_run_id 必須指到存在的 run，且不得成環。
 
     指不到的 parent 會讓 replication 與 retry 的來源無法回溯；成環則讓 lineage 無法收斂。
@@ -557,18 +536,14 @@ def validate_run_lineage(paths: list[Path], layout: ProjectLayout) -> list[Resul
     """
     runs: dict[str, str] = {}
     parents: dict[str, str] = {}
-    for path in paths:
-        if record_type_for(path) != "runs":
+    for record in snapshot.targets:
+        if record.record_type != "runs" or record.data is None:
             continue
-        try:
-            instance = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            continue
-        run_id = instance.get("run_id") if isinstance(instance, dict) else None
+        run_id = record.data.get("run_id")
         if not isinstance(run_id, str):
             continue
-        runs[run_id] = _label(path, layout)
-        parent = instance.get("parent_run_id")
+        runs[run_id] = record.label
+        parent = record.data.get("parent_run_id")
         if isinstance(parent, str):
             parents[run_id] = parent
 
@@ -678,9 +653,57 @@ def _validate_contract_configs(instance: dict[str, Any], label: str, layout: Pro
         results.append(("警告", f"{label}: controlled_variables 未宣告 random seed"))
     return results
 
-def validate_lifecycle_candidate(
-    instance: dict[str, Any], label: str, layout: ProjectLayout
+def _validate_contract_metrics(
+    instance: dict[str, Any], label: str, snapshot: ProjectSnapshot
 ) -> list[Result]:
+    """Contract 引用的指標必須解析得到定義。
+
+    `primary_metric` 只是一個字串。沒有這道檢查，一份 Contract 可以引用一個不存在的
+    指標而通過驗證，直到執行時才發現。比對的是 metric definition 的 `name`，不是檔名。
+    """
+    results: list[Result] = []
+    primary = instance.get("primary_metric")
+    if isinstance(primary, str) and not snapshot.metric_defined(primary):
+        results.append((
+            "錯誤",
+            f"{label}: primary_metric {primary!r} 沒有對應的 metric 定義；"
+            "先在 records/experiments/metrics/ 建立它",
+        ))
+    for index, name in enumerate(instance.get("secondary_metrics", [])):
+        if isinstance(name, str) and not snapshot.metric_defined(name):
+            results.append((
+                "錯誤",
+                f"{label}: secondary_metrics[{index}] {name!r} 沒有對應的 metric 定義；"
+                "先在 records/experiments/metrics/ 建立它",
+            ))
+    return results
+
+
+def _validate_contract_hash(
+    instance: dict[str, Any], label: str, snapshot: ProjectSnapshot
+) -> list[Result]:
+    """locked 的 Contract 必須有算得出來的 contract_hash。
+
+    沒有這道檢查，「lock 之後不得再改」就沒有機械執行力：改了 Contract 而不更新
+    雜湊，validator 一樣回報 0 錯誤。演算法見 ADR 0016。
+    """
+    if instance.get("status") != "locked":
+        return []
+    expected = snapshot.expected_contract_hash(instance)
+    actual = instance.get(CONTRACT_HASH_FIELD)
+    if actual != expected:
+        return [(
+            "錯誤",
+            f"{label}: contract_hash 與內容不符；預期 {expected}，收到 {actual!r}。"
+            "確認改動合法後用 contract-hash --write 重算",
+        )]
+    return [("通過", f"{label}: contract_hash 與內容相符")]
+
+
+def validate_lifecycle_candidate(
+    instance: dict[str, Any], label: str, snapshot: ProjectSnapshot
+) -> list[Result]:
+    layout = snapshot.layout
     schema = _load_schema(layout.schemas_dir / SUBDIR_TO_SCHEMA["lifecycles"])
     errors = sorted(
         _validator(schema, layout).iter_errors(instance),
@@ -692,7 +715,7 @@ def validate_lifecycle_candidate(
         results.append(("錯誤", f"{label}: Schema[{at}]: {error.message}"))
     if errors:
         return results
-    results.extend(_validate_lifecycle_event(instance, label, schema, layout))
+    results.extend(_validate_lifecycle_event(instance, label, schema, snapshot))
     for field_label, ref_value in _extract_refs(schema, instance, layout):
         try:
             resolve_ref(layout.project_root, ref_value)
@@ -701,9 +724,12 @@ def validate_lifecycle_candidate(
     return results
 
 def validate_lifecycle_history_candidate(
-    existing_events: list[dict[str, Any]], candidate: dict[str, Any], label: str, layout: ProjectLayout
+    existing_events: list[dict[str, Any]],
+    candidate: dict[str, Any],
+    label: str,
+    snapshot: ProjectSnapshot,
 ) -> list[Result]:
-    schema = _load_schema(layout.schemas_dir / SUBDIR_TO_SCHEMA["lifecycles"])
+    schema = _load_schema(snapshot.layout.schemas_dir / SUBDIR_TO_SCHEMA["lifecycles"])
     if candidate["to_state"] not in schema.get("x-requires-new-evidence", []):
         return []
     prior_refs = {
@@ -727,19 +753,15 @@ def _validate_gate(instance: dict[str, Any], label: str) -> list[Result]:
         return [("錯誤", f"{label}: aborted 之後不得再有 history；這條路線已終止")]
     return []
 
-def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
-    label = _label(path, layout)
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            instance = json.load(f)
-    except json.JSONDecodeError as e:
-        return [("錯誤", f"{label}: 不是合法 JSON：{e}")]
-
-    record_type = record_type_for(path)
+def validate_record(record: Record, snapshot: ProjectSnapshot) -> list[Result]:
+    layout = snapshot.layout
+    label = record.label
+    record_type = record.record_type
     if record_type is None:
-        return [("錯誤", f"{label}: 無法辨識 record 類型——父目錄 {path.parent.name!r} 不在已知清單中")]
-    if not isinstance(instance, dict):
-        return [("錯誤", f"{label}: record 最外層必須是 JSON object")]
+        return [("錯誤", f"{label}: 無法辨識 record 類型——父目錄 {record.path.parent.name!r} 不在已知清單中")]
+    if record.data is None:
+        return [("錯誤", f"{label}: {record.problem}")]
+    instance = record.data
 
     schema_path = layout.schemas_dir / SUBDIR_TO_SCHEMA[record_type]
     try:
@@ -761,10 +783,12 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
         results.append(("通過", f"{label}: Schema 有效"))
         results.extend(_validate_producer_prompt(instance, label, layout))
         if record_type == "lifecycles":
-            results.extend(_validate_lifecycle_event(instance, label, schema, layout))
+            results.extend(_validate_lifecycle_event(instance, label, schema, snapshot))
         elif record_type == "definitions":
             results.extend(_validate_derivation(instance, label))
             results.extend(_validate_contract_configs(instance, label, layout))
+            results.extend(_validate_contract_metrics(instance, label, snapshot))
+            results.extend(_validate_contract_hash(instance, label, snapshot))
         elif record_type == "runs":
             results.extend(_validate_run(instance, label))
         elif record_type == "audits":
@@ -784,28 +808,24 @@ def validate_record(path: Path, layout: ProjectLayout) -> list[Result]:
     return results
 
 
-def validate_lifecycle_events(paths: list[Path], layout: ProjectLayout) -> list[Result]:
+def validate_lifecycle_events(snapshot: ProjectSnapshot) -> list[Result]:
+    layout = snapshot.layout
     schema = _load_schema(layout.schemas_dir / SUBDIR_TO_SCHEMA["lifecycles"])
     validator = _validator(schema, layout)
-    grouped: dict[str, list[tuple[Path, dict[str, Any]]]] = defaultdict(list)
+    grouped: dict[str, list[tuple[str, dict[str, Any]]]] = defaultdict(list)
 
-    for path in paths:
-        if record_type_for(path) != "lifecycles":
+    for record in snapshot.targets:
+        if record.record_type != "lifecycles" or record.data is None:
             continue
-        try:
-            instance = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            continue
-        if isinstance(instance, dict) and not list(validator.iter_errors(instance)):
-            grouped[instance["experiment_id"]].append((path, instance))
+        if not list(validator.iter_errors(record.data)):
+            grouped[record.data["experiment_id"]].append((record.label, record.data))
 
     results: list[Result] = []
     for experiment_id, events in sorted(grouped.items()):
         events.sort(key=lambda item: item[1]["sequence"])
         previous_state: str | None = None
         prior_refs: set[str] = set()
-        for expected_sequence, (path, event) in enumerate(events, start=1):
-            label = _label(path, layout)
+        for expected_sequence, (label, event) in enumerate(events, start=1):
             if event["sequence"] != expected_sequence:
                 results.append(("錯誤", f"{label}: sequence 必須連續；預期 {expected_sequence}，收到 {event['sequence']}"))
                 break
