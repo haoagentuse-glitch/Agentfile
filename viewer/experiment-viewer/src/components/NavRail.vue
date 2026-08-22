@@ -1,12 +1,14 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import appIcon from "../assets/app-icon.svg";
+</script>
 
 <template>
   <nav class="nav-rail">
-    <div class="brand">experiment-viewer</div>
-    <RouterLink to="/" class="nav-item">Overview</RouterLink>
-    <RouterLink to="/experiments" class="nav-item">Experiments</RouterLink>
-    <RouterLink to="/records" class="nav-item">Records</RouterLink>
-    <RouterLink to="/diagnostics" class="nav-item">Diagnostics / About</RouterLink>
+    <div class="brand"><img :src="appIcon" alt="" />實驗檢視器</div>
+    <RouterLink to="/" class="nav-item">總覽</RouterLink>
+    <RouterLink to="/experiments" class="nav-item">實驗</RouterLink>
+    <RouterLink to="/records" class="nav-item">紀錄</RouterLink>
+    <RouterLink to="/diagnostics" class="nav-item">診斷與關於</RouterLink>
   </nav>
 </template>
 
@@ -26,6 +28,14 @@
   color: var(--color-heading);
   margin-bottom: var(--space-3);
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.brand img {
+  width: 28px;
+  height: 28px;
+  flex: none;
 }
 .nav-item {
   color: var(--color-text);

@@ -95,7 +95,7 @@ function toggleSort(key: string) {
         aria-label="篩選表格內容"
       />
       <label v-if="groupable" class="group-control">
-        group by
+        分組欄位
         <select v-model="groupKey" aria-label="依欄位分組">
           <option value="">不分組</option>
           <option v-for="col in columns" :key="col.key" :value="col.key">{{ col.label }}</option>

@@ -137,6 +137,6 @@ describe("RecordsView 未知型別與缺值", () => {
 
     const wrapper = await mountWithSnapshot(empty);
 
-    expect(wrapper.text()).toContain("沒有 viewer.json 定義的額外 record collections");
+    expect(wrapper.text()).toContain("沒有 viewer.json 定義的額外紀錄集合");
   });
 });

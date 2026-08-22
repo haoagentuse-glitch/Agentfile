@@ -3,6 +3,7 @@
 // 不是讓使用者臨時挑兩個 run 現算——viewer 只渲染 compare-runs 已產生的結果（規則 5）。
 import type { CanonicalComparison } from "../lib/canonical";
 import { describeComparisonStatus } from "../lib/comparison-status";
+import { statusLabel } from "../lib/status-label";
 
 const props = defineProps<{
   comparisons: CanonicalComparison[];
@@ -21,17 +22,17 @@ function onChange(e: Event) {
 
 function statusSuffix(c: CanonicalComparison): string {
   const status = describeComparisonStatus(c);
-  if (status === "confounded") return "　⚠ confounded";
-  if (status === "invalid") return "　⚠ invalid";
+  if (status === "confounded") return "　⚠ " + statusLabel(status);
+  if (status === "invalid") return "　⚠ " + statusLabel(status);
   return "";
 }
 </script>
 
 <template>
   <select :value="modelValue ? comparisons.indexOf(modelValue) : ''" @change="onChange">
-    <option value="">（選一組比較）</option>
+    <option value="">（選擇一組比較）</option>
     <option v-for="(c, i) in comparisons" :key="i" :value="i">
-      {{ c.runA }} vs {{ c.runB }}{{ statusSuffix(c) }}
+      {{ c.runA }} 對比 {{ c.runB }}{{ statusSuffix(c) }}
     </option>
   </select>
 </template>

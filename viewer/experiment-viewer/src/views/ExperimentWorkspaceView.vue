@@ -8,6 +8,7 @@ import VChart from "vue-echarts";
 import { useProjectStore } from "../store/project";
 import { openArtifact } from "../lib/tauri-fs";
 import { describeComparisonStatus } from "../lib/comparison-status";
+import { statusLabel } from "../lib/status-label";
 import DataTable from "../components/DataTable.vue";
 import Drawer from "../components/Drawer.vue";
 import MetricValue from "../components/MetricValue.vue";
@@ -32,12 +33,12 @@ const experiment = computed(() => snapshot.value?.experiments.find((e) => e.expe
 
 type Tab = "summary" | "runs" | "compare" | "records" | "artifacts" | "claims";
 const tabs: Array<{ key: Tab; label: string }> = [
-  { key: "summary", label: "Summary" },
-  { key: "runs", label: "Runs" },
-  { key: "compare", label: "Compare" },
-  { key: "records", label: "Records" },
-  { key: "artifacts", label: "Artifacts" },
-  { key: "claims", label: "Claims" },
+  { key: "summary", label: "摘要" },
+  { key: "runs", label: "執行紀錄" },
+  { key: "compare", label: "比較" },
+  { key: "records", label: "紀錄" },
+  { key: "artifacts", label: "產物" },
+  { key: "claims", label: "主張" },
 ];
 const activeTab = ref<Tab>("summary");
 
@@ -57,16 +58,16 @@ function openGateEntry(entry: CanonicalGateHistoryEntry) {
 
 // --- Runs ---
 const runColumns = [
-  { key: "runId", label: "run_id" },
-  { key: "status", label: "status" },
-  { key: "baselineRun", label: "baseline_run" },
-  { key: "createdAt", label: "created_at" },
+  { key: "runId", label: "執行 ID" },
+  { key: "status", label: "狀態" },
+  { key: "baselineRun", label: "基準執行" },
+  { key: "createdAt", label: "建立時間" },
 ];
 const runRows = computed(() =>
   (experiment.value?.runs ?? []).map((r) => ({
     runId: r.runId,
-    status: r.status,
-    baselineRun: r.baselineRun ?? "(baseline)",
+    status: statusLabel(r.status),
+    baselineRun: r.baselineRun ?? "（基準）",
     createdAt: r.createdAt ?? "—",
   }))
 );
@@ -94,17 +95,17 @@ const chartOption = computed(() => {
   if (validMetrics.length === 0) return null;
   return {
     tooltip: {},
-    legend: { data: ["baseline", "treatment"] },
+    legend: { data: ["基準", "處理組"] },
     xAxis: { type: "category", data: validMetrics.map((m) => m.metric) },
     yAxis: { type: "value" },
     series: [
-      { name: "baseline", type: "bar", data: validMetrics.map((m) => m.baseline) },
-      { name: "treatment", type: "bar", data: validMetrics.map((m) => m.treatment) },
+      { name: "基準", type: "bar", data: validMetrics.map((m) => m.baseline) },
+      { name: "處理組", type: "bar", data: validMetrics.map((m) => m.treatment) },
     ],
   };
 });
 
-// --- Records（跟這個 experiment 的 primary/secondary metric 有關的 metric definitions）---
+// --- 紀錄：與這個實驗的主要與次要指標有關的指標定義。---
 const relevantMetricNames = computed(() => {
   const names = new Set<string>();
   if (experiment.value?.primaryMetric) names.add(experiment.value.primaryMetric);
@@ -138,10 +139,10 @@ async function openArtifactExternally(path: string) {
 
 // --- Claims ---
 const claimColumns = [
-  { key: "claimId", label: "claim_id" },
-  { key: "metric", label: "metric" },
-  { key: "status", label: "status" },
-  { key: "verdict", label: "final_verdict" },
+  { key: "claimId", label: "主張 ID" },
+  { key: "metric", label: "指標" },
+  { key: "status", label: "狀態" },
+  { key: "verdict", label: "最終判定" },
 ];
 // refuted 與 inconclusive 是正式終態，一起列出來，不因為結論不好看就過濾掉。
 const claimRows = computed(() =>
@@ -184,12 +185,12 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
     </nav>
 
     <div v-if="activeTab === 'summary'" class="tab-panel">
-      <p v-if="experiment.question"><strong>question：</strong>{{ experiment.question }}</p>
+      <p v-if="experiment.question"><strong>研究問題：</strong>{{ experiment.question }}</p>
       <p v-if="experiment.hypothesis"><em>{{ experiment.hypothesis }}</em></p>
-      <p>status：<code>{{ experiment.status }}</code></p>
-      <p v-if="experiment.primaryMetric">primary metric：<code>{{ experiment.primaryMetric }}</code></p>
+      <p>狀態：<code>{{ statusLabel(experiment.status) }}</code></p>
+      <p v-if="experiment.primaryMetric">主要指標：<code>{{ experiment.primaryMetric }}</code></p>
       <p v-if="experiment.secondaryMetrics.length > 0">
-        secondary metrics：<code>{{ experiment.secondaryMetrics.join(", ") }}</code>
+        次要指標：<code>{{ experiment.secondaryMetrics.join(", ") }}</code>
       </p>
       <p v-if="experiment.contractHash">contract_hash：<code>{{ experiment.contractHash }}</code></p>
 
@@ -206,18 +207,18 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
                 latestAuditedClaim.auditResult?.finalVerdict === 'unsupported' ||
                 latestAuditedClaim.auditResult?.finalVerdict === 'unauditable',
             }"
-          >{{ latestAuditedClaim.auditResult?.finalVerdict }}</span>
-          <button class="link-button" @click="activeTab = 'claims'">看完整稽核結果 →</button>
+          >{{ statusLabel(latestAuditedClaim.auditResult?.finalVerdict) }}</span>
+          <button class="link-button" @click="activeTab = 'claims'">查看完整稽核結果 →</button>
         </p>
       </div>
-      <p v-else class="hint">這個 experiment 底下還沒有稽核過的 claim。</p>
+      <p v-else class="hint">這個實驗下還沒有已稽核的主張。</p>
 
-      <h3>Compute Gate</h3>
+      <h3>計算關卡（Compute Gate）</h3>
       <div v-if="experiment.gateState">
         <p>目前等級：<strong>{{ experiment.gateState.currentLevel ?? "尚未申請過任何等級" }}</strong></p>
         <table v-if="experiment.gateState.history.length > 0">
           <thead>
-            <tr><th>level</th><th>status</th><th>decided_at</th><th>reason</th></tr>
+            <tr><th>等級</th><th>狀態</th><th>決定時間</th><th>原因</th></tr>
           </thead>
           <tbody>
             <tr
@@ -229,7 +230,7 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
               @keydown.enter="openGateEntry(entry)"
             >
               <td>{{ entry.level }}</td>
-              <td><span class="badge" :class="{ 'badge-good': entry.status === 'passed', 'badge-bad': entry.status !== 'passed' }">{{ entry.status }}</span></td>
+              <td><span class="badge" :class="{ 'badge-good': entry.status === 'passed', 'badge-bad': entry.status !== 'passed' }">{{ statusLabel(entry.status) }}</span></td>
               <td>{{ entry.decidedAt }}</td>
               <td>{{ entry.reason }}</td>
             </tr>
@@ -240,10 +241,10 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
 
       <Drawer :open="selectedGateEntry !== null" :title="`Gate ${selectedGateEntry?.level ?? ''}`" @close="selectedGateEntry = null">
         <template v-if="selectedGateEntry">
-          <p>status：<code>{{ selectedGateEntry.status }}</code></p>
-          <p>decided_at：<code>{{ selectedGateEntry.decidedAt }}</code></p>
+          <p>狀態：<code>{{ statusLabel(selectedGateEntry.status) }}</code></p>
+          <p>決定時間：<code>{{ selectedGateEntry.decidedAt }}</code></p>
           <p>{{ selectedGateEntry.reason }}</p>
-          <h4>run_ids（{{ selectedGateEntry.runIds.length }}）</h4>
+          <h4>執行 ID（{{ selectedGateEntry.runIds.length }}）</h4>
           <ul>
             <li v-for="runId in selectedGateEntry.runIds" :key="runId"><code>{{ runId }}</code></li>
           </ul>
@@ -260,20 +261,20 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
         :selected-key="selectedRun?.runId ?? null"
         @select="openRun"
       />
-      <p v-else class="hint">這個 experiment 底下還沒有任何 run。</p>
+      <p v-else class="hint">這個實驗下還沒有任何執行紀錄。</p>
 
       <Drawer :open="selectedRun !== null" :title="selectedRun?.runId ?? ''" @close="selectedRun = null">
         <template v-if="selectedRun">
-          <p>status：<code>{{ selectedRun.status }}</code></p>
+          <p>狀態：<code>{{ statusLabel(selectedRun.status) }}</code></p>
           <p v-if="selectedRun.invalidReason" class="errors">invalid_reason：{{ selectedRun.invalidReason }}</p>
-          <p>baseline_run：<code>{{ selectedRun.baselineRun ?? "(baseline)" }}</code></p>
-          <h4>metrics</h4>
+          <p>baseline_run：<code>{{ selectedRun.baselineRun ?? "（基準）" }}</code></p>
+          <h4>指標</h4>
           <table>
             <tbody>
               <tr v-for="(v, k) in selectedRun.metrics" :key="k"><th>{{ k }}</th><td>{{ v }}</td></tr>
             </tbody>
           </table>
-          <h4>artifacts（{{ selectedRun.artifacts.length }}）</h4>
+          <h4>產物（{{ selectedRun.artifacts.length }}）</h4>
           <ul>
             <li v-for="a in selectedRun.artifacts" :key="a"><code>{{ a }}</code></li>
           </ul>
@@ -287,13 +288,13 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
 
       <template v-if="selectedComparison">
         <div v-if="comparisonStatus === 'confounded'" class="errors">
-          <p>⚠ 這組比較 <strong>confounded</strong>，不得下因果性結論。原因：</p>
+          <p>⚠ 這組比較為 <strong>已混雜（confounded）</strong>，不得下因果性結論。原因：</p>
           <ul>
             <li v-for="reason in selectedComparison.confoundedReasons" :key="reason">{{ reason }}</li>
           </ul>
         </div>
         <div v-else-if="comparisonStatus === 'invalid'" class="errors">
-          <p>⚠ <code>comparison_valid</code> 為 false（非 confounded），不得下因果性結論。</p>
+          <p>⚠ <code>comparison_valid</code> 為 false（非已混雜狀態），不得下因果性結論。</p>
           <ul v-if="selectedComparison.notes.length > 0">
             <li v-for="note in selectedComparison.notes" :key="note">{{ note }}</li>
           </ul>
@@ -302,7 +303,7 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
           <VChart v-if="chartOption" :option="chartOption" style="height: 320px" autoresize />
           <table>
             <thead>
-              <tr><th>metric</th><th>baseline</th><th>treatment</th><th>結果</th></tr>
+              <tr><th>指標</th><th>基準</th><th>處理組</th><th>結果</th></tr>
             </thead>
             <tbody>
               <tr v-for="m in selectedComparison.metrics" :key="m.metric">
@@ -324,13 +325,13 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
           </table>
         </template>
       </template>
-      <p v-else-if="experimentComparisons.length === 0" class="hint">這個 experiment 底下還沒有任何 comparison-result。</p>
+      <p v-else-if="experimentComparisons.length === 0" class="hint">這個實驗下還沒有任何比較結果。</p>
     </div>
 
     <div v-else-if="activeTab === 'records'" class="tab-panel">
-      <h3>相關 Metric Definitions</h3>
+      <h3>相關指標定義</h3>
       <table v-if="relevantMetricDefinitions.length > 0">
-        <thead><tr><th>name</th><th>display name</th><th>type</th><th>direction</th><th>unit</th><th>aggregation</th></tr></thead>
+        <thead><tr><th>名稱</th><th>顯示名稱</th><th>類型</th><th>方向</th><th>單位</th><th>彙總方式</th></tr></thead>
         <tbody>
           <tr v-for="m in relevantMetricDefinitions" :key="m.name">
             <td>{{ m.name }}</td>
@@ -342,13 +343,13 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
           </tr>
         </tbody>
       </table>
-      <p v-else class="hint">找不到這個 experiment 的 primary/secondary metric 對應的 metric definition。</p>
-      <p class="hint">跨 experiment 的額外 record collections 在左側導覽的「Records」。</p>
+      <p v-else class="hint">找不到這個實驗主要與次要指標對應的指標定義。</p>
+      <p class="hint">跨實驗的額外紀錄集合在左側導覽的「紀錄」。</p>
     </div>
 
     <div v-else-if="activeTab === 'artifacts'" class="tab-panel">
       <table v-if="experimentArtifacts.length > 0">
-        <thead><tr><th>run_id</th><th>path</th></tr></thead>
+        <thead><tr><th>執行 ID</th><th>路徑</th></tr></thead>
         <tbody>
           <tr
             v-for="(a, i) in experimentArtifacts"
@@ -362,12 +363,12 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
           </tr>
         </tbody>
       </table>
-      <p v-else class="hint">這個 experiment 底下的 run 還沒有任何 artifact。</p>
+      <p v-else class="hint">這個實驗下的執行紀錄還沒有任何產物。</p>
 
       <Drawer :open="selectedArtifact !== null" :title="selectedArtifact?.path ?? ''" @close="selectedArtifact = null">
         <template v-if="selectedArtifact">
-          <p>run_id：<code>{{ selectedArtifact.runId }}</code></p>
-          <p>path：<code>{{ selectedArtifact.path }}</code></p>
+          <p>執行 ID：<code>{{ selectedArtifact.runId }}</code></p>
+          <p>路徑：<code>{{ selectedArtifact.path }}</code></p>
           <div v-if="artifactOpenError" class="errors">{{ artifactOpenError }}</div>
           <button @click="openArtifactExternally(selectedArtifact.path)">用外部程式開啟</button>
         </template>
@@ -390,7 +391,7 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
               'badge-good': row.verdict === 'fully_supported',
               'badge-bad': row.verdict === 'overreaching' || row.verdict === 'unsupported' || row.verdict === 'unauditable',
             }"
-          >{{ row.verdict }}</span>
+          >{{ statusLabel(String(row.verdict)) }}</span>
         </template>
         <template #status="{ row }">
           <span
@@ -399,14 +400,14 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
               'badge-good': row.status === 'supported',
               'badge-warn': row.status === 'inconclusive' || row.status === 'refuted',
             }"
-          >{{ row.status }}</span>
+          >{{ statusLabel(String(row.status)) }}</span>
         </template>
       </DataTable>
-      <p v-else class="hint">這個 experiment 底下還沒有任何 claim。</p>
+      <p v-else class="hint">這個實驗下還沒有任何主張。</p>
 
       <h3>失敗診斷（{{ experiment.diagnoses.length }}）</h3>
       <table v-if="experiment.diagnoses.length > 0">
-        <thead><tr><th>diagnosis_id</th><th>對象</th><th>假設分類</th><th>最便宜的下一步</th></tr></thead>
+        <thead><tr><th>診斷 ID</th><th>對象</th><th>假設分類</th><th>最便宜的下一步</th></tr></thead>
         <tbody>
           <tr
             v-for="d in experiment.diagnoses"
@@ -422,7 +423,7 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
           </tr>
         </tbody>
       </table>
-      <p v-else class="hint">這個 experiment 底下沒有結構化的失敗診斷。</p>
+      <p v-else class="hint">這個實驗下沒有結構化的失敗診斷。</p>
 
       <Drawer
         :open="selectedDiagnosis !== null"
@@ -463,10 +464,10 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
       <Drawer :open="selectedClaim !== null" :title="selectedClaim?.claimId ?? ''" @close="selectedClaim = null">
         <template v-if="selectedClaim">
           <p>{{ selectedClaim.statement }}</p>
-          <p>scope：{{ selectedClaim.scope }}</p>
-          <p>expected_direction：<code>{{ selectedClaim.expectedDirection }}</code></p>
+          <p>適用範圍：{{ selectedClaim.scope }}</p>
+          <p>預期方向（expected_direction）：<code>{{ selectedClaim.expectedDirection }}</code></p>
           <template v-if="selectedClaim.auditResult">
-            <h4>mechanical</h4>
+            <h4>機械檢查</h4>
             <table>
               <tbody>
                 <tr><th>reference_exists</th><td>{{ selectedClaim.auditResult.referenceExists }}</td></tr>
@@ -478,9 +479,9 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
             </table>
             <p v-if="selectedClaim.auditResult.scopeReasoning" class="hint">{{ selectedClaim.auditResult.scopeReasoning }}</p>
           </template>
-          <p v-else class="hint">還沒有對應的 claim-audit-result。</p>
+          <p v-else class="hint">還沒有對應的主張稽核結果。</p>
 
-          <h4>研究 lineage</h4>
+          <h4>研究譜系</h4>
           <p v-if="selectedLineage?.broken" class="errors">
             這條證據鏈有缺口。標示「接不上」的環節下方會說明原因。
           </p>
@@ -498,7 +499,7 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
       </Drawer>
     </div>
   </section>
-  <p v-else class="hint">找不到 experiment_id=<code>{{ id }}</code>。</p>
+  <p v-else class="hint">找不到實驗 ID=<code>{{ id }}</code>。</p>
 </template>
 
 <style scoped>

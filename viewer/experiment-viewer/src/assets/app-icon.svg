@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">實驗檢視器折線圖示</title>
+  <rect width="512" height="512" rx="88" fill="#fdf6e3"/>
+  <path d="M82 178 L214 326 L330 238 L430 104" fill="none" stroke="#268bd2" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

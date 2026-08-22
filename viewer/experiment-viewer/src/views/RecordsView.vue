@@ -9,13 +9,13 @@ import { getByPath } from "../lib/dot-path";
 const { snapshot } = useProjectStore();
 
 const metricColumns: DataTableColumn[] = [
-  { key: "name", label: "name" },
-  { key: "displayName", label: "display name" },
-  { key: "type", label: "type" },
-  { key: "direction", label: "direction" },
-  { key: "unit", label: "unit" },
-  { key: "format", label: "format" },
-  { key: "aggregation", label: "aggregation" },
+  { key: "name", label: "名稱" },
+  { key: "displayName", label: "顯示名稱" },
+  { key: "type", label: "類型" },
+  { key: "direction", label: "方向" },
+  { key: "unit", label: "單位" },
+  { key: "format", label: "格式" },
+  { key: "aggregation", label: "彙總方式" },
 ];
 
 const metricRows = computed(() =>
@@ -71,15 +71,15 @@ function openRecord(collection: GenericRecordCollection, row: Record<string, unk
 
 <template>
   <section>
-    <h2>Records</h2>
+    <h2>紀錄</h2>
 
-    <h3>Metric Definitions（{{ metricRows.length }}）</h3>
+    <h3>指標定義（{{ metricRows.length }}）</h3>
     <DataTable v-if="metricRows.length > 0" :columns="metricColumns" :rows="metricRows" :row-key="(row) => String(row.name)" groupable />
-    <p v-else class="hint">沒有任何 metric definition。</p>
+    <p v-else class="hint">沒有任何指標定義。</p>
 
     <template v-if="genericCollections.length > 0">
       <div v-for="collection in genericCollections" :key="collection.name">
-        <h3>{{ collection.name }}（{{ collection.records.length }}，viewer.json 額外 collection）</h3>
+        <h3>{{ collection.name }}（{{ collection.records.length }}，viewer.json 額外集合）</h3>
         <DataTable
           :columns="columnsFor(collection)"
           :rows="rowsFor(collection)"
@@ -90,7 +90,7 @@ function openRecord(collection: GenericRecordCollection, row: Record<string, unk
         />
       </div>
     </template>
-    <p v-else class="hint">沒有 viewer.json 定義的額外 record collections。</p>
+    <p v-else class="hint">沒有 viewer.json 定義的額外紀錄集合。</p>
 
     <Drawer :open="selectedRecord !== null" :title="selectedRecord?.id ?? ''" @close="selectedRecord = null">
       <pre v-if="selectedRecord">{{ JSON.stringify(selectedRecord.fields, null, 2) }}</pre>
