@@ -10,13 +10,21 @@
 - `AGENTS.md` 的職責邊界表已經指定「GitHub Issues 回答要做什麼」。回饋就是「上游該做什麼」的候選，放進 issue 不需要新規則，放進 JSONL 反而要新增一個擁有者。
 - `sync` 必須知道有哪些下游 repo，那份清單只能是本機絕對路徑，不能進版控，也不能跨機器。issue 沒有這個問題：下游只要有 repo slug 就送得出去。
 - 生命週期、去重、聚合、lineage 都有現成對應：label 是狀態，`--search` 是去重，同一 fingerprint 的留言串是聚合，關閉時引用的 commit 是 lineage。自訂六個狀態不會比這個更清楚。
-- 尚無累積證據。到目前為止只有一則實際回饋。先用最便宜的通道跑一陣子，確認 fingerprint 慣例與升格判準夠不夠用，再決定要不要工具。這正是 `AGENTS.md` 對「新增工具」的門檻。
+- 尚無足夠證據前，先用最便宜的通道跑一陣子，確認 fingerprint 慣例與升格判準夠不夠用，再決定要不要工具。這正是 `AGENTS.md` 對「新增工具」的門檻。累積量會變動，本文不寫死快照數字，查詢方式見下方「現況查詢」。
 
 ## 機制
 
 `apply.sh` 寫進目標專案的 `.agentfile/source.json` 提供 `agentfile_repo`、`agentfile_revision`、`profile`（見 [ADR 0014](0014-apply-manifest-based-update.md)），下游 agent 不必自己記得來自哪一版。`core/skills/upstream-feedback/` 擁有判準、fingerprint 慣例、去重步驟與內文欄位，上游端的處理規則也在同一份，不拆兩處。
 
 fingerprint 是 `<component>:<problem-class>`，當 issue 標題前綴用。它只是聚合用的標籤，不是永久唯一的 ID。
+
+## 現況查詢
+
+回饋量隨時間變動，本文不記錄快照數字。查詢目前累積的觀察與狀態：
+
+[查詢目前累積的 agentfile-feedback Issue](https://github.com/haoagentuse-glitch/Agentfile/issues?q=is%3Aissue+label%3Aagentfile-feedback)
+
+Issue 是同一 fingerprint 的討論串，不等於觀察。一則觀察包含 Issue body 與後續留言，單一 Issue 常累積多則觀察。不同下游專案數不能從 Issue 或留言筆數推算，要看每則觀察各自的來源資料（回報時所在的下游 repo）逐筆判斷。判斷是否達到升格門檻，依據的是「同一 fingerprint 在幾個不同下游專案重現」。
 
 ## 邊界
 
