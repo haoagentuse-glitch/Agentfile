@@ -7,7 +7,7 @@
   "required": [
     "experiment_id", "question", "hypothesis", "baseline", "treatment",
     "controlled_variables", "primary_metric", "decision_rule",
-    "compute_budget", "abort_rule", "status", "created_at"
+    "compute_budget", "abort_rule", "evidence_policy", "status", "created_at"
   ],
   "properties": {
     "experiment_id": {
@@ -99,41 +99,31 @@
             "additionalProperties": false
           },
           "promotion": {
-            "type": ["object", "null"],
             "description": "升到這一級要滿足的條件。null 代表這一級不設指標門檻，只做序列與預算檢查",
-            "required": ["metric", "source", "field", "comparator", "threshold"],
-            "properties": {
-              "metric": { "type": "string" },
-              "source": { "type": "string", "enum": ["comparison", "run"] },
-              "field": {
-                "type": "string",
-                "enum": ["absolute_diff", "relative_diff", "baseline", "treatment", "value"]
-              },
-              "comparator": { "type": "string", "enum": [">", "<", ">=", "<=", "==", "!="] },
-              "threshold": { "type": "number" }
-            },
-            "additionalProperties": false
+            "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/computeGateRule" }]
           },
           "abort": {
-            "type": ["object", "null"],
             "description": "觸發就整條路線終止，不是補證據重來",
-            "required": ["metric", "source", "field", "comparator", "threshold", "reason"],
-            "properties": {
-              "metric": { "type": "string" },
-              "source": { "type": "string", "enum": ["comparison", "run"] },
-              "field": {
-                "type": "string",
-                "enum": ["absolute_diff", "relative_diff", "baseline", "treatment", "value"]
-              },
-              "comparator": { "type": "string", "enum": [">", "<", ">=", "<=", "==", "!="] },
-              "threshold": { "type": "number" },
-              "reason": { "type": "string", "minLength": 1 }
-            },
-            "additionalProperties": false
+            "oneOf": [
+              { "type": "null" },
+              { "allOf": [{ "$ref": "#/$defs/computeGateRule" }, { "required": ["reason"] }] }
+            ]
           }
         },
         "additionalProperties": false
       }
+    },
+    "evidence_policy": {
+      "type": "object",
+      "description": "哪些 run stage 可作為比較、claim audit 與 Compute Gate 的正式證據。由 Contract 明確宣告。",
+      "required": ["eligible_run_stages"],
+      "properties": {
+        "eligible_run_stages": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "type": "string", "enum": ["pilot", "tune", "main", "ablation", "replication", "diagnostic"] }
+        }
+      },
+      "additionalProperties": false
     },
     "review_policy": {
       "type": "object",
@@ -270,5 +260,36 @@
       }
     }
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "computeGateRule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["metric", "source", "field", "run_scope", "comparator", "threshold"],
+          "properties": {
+            "metric": { "type": "string" }, "source": { "const": "run" },
+            "field": { "const": "value" },
+            "run_scope": { "enum": ["baseline", "treatment", "all"] },
+            "comparator": { "enum": [">", "<", ">=", "<=", "==", "!="] },
+            "threshold": { "type": "number" },
+            "reason": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["metric", "source", "field", "comparator", "threshold"],
+          "properties": {
+            "metric": { "type": "string" }, "source": { "const": "comparison" },
+            "field": { "enum": ["baseline", "treatment", "absolute_diff", "relative_diff"] },
+            "comparator": { "enum": [">", "<", ">=", "<=", "==", "!="] },
+            "threshold": { "type": "number" },
+            "reason": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
 }

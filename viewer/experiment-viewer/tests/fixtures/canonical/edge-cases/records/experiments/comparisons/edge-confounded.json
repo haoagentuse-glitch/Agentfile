@@ -3,6 +3,8 @@
   "run_a": "edge-good-run",
   "run_b": "edge-invalid-run",
   "generated_at": "2026-01-08T05:00:00Z",
+  "evidence_eligible": false,
+  "evidence_reasons": ["treatment run status 不是 completed"],
   "comparability": {
     "dimensions": {
       "dataset": { "status": "DIFF", "run_a_value": "v1", "run_b_value": "v2" }

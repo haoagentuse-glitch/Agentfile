@@ -2,9 +2,9 @@
   "experiment_id": "rag-topk-recall",
   "current_level": "L2",
   "history": [
-    { "level": "L0", "status": "passed", "decided_at": "2026-01-04T00:00:00Z", "reason": "理論檢查通過", "run_ids": [] },
-    { "level": "L1", "status": "passed", "decided_at": "2026-01-04T12:00:00Z", "reason": "合成資料測試通過", "run_ids": [] },
-    { "level": "L2", "status": "passed", "decided_at": "2026-01-05T06:00:00Z", "reason": "小型資料集 pilot 通過決策規則", "run_ids": ["rag-topk-recall-baseline", "rag-topk-recall-treatment"] }
+    { "level": "L0", "status": "passed", "decided_at": "2026-01-04T00:00:00Z", "reason": "理論檢查通過", "run_ids": [], "evidence_eligible": true, "evidence_reasons": [] },
+    { "level": "L1", "status": "passed", "decided_at": "2026-01-04T12:00:00Z", "reason": "合成資料測試通過", "run_ids": [], "evidence_eligible": true, "evidence_reasons": [] },
+    { "level": "L2", "status": "passed", "decided_at": "2026-01-05T06:00:00Z", "reason": "小型資料集 pilot 通過決策規則", "run_ids": ["rag-topk-recall-baseline", "rag-topk-recall-treatment"], "evidence_eligible": true, "evidence_reasons": [] }
   ],
   "updated_at": "2026-01-05T06:00:00Z"
 }

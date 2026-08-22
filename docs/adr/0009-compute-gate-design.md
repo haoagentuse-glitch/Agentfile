@@ -34,6 +34,10 @@ Contract 的 `compute_budget.pilot_max_minutes`／`pilot_max_samples` 這兩個�
 
 同時新增：`stage` 與 `level` 分開記（研究階段與算力等級是不同的軸）、判定順序固定為 `sequence`→`abort`→`budget`→`promotion`、每筆 `history` 帶 `checks` 逐項記下數字、取不到值時判 `failed` 不判通過。
 
+## 後續修訂（2026-08-22，ADR 0017）
+
+[ADR 0017](0017-evidence-policy-and-compute-gate-inputs.md) 再補上證據資格與輸入一致性。判定順序改為 `sequence`→`evidence`→`abort`→`budget`→`promotion`。Run-source rule 必須用 `run_scope` 指定 `baseline`、`treatment` 或 `all`。History 的 `run_ids` 只從實際 `--run` 輸入推導；`--run-ids` 已移除。其他設計邊界不變。
+
 ## Consequences
 
 - Phase C 到這裡告一段落：`Experiment Contract → experiment-lint → Run → compare-runs → claim-audit`，加上橫向的 `compute-gate` 管制升級節奏，六個 skill 都是確定性優先、語意判斷有明確邊界。

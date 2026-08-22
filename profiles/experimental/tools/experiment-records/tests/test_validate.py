@@ -63,10 +63,12 @@ def test_validate_rejects_history_after_terminal_abort(project: Path) -> None:
             {
                 "level": "L3", "stage": "pilot", "status": "aborted",
                 "decided_at": "2026-01-01T00:00:00Z", "reason": "guardrail",
+                "evidence_eligible": True, "evidence_reasons": [],
             },
             {
                 "level": "L3", "stage": "pilot", "status": "passed",
                 "decided_at": "2026-01-01T00:01:00Z", "reason": "繞過中止",
+                "evidence_eligible": True, "evidence_reasons": [],
             },
         ],
         "updated_at": "2026-01-01T00:01:00Z",

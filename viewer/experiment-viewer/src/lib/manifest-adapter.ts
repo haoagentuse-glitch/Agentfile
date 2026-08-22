@@ -227,6 +227,7 @@ export async function loadManifestProject(
       hypothesis: undefined,
       primaryMetric: undefined,
       secondaryMetrics: [],
+      eligibleRunStages: [],
       runs: [],
       claims: [],
       gateState: null,

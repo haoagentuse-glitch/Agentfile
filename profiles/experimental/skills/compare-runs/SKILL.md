@@ -41,6 +41,7 @@ experiment-viewer 只會自動掃描這個固定路徑；存在別處的話 view
    - 除此之外任何欄位有差異 → 未預期差異。
 3. **指標層級**：個別指標如果兩邊用的 `metric_definitions` 不一致，那個指標跳過不算——不影響其他指標。
 4. 只有整體可引用、指標定義也一致，才算 baseline／treatment／絕對差異／相對差異。
+5. 依 Contract 的 `evidence_policy` 重查兩個 run 的 status、stage、experiment 與 lineage。數字仍可作診斷，但不合格 evidence 不得支持正式 claim 或 Gate。
 
 ## 三個判斷，分開表示
 
@@ -54,6 +55,8 @@ experiment-viewer 只會自動掃描這個固定路徑；存在別處的話 view
 
 `comparison_valid` 是綜合結論：非 confounded 且結構可比較。三者都由程式算，不接受 LLM 直接決定。
 
+`evidence_eligible` 是另一個判定。它回答這組 runs 是否符合凍結的 evidence policy。不得把它併入 `comparison_valid`。因此可能出現 `comparison_valid=true` 但 `evidence_eligible=false`。這時數字可供診斷，但命令回傳 exit code 1，且結果不得支持正式 claim。
+
 `differences` 是「什麼不一樣」的唯一清單，每筆帶 `category`（config／data／model／prompt／evaluator／sample／unknown）與 `severity`。宣告的實驗變因也會列在裡面，但 `severity` 是 `informational`、`declared` 為 `true`——那正是實驗要測的東西。
 
 `diagnostic_suggestions` 留給 agent 填異常解釋與下一步建議。它跟 validity 欄位刻意分開：建議永遠不得改變 `comparison_valid` 或 `confounded`。
@@ -61,7 +64,7 @@ experiment-viewer 只會自動掃描這個固定路徑；存在別處的話 view
 ## 讀結果
 
 - exit code 0：可引用（個別指標仍可能因為定義不一致被跳過，看輸出裡的 `未計算` 提示）。
-- exit code 1：不可引用。看 `CONFOUNDED COMPARISON`（條件沒守住）或 `NOT STRUCTURALLY COMPARABLE`（沒有共同基準）後面列的理由。兩者都不要接著幫使用者下「哪個比較好」的結論，直接把理由攤開，問要不要修 Contract、補控制變因或對齊指標定義後重跑。
+- exit code 1：不可作正式證據。檢查 `comparison_valid` 與 `evidence_eligible` 的原因。若結構仍有效，數字只可用於診斷，不得支持 claim 或 Gate。
 - exit code 2：兩個 run 根本不屬於同一個 experiment，或必填欄位缺失——連比都比不了。
 
 ## 沒做的事（刻意）

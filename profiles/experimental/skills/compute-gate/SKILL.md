@@ -28,6 +28,7 @@ Contract 裡的 `scale_up_rule`／`abort_rule` 是自然語言，例如「pilot 
   },
   "abort": {
     "metric": "latency_ms", "source": "run", "field": "value",
+    "run_scope": "all",
     "comparator": ">", "threshold": 400, "reason": "延遲超過 guardrail，這條路線終止"
   }
 }
@@ -51,7 +52,9 @@ uv run --project .agents/tools/experiment-records python -m experiment_records c
 
 第一個 `gate-state.json` 參數同時是唯一輸入與唯一寫入目標；命令原子更新它，不接受第二個 `--output` 路徑。`--run` 可以重複。預算檢查與 `source` 為 `run` 的規則都靠它；`source` 為 `comparison` 的規則要 `--comparison`。
 
-判定順序固定：`sequence` → `abort` → `budget` → `promotion`，任一步失敗就停。中止檢查排在升級檢查前面，因為升級條件過了也不能蓋過中止條件。
+Contract 的 `evidence_policy.eligible_run_stages` 定義哪些 run stage 可作正式證據。Gate 會重查所有輸入 run。status、stage、experiment、run ID 或 lineage 有問題時，Gate 會 fail closed。`source: run` 的規則必須設定 `run_scope`：`baseline`、`treatment` 或 `all`。Promotion 對所選 runs 使用 `all`；abort 使用 `any`。History 的 `run_ids` 只由實際 `--run` 輸入推導。沒有 `--run-ids` 參數。
+
+判定順序固定：`sequence` → `evidence` → `abort` → `budget` → `promotion`，任一步失敗就停。中止檢查排在升級檢查前面，因為升級條件過了也不能蓋過中止條件。
 
 取不到值時判 `failed`，不判通過——「不知道」不等於「符合」。
 

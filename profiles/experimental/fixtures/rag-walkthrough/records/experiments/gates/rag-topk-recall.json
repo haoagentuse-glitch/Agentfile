@@ -8,6 +8,8 @@
       "status": "passed",
       "decided_at": "2026-01-02T10:00:00Z",
       "reason": "preflight 階段的 sequence 檢查全部通過，升到 L0",
+      "evidence_eligible": true,
+      "evidence_reasons": [],
       "checks": [
         { "kind": "sequence", "passed": true, "detail": "None -> L0 是相鄰的一級" }
       ],
@@ -19,6 +21,8 @@
       "status": "passed",
       "decided_at": "2026-01-03T02:30:00Z",
       "reason": "pilot 階段的 abort、budget、sequence 檢查全部通過，升到 L3",
+      "evidence_eligible": true,
+      "evidence_reasons": [],
       "checks": [
         { "kind": "sequence", "passed": true, "detail": "L0 -> L3 是相鄰的一級" },
         { "kind": "abort", "passed": true, "detail": "未觸發：run.latency_ms.value = [172, 208]，門檻 > 400" },
@@ -35,6 +39,8 @@
       "status": "passed",
       "decided_at": "2026-01-04T00:30:00Z",
       "reason": "main 階段的 abort、budget、promotion、sequence 檢查全部通過，升到 L4",
+      "evidence_eligible": true,
+      "evidence_reasons": [],
       "checks": [
         { "kind": "sequence", "passed": true, "detail": "L3 -> L4 是相鄰的一級" },
         { "kind": "abort", "passed": true, "detail": "未觸發：run.latency_ms.value = [172, 208]，門檻 > 400" },

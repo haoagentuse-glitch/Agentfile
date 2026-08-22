@@ -1,6 +1,8 @@
 {
   "claim_id": "topk-recall-claim",
   "audited_at": "2026-01-05T11:00:00Z",
+  "evidence_eligible": true,
+  "evidence_reasons": [],
   "mechanical": {
     "reference_exists": true,
     "comparison_valid": true,

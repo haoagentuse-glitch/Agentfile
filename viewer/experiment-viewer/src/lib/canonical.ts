@@ -43,6 +43,7 @@ export interface CanonicalExperiment {
   contractHash?: string;
   primaryMetric?: string;
   secondaryMetrics: string[];
+  eligibleRunStages: string[];
   runs: CanonicalRun[];
   claims: CanonicalClaim[];
   gateState: CanonicalGateState | null;
@@ -106,6 +107,8 @@ export interface CanonicalClaimAuditResult {
   claimId: string;
   auditedAt: string;
   mechanicalPass: boolean;
+  evidenceEligible: boolean;
+  evidenceReasons: string[];
   referenceExists: boolean;
   comparisonValid: boolean | null;
   metricExists: boolean | null;
@@ -168,6 +171,8 @@ export interface CanonicalGateHistoryEntry {
   decidedAt: string;
   reason: string;
   runIds: string[];
+  evidenceEligible: boolean;
+  evidenceReasons: string[];
 }
 
 export interface CanonicalGateState {
@@ -196,6 +201,8 @@ export interface CanonicalComparison {
   // （例如指標定義不一致也可能讓整體判定不可比較，但不是因為 confound）。
   // UI 呈現時必須分開判斷，不能把「invalid」直接講成「confounded」。
   comparisonValid: boolean;
+  evidenceEligible: boolean;
+  evidenceReasons: string[];
   confounded: boolean;
   confoundedReasons: string[];
   notes: string[];

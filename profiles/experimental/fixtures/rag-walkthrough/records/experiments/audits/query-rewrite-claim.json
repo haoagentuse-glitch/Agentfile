@@ -1,6 +1,8 @@
 {
   "claim_id": "query-rewrite-claim",
   "audited_at": "2026-01-08T16:00:00Z",
+  "evidence_eligible": true,
+  "evidence_reasons": [],
   "mechanical": {
     "reference_exists": true,
     "comparison_valid": true,

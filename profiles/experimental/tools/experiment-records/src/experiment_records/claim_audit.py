@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from experiment_records.atomic_json import write_json
+from experiment_records.evidence_policy import evaluate_evidence_policy
 
 
 def load_json(path: Path) -> dict:
@@ -43,6 +44,46 @@ def find_records_root(start: Path) -> Path:
 
 
 TOLERANCE = 0.10  # stated_magnitude 容許 10% 相對誤差
+
+
+def load_audit_evidence(
+    claim: dict[str, Any], comparison: dict[str, Any] | None, records_root: Path
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """載入凍結 Contract 與 claim 所依賴的底層 runs。"""
+    experiment_id = claim.get("experiment_id")
+    contract_path = records_root / "definitions" / f"{experiment_id}.json"
+    contract = load_json(contract_path) if contract_path.is_file() else {}
+
+    requested_ids: set[str] = set()
+    if comparison is not None:
+        requested_ids.update(
+            run_id
+            for run_id in (comparison.get("run_a"), comparison.get("run_b"))
+            if isinstance(run_id, str)
+        )
+    project_root = records_root.parent.parent
+    direct_paths: list[Path] = []
+    for evidence_ref in claim.get("evidence_refs", []):
+        if evidence_ref.get("kind") != "run":
+            continue
+        ref = evidence_ref.get("ref")
+        if isinstance(ref, str):
+            path = (project_root / ref).resolve()
+            if path.is_file() and project_root.resolve() in path.parents:
+                direct_paths.append(path)
+
+    runs_by_id: dict[str, dict[str, Any]] = {}
+    for path in [*(records_root / "runs").glob("*.json"), *direct_paths]:
+        run = load_json(path)
+        run_id = run.get("run_id")
+        if isinstance(run_id, str) and run.get("experiment_id") == experiment_id:
+            runs_by_id[run_id] = run
+    requested_ids.update(
+        run_id
+        for path in direct_paths
+        if isinstance((run_id := load_json(path).get("run_id")), str)
+    )
+    return contract, [runs_by_id[run_id] for run_id in sorted(requested_ids) if run_id in runs_by_id]
 
 
 def audit(claim_path: Path) -> dict[str, Any]:
@@ -119,12 +160,18 @@ def audit(claim_path: Path) -> dict[str, Any]:
                             f"claim 宣稱的幅度 {stated!r}（{mtype}）跟實際 {actual!r} 差距超過容許誤差（±{TOLERANCE:.0%}）"
                         )
 
+    contract, evidence_runs = load_audit_evidence(claim, comparison, records_root)
+    evidence = evaluate_evidence_policy(contract, evidence_runs)
+    if not evidence["eligible"]:
+        reasons.extend(f"證據不合格：{reason}" for reason in evidence["reasons"])
+
     mechanical_pass = bool(
         reference_exists
         and comparison_valid
         and metric_exists
         and direction_matches
         and (magnitude_matches is not False)
+        and evidence["eligible"]
     )
 
     if mechanical_pass:
@@ -141,6 +188,8 @@ def audit(claim_path: Path) -> dict[str, Any]:
     result = {
         "claim_id": claim.get("claim_id"),
         "audited_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "evidence_eligible": evidence["eligible"],
+        "evidence_reasons": evidence["reasons"],
         "mechanical": {
             "reference_exists": reference_exists,
             "comparison_valid": comparison_valid,
@@ -186,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"metric_exists      : {m['metric_exists']}")
         print(f"direction_matches  : {m['direction_matches']}")
         print(f"magnitude_matches  : {m['magnitude_matches']}")
+        print(f"evidence_eligible  : {result['evidence_eligible']}")
         print()
         if result["mechanical_reasons"]:
             print("原因：")

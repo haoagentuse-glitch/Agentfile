@@ -3,6 +3,8 @@
   "run_a": "rag-topk-recall-baseline",
   "run_b": "rag-topk-recall-treatment",
   "generated_at": "2026-01-05T03:00:00Z",
+  "evidence_eligible": true,
+  "evidence_reasons": [],
   "comparability": {
     "dimensions": {
       "dataset": { "status": "PASS" },

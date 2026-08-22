@@ -35,6 +35,8 @@ describe("loadCanonicalProject - happy path (RAG / 演算法比較 / 模擬三�
     ]);
     expect(rag?.claims).toHaveLength(1);
     expect(rag?.claims[0].auditResult?.finalVerdict).toBe("fully_supported");
+    expect(rag?.claims[0].auditResult?.evidenceEligible).toBe(true);
+    expect(rag?.eligibleRunStages).toEqual(["pilot", "main", "replication"]);
     expect(rag?.gateState?.currentLevel).toBe("L2");
     expect(rag?.gateState?.history).toHaveLength(3);
   });
@@ -43,6 +45,7 @@ describe("loadCanonicalProject - happy path (RAG / 演算法比較 / 模擬三�
     const snapshot = await loadCanonicalFixture(root);
     expect(snapshot.comparisons).toHaveLength(1);
     expect(snapshot.comparisons[0].comparisonValid).toBe(true);
+    expect(snapshot.comparisons[0].evidenceEligible).toBe(true);
     expect(snapshot.comparisons[0].confounded).toBe(false);
   });
 
@@ -110,6 +113,7 @@ describe("loadCanonicalProject - edge cases", () => {
     const [comparison] = snapshot.comparisons;
     expect(comparison.confounded).toBe(true);
     expect(comparison.comparisonValid).toBe(false);
+    expect(comparison.evidenceEligible).toBe(false);
     expect(comparison.confoundedReasons.length).toBeGreaterThan(0);
   });
 
