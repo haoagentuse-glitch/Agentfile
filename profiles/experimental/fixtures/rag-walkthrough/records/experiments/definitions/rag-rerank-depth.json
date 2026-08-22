@@ -11,31 +11,56 @@
     "config_ref": "records/experiments/configs/rerank-treatment.yaml",
     "variable": "rerank_depth"
   },
-  "controlled_variables": ["dataset", "evaluation_set", "model", "embedding_model", "seed"],
+  "controlled_variables": [
+    "dataset",
+    "evaluation_set",
+    "model",
+    "embedding_model",
+    "seed"
+  ],
   "primary_metric": "recall_at_10",
   "decision_rule": "recall_at_10 絕對提升 ≥ 0.02 視為成功",
-  "compute_budget": { "pilot_max_minutes": 15, "pilot_max_samples": 300 },
+  "compute_budget": {
+    "pilot_max_minutes": 15,
+    "pilot_max_samples": 300
+  },
   "abort_rule": "評估集載入失敗或雜湊對不上立即中止，不用部分資料硬跑",
   "status": "locked",
   "created_at": "2026-01-07T09:00:00Z",
   "derivation": {
     "primitives": [
-      { "id": "rank_recovery", "definition": "原本排在取回名次之外、經重排後進入前 10 的相關片段比例" }
+      {
+        "id": "rank_recovery",
+        "definition": "原本排在取回名次之外、經重排後進入前 10 的相關片段比例"
+      }
     ],
     "assumptions": [
-      { "id": "c1", "statement": "相關片段確實存在於第 20 到第 100 名之間", "status": "unverified" }
+      {
+        "id": "c1",
+        "statement": "相關片段確實存在於第 20 到第 100 名之間",
+        "status": "unverified"
+      }
     ],
     "mechanism_model": {
       "summary": "加深重排讓更多候選進入重排器評分，把原本排名靠後的相關片段拉進前 10",
-      "variables": ["rerank_depth", "rank_recovery", "retrieval_coverage"]
+      "variables": [
+        "rerank_depth",
+        "rank_recovery",
+        "retrieval_coverage"
+      ]
     },
     "tension": "更深的重排提升名次回收，但重排成本隨深度線性上升",
     "falsifier": "第 20 到第 100 名之間本來就沒有相關片段",
     "minimal_decisive_test": "固定取回結果，只掃 rerank_depth∈{20,100}",
     "failure_update": [
-      { "when": "名次回收比例接近 0", "update_assumption_id": "c1", "to": "refuted" }
+      {
+        "when": "名次回收比例接近 0",
+        "update_assumption_id": "c1",
+        "to": "refuted"
+      }
     ],
     "source_refs": [],
     "novelty_status": "unverified"
-  }
+  },
+  "contract_hash": "70bb84fd16c1a828a15a1ad2e094c12a5f4c56bba52669f86e8a64c872377ac3"
 }

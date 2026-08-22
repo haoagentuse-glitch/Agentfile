@@ -11,31 +11,57 @@
     "config_ref": "records/experiments/configs/overlap-treatment.yaml",
     "variable": "chunk_overlap"
   },
-  "controlled_variables": ["dataset", "evaluation_set", "model", "embedding_model", "judge_prompt", "seed"],
+  "controlled_variables": [
+    "dataset",
+    "evaluation_set",
+    "model",
+    "embedding_model",
+    "judge_prompt",
+    "seed"
+  ],
   "primary_metric": "recall_at_10",
   "decision_rule": "recall_at_10 絕對提升 ≥ 0.03 視為成功",
-  "compute_budget": { "pilot_max_minutes": 10, "pilot_max_samples": 200 },
+  "compute_budget": {
+    "pilot_max_minutes": 10,
+    "pilot_max_samples": 200
+  },
   "abort_rule": "索引建置時間超過 30 分鐘立即中止",
   "status": "locked",
   "created_at": "2026-01-06T09:00:00Z",
   "derivation": {
     "primitives": [
-      { "id": "boundary_truncation", "definition": "答案片段被切塊邊界截斷、因而取不回完整內容的情況" }
+      {
+        "id": "boundary_truncation",
+        "definition": "答案片段被切塊邊界截斷、因而取不回完整內容的情況"
+      }
     ],
     "assumptions": [
-      { "id": "b1", "statement": "評估集裡有相當比例的答案片段跨越切塊邊界", "status": "unverified" }
+      {
+        "id": "b1",
+        "statement": "評估集裡有相當比例的答案片段跨越切塊邊界",
+        "status": "unverified"
+      }
     ],
     "mechanism_model": {
       "summary": "重疊讓跨界片段在至少一個切塊中完整出現，減少邊界截斷，因而提升覆蓋率",
-      "variables": ["chunk_overlap", "boundary_truncation", "retrieval_coverage"]
+      "variables": [
+        "chunk_overlap",
+        "boundary_truncation",
+        "retrieval_coverage"
+      ]
     },
     "tension": "重疊提升覆蓋率，但讓索引變大、重複內容佔用取回名額",
     "falsifier": "重疊後跨界截斷比例沒有下降",
     "minimal_decisive_test": "固定語料與查詢，只掃 chunk_overlap∈{0,64}",
     "failure_update": [
-      { "when": "跨界截斷比例本來就接近 0", "update_assumption_id": "b1", "to": "refuted" }
+      {
+        "when": "跨界截斷比例本來就接近 0",
+        "update_assumption_id": "b1",
+        "to": "refuted"
+      }
     ],
     "source_refs": [],
     "novelty_status": "unverified"
-  }
+  },
+  "contract_hash": "0b80f4c9372a73eaa6884c680196297b3e4569c93cf76f6812693f59fa4a06c1"
 }

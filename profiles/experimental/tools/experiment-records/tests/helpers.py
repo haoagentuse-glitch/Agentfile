@@ -108,6 +108,18 @@ def valid_derivation(**overrides: object) -> dict:
     return data
 
 
+def valid_metric(**overrides: object) -> dict:
+    data = {
+        "name": "recall_at_10",
+        "type": "ratio",
+        "direction": "higher_is_better",
+        "aggregation": "mean",
+        "implementation": "demo/metrics.py::recall_at_k(k=10)",
+    }
+    data.update(overrides)
+    return data
+
+
 def valid_run(**overrides: object) -> dict:
     data = {
         "run_id": "demo-run-1", "experiment_id": "demo-exp", "experiment_type": "rag",

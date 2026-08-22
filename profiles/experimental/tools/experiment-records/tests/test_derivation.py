@@ -44,12 +44,13 @@ def test_locked_contract_requires_a_derivation(project: Path) -> None:
 
 def test_locked_contract_with_derivation_passes(project: Path) -> None:
     _project_with_configs(project)
-    write_record(
+    path = write_record(
         project,
         "definitions",
         "demo-exp",
         valid_definition(status="locked", derivation=valid_derivation()),
     )
+    assert run_cli("contract-hash", str(path), "--write").returncode == 0
 
     result = run_cli("validate", str(project))
 

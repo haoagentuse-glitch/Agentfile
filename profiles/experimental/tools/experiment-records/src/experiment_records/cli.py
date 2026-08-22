@@ -13,11 +13,17 @@ from pathlib import Path
 from typing import Any
 
 from experiment_records import claim_audit, compare_runs, compute_gate
+from experiment_records.canonical_json import loads_strict
+from experiment_records.json_patch import patch_top_level_field
 from experiment_records.project_layout import (
     ProjectLayoutError,
-    collect_targets,
-    record_type_for,
     resolve_layout,
+)
+from experiment_records.project_snapshot import (
+    CONTRACT_HASH_FIELD,
+    ProjectSnapshot,
+    contract_hash,
+    load_project,
 )
 from experiment_records.prompts import known_prompts, prompts_dir
 from experiment_records.review_package import ReviewPackageError, build_review_package
@@ -56,6 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
     transition_parser.add_argument("--evidence-ref", action="append", default=[])
     transition_parser.add_argument("--updated-definition-field", action="append", default=[])
     transition_parser.add_argument("--occurred-at", help="RFC 3339 timestamp。省略時使用目前 UTC 時間")
+
+    hash_parser = sub.add_parser("contract-hash", help="驗證或寫入 Contract 的 contract_hash")
+    hash_parser.add_argument("definition", help="records/experiments/definitions/ 底下的 Contract JSON")
+    hash_parser.add_argument(
+        "--write", action="store_true", help="把算出來的雜湊寫回 contract_hash，只改這一個欄位"
+    )
 
     prompts_parser = sub.add_parser("prompts", help="列出本專案管理的 prompt role 與內容雜湊")
     prompts_parser.add_argument("project", help="project root 或 records/experiments")
@@ -102,15 +114,15 @@ def _resolve_target(target_arg: str) -> Path | None:
     return resolved.resolve()
 
 
-def _all_results(targets: list[Path], layout: Any) -> list[tuple[str, str]]:
-    results = validate_schemas(layout)
+def _all_results(snapshot: ProjectSnapshot) -> list[tuple[str, str]]:
+    results = validate_schemas(snapshot.layout)
     if any(level == "錯誤" for level, _ in results):
         return results
-    for path in targets:
-        results.extend(validate_record(path, layout))
-    results.extend(validate_run_lineage(targets, layout))
-    results.extend(validate_claim_audit_chain(targets, layout))
-    results.extend(validate_lifecycle_events(targets, layout))
+    for record in snapshot.targets:
+        results.extend(validate_record(record, snapshot))
+    results.extend(validate_run_lineage(snapshot))
+    results.extend(validate_claim_audit_chain(snapshot))
+    results.extend(validate_lifecycle_events(snapshot))
     return results
 
 
@@ -119,47 +131,48 @@ def _cmd_validate(target_arg: str) -> int:
     if resolved is None:
         return 2
     try:
-        layout = resolve_layout(resolved)
-        targets = collect_targets(resolved, layout)
+        snapshot = load_project(resolved)
     except ProjectLayoutError as error:
         print(str(error), file=sys.stderr)
         return 2
+    layout = snapshot.layout
 
     print("命令：uv run --project .agents/tools/experiment-records python -m experiment_records validate")
     print(f"輸入：{resolved}")
     print(f"Schema：{layout.schemas_dir}")
     print(f"Commit：{_git_commit(layout.project_root)}")
+    print(f"範圍：全專案（{len(snapshot.records)} 筆紀錄）")
     print()
 
     schema_results = validate_schemas(layout)
     results = list(schema_results)
     if not any(level == "錯誤" for level, _ in schema_results):
-        for path in targets:
-            results.extend(validate_record(path, layout))
+        for record in snapshot.targets:
+            results.extend(validate_record(record, snapshot))
         if not resolved.is_file():
-            results.extend(validate_run_lineage(targets, layout))
-            results.extend(validate_claim_audit_chain(targets, layout))
-            results.extend(validate_lifecycle_events(targets, layout))
+            results.extend(validate_run_lineage(snapshot))
+            results.extend(validate_claim_audit_chain(snapshot))
+            results.extend(validate_lifecycle_events(snapshot))
 
     for level, message in results:
         print(f"{level:5s} {message}")
     error_count = sum(level == "錯誤" for level, _ in results)
-    if not targets and not error_count:
+    if not snapshot.targets and not error_count:
         print("沒有找到任何 record 可驗證。")
     print()
-    record_count = 0 if any(level == "錯誤" for level, _ in schema_results) else len(targets)
+    record_count = 0 if any(level == "錯誤" for level, _ in schema_results) else len(snapshot.targets)
     print(f"已檢查 {schema_count()} 份 Schema、{record_count} 筆紀錄，發現 {error_count} 個錯誤。")
     return 1 if error_count else 0
 
 
-def _load_experiment_events(targets: list[Path], experiment_id: str) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
-    for path in targets:
-        if record_type_for(path) != "lifecycles":
-            continue
-        event = json.loads(path.read_text(encoding="utf-8"))
-        if event.get("experiment_id") == experiment_id:
-            events.append(event)
+def _load_experiment_events(snapshot: ProjectSnapshot, experiment_id: str) -> list[dict[str, Any]]:
+    events = [
+        record.data
+        for record in snapshot.records
+        if record.record_type == "lifecycles"
+        and record.data is not None
+        and record.data.get("experiment_id") == experiment_id
+    ]
     return sorted(events, key=lambda event: event["sequence"])
 
 
@@ -168,11 +181,11 @@ def _cmd_transition(args: argparse.Namespace) -> int:
     if resolved is None:
         return 2
     try:
-        layout = resolve_layout(resolved)
-        targets = collect_targets(resolved, layout)
+        snapshot = load_project(resolved)
     except ProjectLayoutError as error:
         print(str(error), file=sys.stderr)
         return 2
+    layout = snapshot.layout
 
     occurred_at = args.occurred_at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
     command = [
@@ -191,8 +204,10 @@ def _cmd_transition(args: argparse.Namespace) -> int:
     print(f"設定：reason={args.reason!r}，occurred_at={occurred_at}")
     print(f"Evidence：{args.evidence_ref}")
     print(f"Definition fields：{args.updated_definition_field}")
+    closure = snapshot.closure(args.experiment_id)
+    print(f"範圍：experiment {args.experiment_id} 的 closure（{len(closure)} 筆紀錄）")
     print()
-    existing_results = _all_results(targets, layout)
+    existing_results = _all_results(snapshot.scoped_to(closure))
     existing_errors = [message for level, message in existing_results if level == "錯誤"]
     if existing_errors:
         print("現有 project 驗證失敗。未建立 event。", file=sys.stderr)
@@ -200,7 +215,7 @@ def _cmd_transition(args: argparse.Namespace) -> int:
             print(f"錯誤    {message}", file=sys.stderr)
         return 1
 
-    events = _load_experiment_events(targets, args.experiment_id)
+    events = _load_experiment_events(snapshot, args.experiment_id)
     sequence = len(events) + 1
     from_state = events[-1]["to_state"] if events else None
     event: dict[str, Any] = {
@@ -219,8 +234,10 @@ def _cmd_transition(args: argparse.Namespace) -> int:
     output_dir = layout.records_root / "lifecycles"
     output_path = output_dir / f"{args.experiment_id}-{sequence:04d}.json"
     label = str(output_path.relative_to(layout.project_root))
-    candidate_results = validate_lifecycle_candidate(event, label, layout)
-    candidate_results.extend(validate_lifecycle_history_candidate(events, event, label, layout))
+    # 候選事件本身的檢查不受 closure 影響：evidence-ref 歸屬要看得到全專案，
+    # 否則「這份證據屬於別的 experiment」會因為對方不在範圍內而漏掉（ADR 0016）。
+    candidate_results = validate_lifecycle_candidate(event, label, snapshot)
+    candidate_results.extend(validate_lifecycle_history_candidate(events, event, label, snapshot))
     errors = [message for level, message in candidate_results if level == "錯誤"]
     if errors:
         for message in errors:
@@ -240,6 +257,43 @@ def _cmd_transition(args: argparse.Namespace) -> int:
     print(f"輸出：{output_path}")
     print(f"轉移：{from_state} -> {args.to_state}")
     return 0
+
+
+def _cmd_contract_hash(args: argparse.Namespace) -> int:
+    resolved = _resolve_target(args.definition)
+    if resolved is None:
+        return 2
+    original_text = resolved.read_text(encoding="utf-8")
+    try:
+        document = loads_strict(original_text)
+    except (json.JSONDecodeError, ValueError) as error:
+        print(f"不是合法 I-JSON：{error}", file=sys.stderr)
+        return 1
+    if not isinstance(document, dict):
+        print("Contract 最外層必須是 JSON object", file=sys.stderr)
+        return 1
+    expected = contract_hash(document)
+    actual = document.get(CONTRACT_HASH_FIELD)
+
+    command = ["python", "-m", "experiment_records", "contract-hash", str(resolved)]
+    if args.write:
+        command.append("--write")
+    print(f"命令：{shlex.join(command)}")
+    print(f"輸入：{resolved}")
+    print()
+
+    if args.write:
+        # 只換 contract_hash 這個欄位的值，其餘位元組（縮排、鍵序、其他欄位）不動——
+        # 蓋雜湊不該讓整份檔案的 diff 變成整檔重寫。
+        patched = patch_top_level_field(original_text, CONTRACT_HASH_FIELD, expected)
+        resolved.write_text(patched, encoding="utf-8")
+        print(f"old：{actual!r}")
+        print(f"new：{expected}")
+        return 0
+
+    print(f"expected：{expected}")
+    print(f"actual：{actual!r}")
+    return 0 if actual == expected else 1
 
 
 def _cmd_prompts(project_arg: str) -> int:
@@ -337,6 +391,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_validate(args.target)
     if args.command == "transition":
         return _cmd_transition(args)
+    if args.command == "contract-hash":
+        return _cmd_contract_hash(args)
     if args.command == "prompts":
         return _cmd_prompts(args.project)
     if args.command == "review-package":
