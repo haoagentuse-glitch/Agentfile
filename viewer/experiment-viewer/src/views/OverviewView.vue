@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useProjectStore } from "../store/project";
 import type { MetricDirection } from "../lib/canonical";
+import { statusLabel } from "../lib/status-label";
 
 const { snapshot } = useProjectStore();
 
@@ -78,46 +79,46 @@ const lastUpdated = computed(() => {
 
 <template>
   <section>
-    <h2>Overview</h2>
+    <h2>總覽</h2>
 
     <div class="stat-grid">
       <div class="stat">
         <div class="stat-value">{{ experiments.length }}</div>
-        <div class="stat-label">experiments</div>
+        <div class="stat-label">實驗數</div>
       </div>
       <div v-for="(count, status) in runStatusCounts" :key="`run-${status}`" class="stat">
         <div class="stat-value">{{ count }}</div>
-        <div class="stat-label">run: {{ status }}</div>
+        <div class="stat-label">執行：{{ statusLabel(String(status)) }}</div>
       </div>
       <div class="stat">
         <div class="stat-value">{{ validComparisons.length }}</div>
-        <div class="stat-label">valid comparisons</div>
+        <div class="stat-label">有效比較</div>
       </div>
       <div class="stat">
         <div class="stat-value">{{ confoundedComparisons.length }}</div>
-        <div class="stat-label">confounded comparisons</div>
+        <div class="stat-label">已混雜的比較</div>
       </div>      <div class="stat">
         <div class="stat-value">{{ invalidComparisons.length }}</div>
-        <div class="stat-label">invalid comparisons</div>
+        <div class="stat-label">無效比較</div>
       </div>
       <div v-for="(count, verdict) in verdictCounts" :key="`claim-${verdict}`" class="stat">
         <div class="stat-value">{{ count }}</div>
-        <div class="stat-label">claim: {{ verdict }}</div>
+        <div class="stat-label">主張：{{ statusLabel(String(verdict)) }}</div>
       </div>
     </div>
 
     <p class="hint">最近更新：<code>{{ lastUpdated ?? "（無資料）" }}</code></p>
 
-    <h3>可信的 improvement / regression</h3>
-    <p class="hint">只列 comparison_valid 為 true、非 confounded，且 metric 有 higher/lower-is-better 方向定義的結果。</p>
+    <h3>可信的改善與退步</h3>
+    <p class="hint">只列 comparison_valid 為 true、非 confounded，且 指標有 higher_is_better 或 lower_is_better 方向定義的結果。</p>
     <table v-if="credibleChanges.length > 0">
       <thead>
         <tr>
-          <th>experiment</th>
-          <th>run_a → run_b</th>
-          <th>metric</th>
+          <th>實驗</th>
+          <th>執行 A → 執行 B</th>
+          <th>指標</th>
           <th>結果</th>
-          <th>relative_diff</th>
+          <th>相對差異</th>
         </tr>
       </thead>
       <tbody>
@@ -126,7 +127,7 @@ const lastUpdated = computed(() => {
           <td>{{ c.runA }} → {{ c.runB }}</td>
           <td>{{ c.metric }}</td>
           <td>
-            <span class="badge" :class="c.direction === 'improvement' ? 'badge-good' : 'badge-bad'">{{ c.direction }}</span>
+            <span class="badge" :class="c.direction === 'improvement' ? 'badge-good' : 'badge-bad'">{{ c.direction === "improvement" ? "改善（improvement）" : "退步（regression）" }}</span>
           </td>
           <td>{{ c.relativeDiff !== null ? (c.relativeDiff * 100).toFixed(1) + "%" : "—" }}</td>
         </tr>
@@ -137,7 +138,7 @@ const lastUpdated = computed(() => {
     <h3>資料錯誤摘要（{{ diagnostics.length }}）</h3>
     <ul v-if="diagnostics.length > 0" class="diagnostics-list">
       <li v-for="(d, i) in diagnostics" :key="i" :class="d.level === 'error' ? 'errors' : 'hint'">
-        [{{ d.level }}] {{ d.message }} <code v-if="d.sourcePath">{{ d.sourcePath }}</code>
+        [{{ statusLabel(d.level) }}] {{ d.message }} <code v-if="d.sourcePath">{{ d.sourcePath }}</code>
       </li>
     </ul>
     <p v-else class="hint">沒有任何資料解析錯誤。</p>

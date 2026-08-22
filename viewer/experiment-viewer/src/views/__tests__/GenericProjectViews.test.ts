@@ -32,8 +32,8 @@ describe("generic manifest 的主要畫面", () => {
 
     const wrapper = mount(OverviewView);
 
-    expect(wrapper.text()).toContain("2experiments");
-    expect(wrapper.text()).toContain("run: done");
+    expect(wrapper.text()).toContain("2實驗數");
+    expect(wrapper.text()).toContain("執行：done");
     expect(wrapper.text()).toContain("資料錯誤摘要");
   });
 
@@ -64,8 +64,8 @@ describe("generic manifest 的主要畫面", () => {
     const wrapper = mount(ExperimentWorkspaceView, { props: { id: "exp-a" } });
 
     expect(wrapper.text()).toContain("exp-a");
-    expect(wrapper.text()).toContain("Summary");
-    const runsTab = wrapper.findAll("nav.tabs button").find((button) => button.text() === "Runs");
+    expect(wrapper.text()).toContain("摘要");
+    const runsTab = wrapper.findAll("nav.tabs button").find((button) => button.text() === "執行紀錄");
     expect(runsTab).toBeDefined();
     await runsTab!.trigger("click");
 

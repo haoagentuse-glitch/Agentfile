@@ -19,7 +19,7 @@ onMounted(async () => {
 });
 
 async function pickRoot() {
-  const dir = await open({ directory: true, title: "選 project root 資料夾（records/experiments/ 或 viewer.json 所在資料夾）" });
+  const dir = await open({ directory: true, title: "選擇專案根目錄（records/experiments/ 或 viewer.json 所在資料夾）" });
   if (!dir || Array.isArray(dir)) return;
   await openRoot(dir);
 }
@@ -30,7 +30,7 @@ async function pickRoot() {
     <NavRail />
     <main class="content">
       <header class="toolbar">
-        <button @click="pickRoot">選 project root 資料夾</button>
+        <button @click="pickRoot">選擇專案根目錄</button>
         <span v-if="snapshot" class="path">
           <code>{{ snapshot.projectRoot }}</code>
           （{{ snapshot.adapterKind === "canonical" ? "canonical records" : "viewer.json manifest" }}）
@@ -42,7 +42,7 @@ async function pickRoot() {
 
       <RouterView v-if="snapshot" />
       <p v-else-if="!loading" class="hint">
-        只讀 <code>records/experiments/</code>（或 viewer.json 指定的資料夾），不寫回、不維護第二份權威副本——資料的唯一來源永遠是選定的 project root。可以直接選 project 根目錄，也可以沿用舊習慣選 <code>records/experiments/</code> 資料夾本身，兩種都能自動解析。
+        只讀 <code>records/experiments/</code>（或 viewer.json 指定的資料夾），不寫回、不維護第二份權威副本——資料的唯一來源永遠是選定的專案根目錄。可以直接選擇專案根目錄，也可以沿用舊習慣選 <code>records/experiments/</code> 資料夾本身，兩種都能自動解析。
       </p>
     </main>
   </div>

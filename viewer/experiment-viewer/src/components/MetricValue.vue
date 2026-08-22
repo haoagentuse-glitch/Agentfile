@@ -22,13 +22,13 @@ const displayValue = computed(() => {
 
 const badge = computed(() => {
   if (!props.comparisonValid || !props.direction || props.diff === null) {
-    return { label: "change", cls: "badge" };
+    return { label: "變化", cls: "badge" };
   }
   const improved = props.direction === "higher_is_better" ? props.diff > 0 : props.diff < 0;
   const worsened = props.direction === "higher_is_better" ? props.diff < 0 : props.diff > 0;
-  if (improved) return { label: "improvement", cls: "badge badge-good" };
-  if (worsened) return { label: "regression", cls: "badge badge-bad" };
-  return { label: "no change", cls: "badge" };
+  if (improved) return { label: "改善（improvement）", cls: "badge badge-good" };
+  if (worsened) return { label: "退步（regression）", cls: "badge badge-bad" };
+  return { label: "無變化", cls: "badge" };
 });
 </script>
 
