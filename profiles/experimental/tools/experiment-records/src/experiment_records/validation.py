@@ -663,6 +663,33 @@ def _validate_contract_configs(instance: dict[str, Any], label: str, layout: Pro
         results.append(("警告", f"{label}: controlled_variables 未宣告 random seed"))
     return results
 
+def _threshold_bearing_estimands(instance: dict[str, Any]) -> list[tuple[str, str]]:
+    """哪些 decision rule 真的把一個數字拿去跟一條線比，以及它量的是哪個 metric。
+
+    區間對 0 的判定不算：儀器越吵，區間越寬，結論就越判不出來——不確定性由區間自己
+    承擔，不需要事先量出可偵測差距。會被量測誤差直接翻轉的是另外兩種：非零的
+    null value（那是在宣告一個最小有意義差距），以及 equivalence margin。
+    """
+    plan = instance.get("analysis_plan")
+    if not isinstance(plan, dict):
+        return []
+    metric_of = {
+        estimand.get("id"): estimand.get("metric")
+        for estimand in plan.get("estimands", [])
+        if isinstance(estimand, dict)
+    }
+    bearing: list[tuple[str, str]] = []
+    for rule in plan.get("decision_rules", []):
+        if not isinstance(rule, dict):
+            continue
+        if rule.get("type") == "superiority" and rule.get("null_value") == 0:
+            continue
+        metric = metric_of.get(rule.get("estimand_ref"))
+        if isinstance(rule.get("id"), str) and isinstance(metric, str):
+            bearing.append((rule["id"], metric))
+    return bearing
+
+
 def _compute_cascade_rules(instance: dict[str, Any]) -> list[tuple[int, dict[str, Any], str]]:
     """攤平 compute_cascade 裡所有帶門檻的規則，附上它在哪一級、是哪一種。"""
     rules: list[tuple[int, dict[str, Any], str]] = []
@@ -695,12 +722,14 @@ def _validate_contract_metrics(
             f"{label}: primary_metric {primary!r} 沒有對應的 metric 定義；"
             "先在 records/experiments/metrics/ 建立它",
         ))
-    elif isinstance(primary, str) and not snapshot.metric_threshold_eligible(primary):
-        # decision_rule 的門檻掛在 primary metric 上，所以它必須有資格承載門檻。
+    for rule_id, metric in _threshold_bearing_estimands(instance):
+        if snapshot.metric_threshold_eligible(metric):
+            continue
         results.append((
             "錯誤",
-            f"{label}: primary_metric {primary!r} 的 validity.threshold_eligible 不是 true，"
-            "不得承載判定門檻；先補上 intended_use 與 evidence_refs（見 ADR 0021）",
+            f"{label}: decision rule {rule_id!r} 拿一條非零的線去比 {metric!r}，"
+            "但它的 validity.threshold_eligible 不是 true；先補上 intended_use 與"
+            " evidence_refs（見 ADR 0021）",
         ))
     for index, rule, kind in _compute_cascade_rules(instance):
         metric = rule.get("metric")

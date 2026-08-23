@@ -107,7 +107,7 @@ validator 只檢查已宣告的 `feasibility_checks` 完不完整、`evidence_re
 - [ ] `compute_budget`／`abort_rule`／`scale_up_rule` 都填了
 - [ ] 設定骨架對得上專案既有格式，`config_ref` 指向真實存在的檔案
 - [ ] 抽樣型設計已實跑供給檢查，結果寫進 `feasibility_checks`；影響規模的數字在結構化設定裡有對應的鍵
-- [ ] primary metric 與所有 Compute Gate 門檻引用的指標，`validity.threshold_eligible` 都是 true
+- [ ] 會拿數字跟一條線比的地方（Compute Gate 門檻、equivalence margin、非零 null value），引用的指標 `validity.threshold_eligible` 都是 true；區間對 0 的判定不要求
 - [ ] `experiment-lint` 通過，`contract_hash` 已計算
 - [ ] seed 已固定，可重現
 
