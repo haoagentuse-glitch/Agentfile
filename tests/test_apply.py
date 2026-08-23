@@ -192,6 +192,35 @@ def test_conflict_keeps_reporting_until_resolved(pack, target):
     assert summary(out, "衝突") == 1
 
 
+def test_conflict_stops_reporting_once_downstream_matches_upstream(pack, target):
+    """人工採納衝突之後就不該再報。兩邊已經一模一樣，沒有東西要決定。
+
+    繼續報成衝突會讓真正需要人看的那幾筆被雜訊蓋掉——下游採納一次之後，
+    每一次 apply 都會再看到同一批已解決的檔案。
+    """
+    apply(pack, target)
+    dst = target / SKILL_REL
+    dst.write_text(dst.read_text() + "\n本專案補充。\n")
+    src = pack / SKILL_SRC
+    src.write_text(src.read_text() + "\n上游補充。\n")
+    apply(pack, target)
+
+    # 人工採納：把上游那份原樣覆蓋過去。
+    dst.write_text(src.read_text())
+    out = apply(pack, target)
+
+    assert summary(out, "衝突") == 0
+    assert SKILL_REL not in out
+    assert dst.read_text() == src.read_text()
+
+    # 採納之後 manifest 已對齊，下一次上游再改就回到正常的更新路徑。
+    src.write_text(src.read_text() + "\n上游再改一次。\n")
+    out = apply(pack, target)
+
+    assert summary(out, "更新") == 1
+    assert dst.read_text().endswith("上游再改一次。\n")
+
+
 # --------------------------------------------------------------- prefix 模式
 
 

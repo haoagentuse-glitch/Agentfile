@@ -107,6 +107,10 @@ install_full() {
       N_UPDATED=$((N_UPDATED + 1))
     fi
     record "$src_hash" "$src_bytes" full "$rel"
+  elif [[ "$dst_hash" == "$src_hash" ]]; then
+    # 下游已經自己改成跟上游一模一樣（例如上一輪手動採納了衝突）。沒有東西要決定，
+    # 只把 manifest 對齊；繼續報成衝突會讓真正需要人看的那幾筆被雜訊蓋掉。
+    record "$src_hash" "$src_bytes" full "$rel"
   else
     [[ "$src_hash" == "$rec" ]] || CONFLICTS+=("$rel ← $origin")
     record "$rec" "${MF_BYTES[$rel]}" "${MF_MODE[$rel]}" "$rel"
