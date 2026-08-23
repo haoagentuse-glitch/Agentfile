@@ -1,78 +1,78 @@
 ---
 name: to-spec
-description: Turn the current conversation into a spec and publish it to the project issue tracker — no interview, just synthesis of what you've already discussed.
+description: 把目前的對話變成一份 spec，發布到專案的 issue 追蹤系統——不做訪談，只把已經討論過的東西整合起來。
 disable-model-invocation: true
 metadata:
-  source: mattpocock/skills@84fdeffd12f2ee307994d1eb6feb48173b6e0502
+  source: mattpocock/skills@84fdeffd12f2ee307994d1eb6feb48173b6e0502（改寫成中文，非逐字保留）
   license: MIT
 ---
 
-This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user — just synthesize what you already know.
+這個技能拿目前的對話脈絡與你對程式碼的理解，產出一份 spec。**不要**訪談使用者——把你已經知道的整合起來就好。
 
-The issue tracker is configured in `docs/agents/issue-tracker.md`, delivered by this pack. The only triage label in use is `ready-for-agent`.
+issue 追蹤系統設定在 `docs/agents/issue-tracker.md`，由這包投影過去。唯一在用的分流 label 是 `ready-for-agent`。
 
-## Process
+## 流程
 
-1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
+1. 還沒探索過的話，先探索 repo，弄清楚程式碼現在的樣子。整份 spec 都用專案領域詞彙表的用詞，並遵守你動到的區域的 ADR。
 
-2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
+2. 勾出你打算在哪些 seam 上測這個功能。既有的 seam 優先於新開的。用你能用的最高層 seam。真的需要新的 seam，就提在你能提的最高點。整個程式碼庫的 seam 越少越好——理想是一個。
 
-Check with the user that these seams match their expectations.
+跟使用者確認這些 seam 符不符合他們的預期。
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
+3. 用下面的樣板寫 spec，然後發布到專案的 issue 追蹤系統。貼上 `ready-for-agent` 分流 label——不需要其他分流。
 
 <spec-template>
 
 ## Problem Statement
 
-The problem that the user is facing, from the user's perspective.
+使用者面對的問題，用使用者的視角寫。
 
 ## Solution
 
-The solution to the problem, from the user's perspective.
+這個問題的解法，用使用者的視角寫。
 
 ## User Stories
 
-A LONG, numbered list of user stories. Each user story should be in the format of:
+一份**很長**的編號 user story 清單。每則 user story 的格式是：
 
-1. As an <actor>, I want a <feature>, so that <benefit>
+1. 身為 <角色>，我想要 <功能>，這樣我就能 <好處>
 
 <user-story-example>
-1. As a mobile bank customer, I want to see balance on my accounts, so that I can make better informed decisions about my spending
+1. 身為手機銀行的客戶，我想看到帳戶餘額，這樣我在花錢時能做出更有依據的判斷
 </user-story-example>
 
-This list of user stories should be extremely extensive and cover all aspects of the feature.
+這份清單要極度詳盡，涵蓋這個功能的每一個面向。
 
 ## Implementation Decisions
 
-A list of implementation decisions that were made. This can include:
+已經做出的實作決策清單。可以包含：
 
-- The modules that will be built/modified
-- The interfaces of those modules that will be modified
-- Technical clarifications from the developer
-- Architectural decisions
-- Schema changes
-- API contracts
-- Specific interactions
+- 會建立或改動的模組
+- 那些模組會被改到的介面
+- 開發者給的技術澄清
+- 架構決策
+- schema 變更
+- API 契約
+- 具體的互動方式
 
-Do NOT include specific file paths or code snippets. They may end up being outdated very quickly.
+**不要**寫具體的檔案路徑或程式碼片段。它們很快就會過期。
 
-Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it within the relevant decision and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+例外：某個原型產出的片段，比散文更精確地表達了一個決策（狀態機、reducer、schema、型別形狀），就把它內嵌在對應的決策裡，並簡短註明它來自原型。只留決策密度高的部分——不是一個能跑的示範，只要重點。
 
 ## Testing Decisions
 
-A list of testing decisions that were made. Include:
+已經做出的測試決策清單。要包含：
 
-- A description of what makes a good test (only test external behavior, not implementation details)
-- Which modules will be tested
-- Prior art for the tests (i.e. similar types of tests in the codebase)
+- 什麼算好測試的說明（只測外部行為，不測實作細節）
+- 會測哪些模組
+- 測試的前例（也就是程式碼庫裡類似的測試）
 
 ## Out of Scope
 
-A description of the things that are out of scope for this spec.
+這份 spec 範圍之外的東西。
 
 ## Further Notes
 
-Any further notes about the feature.
+關於這個功能的其他備註。
 
 </spec-template>

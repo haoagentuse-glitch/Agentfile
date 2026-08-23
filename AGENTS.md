@@ -86,9 +86,9 @@ Code / Tests → Current Docs / ADR → AGENTS.md → Handoff → Conversation M
 ## 技能 vendoring
 
 - 每個能力只保留一份實作。外部技能 vendor 進本包，不依賴使用者層級外掛。
-- vendored 檔案保留上游內文，只允許注入來源 metadata、將上游 per-repo 設定引用改指向本包設定檔。
-- `metadata.source` 記來源 repo 與 commit；授權在頂層 `license` 或 `metadata.license` 擇一宣告，全文集中在 `docs/THIRD_PARTY_LICENSES.md`。
-- 更新須手動 diff 上游後決定是否採納，不自動同步。
+- vendored 檔案改寫成中文，照原意重寫，規則的數量與強度不得增減。指令、旗標、檔名、schema key、enum 值與英文觸發語保留原文；技術術語在中文沒有廣為使用的說法時保留原文。理由見 [ADR 0020](docs/adr/0020-vendored-skills-in-chinese.md)。
+- `metadata.source` 記來源 repo、commit 與改寫狀態；授權在頂層 `license` 或 `metadata.license` 擇一宣告，全文集中在 `docs/THIRD_PARTY_LICENSES.md`。
+- 更新是 diff 上游自己的兩個 commit——`metadata.source` 記的那個與現在的上游——判斷那段期間改了什麼再決定採不採納，不自動同步。
 
 canonical source 為 `core/skills/<name>/` 或 `profiles/<name>/skills/<name>/`；`.claude/skills` 以 symlink 指向投影後的聯集；Codex 直接掃 `.agents/skills`。
 

@@ -1,17 +1,15 @@
 ---
 name: evidence-review
 description: >
-  Use before choosing an algorithm, architecture, retrieval strategy, model,
-  training method, data processing order, major hyperparameter, or evaluation
-  design. Produces a short evidence review before any code gets written.
-  Triggers on Research Gate items — do not start coding a major technical
-  choice without running this first.
+  用於選定演算法、架構、retrieval 策略、模型、訓練方法、資料處理順序、
+  關鍵超參數或評估設計之前。它在任何程式寫下去之前產出一份簡短的證據回顧。
+  Research Gate 名單上的項目都會觸發它——重大技術選型沒跑過這個就不要開始寫程式。
 metadata:
-  source: fcakyon/phd-skills@8d642d3e114ee1d1e4d000f918d71e9bf0453dc2 (adapted, not verbatim — 搜尋方法論與 citation integrity 段落取自上游 literature-research，gap-analysis／BibTeX 產出部分整段替換，見 ADR 0006)
+  source: fcakyon/phd-skills@8d642d3e114ee1d1e4d000f918d71e9bf0453dc2（裁切改編後改寫成中文——搜尋方法論與引用完整性段落取自上游 literature-research，gap-analysis 與 BibTeX 產出部分整段替換，見 ADR 0006）
   license: MIT
 ---
 
-# Evidence Review
+# 證據回顧
 
 技術選型前的證據回顧，不是文獻綜述。目的是避免無依據選型，不是找研究缺口——找到現成、可信的做法就停，不用湊齊十篇論文。
 
@@ -30,13 +28,13 @@ metadata:
 4. **secondary source** — 部落格、教學文章、社群討論
 5. **agent 推測** — 沒有以上來源支持的判斷，必須明確標 `UNVERIFIED`，不得偽裝成有依據
 
-搜尋管道：直接搜尋（多換幾種措辭，同一個概念常有不同稱呼）；citation chaining（誰引用了這篇、這篇引用了誰）；venue／社群動態（GitHub topic、awesome-list、Papers with Code）。
+搜尋管道：直接搜尋（多換幾種措辭，同一個概念常有不同稱呼）；citation chaining（誰引用了這篇、這篇引用了誰）；發表管道／社群動態（GitHub topic、awesome-list、Papers with Code）。
 
 ## Step 3：Citation Integrity
 
 每個提到的來源都要可查證：
 
-- 作者、發表年份、venue／repo 名稱要核對，不要憑印象
+- 作者、發表年份、發表管道／repo 名稱要核對，不要憑印象
 - 提到的數字（準確率、延遲、成本）只能引用能追到具體表格/章節/commit 的內容
 - 不確定的地方明講不確定，不要用肯定語氣包裝猜測
 

@@ -1,94 +1,96 @@
 ---
 name: experiment-design
 description: >
-  Use when the user wants to design experiments, plan ablation studies,
-  structure baselines, or create incremental evaluation strategies.
-  Triggers on phrases like "design ablation", "plan experiment",
-  "what experiments should I run", "baseline comparison", or
-  "experiment matrix".
+  用於使用者要設計實驗、規劃消融研究、安排基準組，或建立分階段評估策略的時候。
+  觸發語包括「設計消融」、「規劃實驗」、「我該跑哪些實驗」、「基準比較」、
+  「實驗矩陣」，以及 design ablation、plan experiment、experiment matrix。
 metadata:
-  source: fcakyon/phd-skills@8d642d3e114ee1d1e4d000f918d71e9bf0453dc2 (adapted, not verbatim — Step 1-5 與 Verification Checkpoints 取自上游，Step 6-7／Output Format 改為輸出 Experiment Contract 檔案並串 experiment-lint，見 ADR 0006)
+  source: fcakyon/phd-skills@8d642d3e114ee1d1e4d000f918d71e9bf0453dc2（裁切改編後改寫成中文——Step 1-5 與驗證檢查點取自上游，Step 6-7 與輸出格式改為產出 Experiment Contract 檔案並串 experiment-lint，見 ADR 0006）
   license: MIT
 ---
 
-# Experiment Design Methodology
+# 實驗設計方法論
 
-You are helping a researcher design rigorous experiments. Follow this methodology systematically.
+你在協助研究者設計嚴謹的實驗。照這套方法論一步一步走。
 
-## Step 1: Understand the Research Question
+## 第 1 步：弄清楚研究問題
 
-Before designing any experiment:
-- Ask what specific hypothesis or claim the experiment should support
-- Identify the dependent variable (metric) and independent variables (factors)
-- Clarify the baseline: what is the current best result or default configuration?
-- 若這是演算法／架構／retrieval 策略等重大選型，先跑過 `evidence-review`，不要跳過 Research Gate 直接設計實驗。
+設計任何實驗之前：
 
-## Step 2: Single-Variable Isolation
+- 問清楚這個實驗要支撐的是哪一個具體假說或主張
+- 指出應變數（指標）與自變數（因子）
+- 釐清基準：目前最好的結果或預設設定是什麼？
+- 這是演算法／架構／retrieval 策略等重大選型的話，先跑過 `evidence-review`，不要跳過 Research Gate 直接設計實驗。
 
-Every ablation study must change exactly ONE variable at a time. For each factor:
+## 第 2 步：單一變因隔離
 
-1. **Define the factor** — what is being varied (e.g., loss function, learning rate, architecture component)
-2. **List levels** — all values this factor will take (e.g., CE, focal, VAR)
-3. **Fix everything else** — document what stays constant (seed, data split, epochs, hardware) → this becomes `controlled_variables` in the Contract
-4. **Predict outcome** — before running, state what you expect and why
+每個消融研究一次只能動**一個**變因。每個因子都要：
+
+1. **定義因子**——被改動的是什麼（例如損失函數、學習率、架構元件）
+2. **列出層級**——這個因子會取的所有值（例如 CE、focal、VAR）
+3. **固定其餘一切**——寫下什麼維持不變（seed、資料切分、epoch、硬體）→ 這會成為 Contract 裡的 `controlled_variables`
+4. **預測結果**——開跑之前先說出你預期什麼、為什麼
 
 多因素研究要在 Contract 裡明講是多因素設計，不能事後才承認改了不只一個變因。
 
-## Step 3: Experiment Matrix
+## 第 3 步：實驗矩陣
 
-For multi-factor studies, use a structured matrix:
+多因素研究要用結構化的矩陣：
 
-1. **Full factorial** — if factors are few (≤3) and levels are few (≤3 each)
-2. **Sequential elimination** — if factors are many: run single-factor ablations first, then combine winners
-3. **Latin square** — if full factorial is too expensive: sample representative combinations
+1. **完全因子設計**——因子少（≤3）且每個因子的層級也少（≤3）時
+2. **序列淘汰**——因子多的時候：先跑單因子消融，再把贏的組合起來
+3. **拉丁方格**——完全因子太貴時：抽有代表性的組合
 
-Always calculate total runs before committing:
+投入之前一律先算總 run 數：
+
 ```
-Total runs = product of all factor levels
-Compute hours = total runs × hours_per_run
+總 run 數 = 所有因子層級的乘積
+計算時數 = 總 run 數 × 每個 run 的時數
 ```
 
-## Step 4: Resource Estimation → compute_budget
+## 第 4 步：資源估算 → compute_budget
 
-For the Contract's `compute_budget`：
+填 Contract 的 `compute_budget`：
+
 - **pilot_max_minutes** / **pilot_max_samples**：pilot 規模的硬上限，不是「先跑跑看」
-- 完整規模的預估（compute hours、API 成本、wall clock、storage）供 `scale_up_rule` 判斷要不要升級
+- 完整規模的預估（計算時數、API 成本、實際時間、儲存空間）供 `scale_up_rule` 判斷要不要升級
 - 超出合理範圍就在 Contract 的 `abort_rule` 寫清楚什麼情況要喊停，不是跑到天荒地老
 
-## Step 5: Config Stub Generation
+## 第 5 步：產生設定檔骨架
 
-Generate configuration stubs that match the user's existing config format. Read existing configs first to match file format、key naming、目錄結構、既有的 tracking 整合。`baseline.config_ref` 和 `treatment.config_ref` 指向這兩份實際存在的設定檔，不是描述。
+產出的設定骨架要對得上使用者既有的設定格式。先讀既有設定，對齊檔案格式、鍵的命名、目錄結構與既有的 tracking 整合。`baseline.config_ref` 與 `treatment.config_ref` 指向這兩份實際存在的設定檔，不是描述。
 
-## Step 6: 凍結 Experiment Contract
+## 第 6 步：凍結 Experiment Contract
 
 把上面的決定寫成一份符合 `records/experiments/schemas/experiment-contract.schema.json` 的 JSON，存到 `records/experiments/definitions/<experiment_id>.json`，`status` 設 `draft`。
 
 跑 `experiment-lint`（見該技能）驗證：必填欄位齊全、baseline 跟 treatment 的設定檔之間沒有 `controlled_variables` 以外的未宣告差異。lint 沒過不要 lock。
 
-過了以後把 `status` 改成 `locked`，跑 `uv run --project .agents/tools/experiment-records python -m experiment_records contract-hash <definition> --write` 算出 `contract_hash` 並寫回——不要手算，雜湊用 RFC 8785 正規化，手算會對不上。lock 之後這份檔案不得再改——要改 `top_k`／model／dataset／budget／metric 實作／evaluation set 等任何一項，開新的 `experiment_id` 或新的 treatment condition，不得原地覆寫。
+過了以後把 `status` 改成 `locked`，跑 `uv run --project .agents/tools/experiment-records python -m experiment_records contract-hash <definition> --write` 算出 `contract_hash` 並寫回——不要手算，雜湊用 RFC 8785 正規化，手算會對不上。lock 之後這份檔案不得再改——要改 `top_k`、模型、資料集、`compute_budget`、metric 實作或評估集等任何一項，開新的 `experiment_id` 或新的 treatment 條件，不得原地覆寫。
 
-## Step 7: Analysis Plan
+## 第 7 步：分析計畫
 
-Before running, define how results will be analyzed，寫進 Contract 或隨 run 記錄：
+開跑之前先定義結果要怎麼分析，寫進 Contract 或隨 run 記錄：
 
-- 對應 primary/secondary metric（見 `records/experiments/schemas/metric-definition.schema.json`，metric 的實際算法要版本化）
-- Statistical significance test if applicable（paired t-test, bootstrap CI）
-- decision_rule 已經在 Contract 裡凍結，分析階段不得為了讓結果好看而改判準
+- 對應 primary／secondary metric（見 `records/experiments/schemas/metric-definition.schema.json`，metric 的實際算法要版本化）
+- 適用時的統計顯著性檢定（paired t-test、bootstrap CI）
+- `decision_rule` 已經在 Contract 裡凍結，分析階段不得為了讓結果好看而改判準
 - 每個 run 的紀錄格式見 `run-envelope.schema.json`；跑錯的 run 標 `invalid` 並填 `invalid_reason`，不得刪除
 
-## Verification Checkpoints
+## 驗證檢查點
 
-Before finalizing the experiment plan:
-- [ ] Each ablation changes exactly one variable（或已明確聲明為多因素設計）
-- [ ] Baseline is clearly defined and will be run with same setup
+把實驗計畫定案之前：
+
+- [ ] 每個消融只動一個變因（或已明確聲明為多因素設計）
+- [ ] 基準組定義清楚，而且會用同一套環境跑
 - [ ] `compute_budget`／`abort_rule`／`scale_up_rule` 都填了
-- [ ] Config stubs match existing project format，`config_ref` 指向真實存在的檔案
+- [ ] 設定骨架對得上專案既有格式，`config_ref` 指向真實存在的檔案
 - [ ] `experiment-lint` 通過，`contract_hash` 已計算
-- [ ] Seeds are fixed for reproducibility
+- [ ] seed 已固定，可重現
 
-## Output
+## 輸出
 
 1. **Experiment Contract**（寫入 `records/experiments/definitions/<experiment_id>.json`，lock 後帶 hash）
-2. **Experiment matrix table** — all runs with their configurations（給人看的摘要，權威版本是 Contract 本身）
-3. **Resource estimate** — compute hours、API 成本、storage
+2. **實驗矩陣表**——所有 run 與各自的設定（給人看的摘要，權威版本是 Contract 本身）
+3. **資源估算**——計算時數、API 成本、儲存空間
 4. **下一步**：告訴使用者要跑 `experiment-lint` 驗證 Contract，通過才開始執行 run
