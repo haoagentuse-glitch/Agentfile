@@ -1,3 +1,3 @@
-now: 技能整包中文化完成（ADR 0020，PR #30）；i-have-adhd 已移除（#29）；新增 eli5（#31）；apply.sh 補上「下游已採納」那一格判定（#32）。下游 frus-agentic-rag_v2 已採用（該 repo PR #4），衝突從 7 降到 1。
-next: 剩下的下游回饋票 #2、#8、#9、#10、#11、#12、#14、#15、#16。#10（metric 的九個 validity 欄位）是下游唯一還在用的 EXCEPTION，優先序最高。
+now: PLAN 六組全部完成，16 則下游回饋票全數關閉，agentfile 的 open issue 為 0。下游 frus-agentic-rag_v2 已採用全部變更（該 repo PR #6），投影零衝突、零死連結、零生效中的 EXCEPTION。
+next: 沒有排定的工作。下一輪由新的下游回饋、或使用者指定的方向決定。
 blocked: 無。Windows 安裝包 gate 只能在 CI 或 NTFS checkout 跑，本機 WSL 跑不了。
