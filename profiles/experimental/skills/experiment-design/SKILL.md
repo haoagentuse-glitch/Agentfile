@@ -75,7 +75,7 @@ metadata:
 
 **會影響規模的數字必須落在結構化設定裡。** `derivation` 的散文寫「四卷」，而設定層沒有卷數這個鍵，兩者之間就沒有任何工具連得起來——validator 不會、也不該從散文猜數字。要嘛把卷數升成明列的控制變因，要嘛承認它不受管。
 
-validator 只檢查已宣告的 `feasibility_checks` 完不完整、`evidence_ref` 解不解析得到。它判斷不出你的設計是不是抽樣型，所以「有沒有做這個檢查」是寫 Contract 的人的責任。理由見 [ADR 0021](../../../docs/adr/0021-metric-validity-and-feasibility-checks.md)。
+validator 只檢查已宣告的 `feasibility_checks` 完不完整、`evidence_ref` 解不解析得到。它判斷不出你的設計是不是抽樣型，所以「有沒有做這個檢查」是寫 Contract 的人的責任。理由見[上游 ADR 0021](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0021-metric-validity-and-feasibility-checks.md)。
 
 ## 第 6 步：產生設定檔骨架
 

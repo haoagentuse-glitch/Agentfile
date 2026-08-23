@@ -37,6 +37,14 @@
 EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 ```
 
+JSON、lock 檔與 generated file 不寫這一行——JSON 沒有註解，lock 檔與產物不該手改。這幾類的例外寫進**最近的權威 Markdown 決策紀錄**（該目錄的 ADR 或 `DECISIONS.md`），並在那一行裡寫出目標檔的路徑：
+
+```
+EXCEPTION: records/experiments/schemas/foo.schema.json 追加 bar 欄位 + 理由 | 回收條件: <何時該移除>
+```
+
+落點統一，`rg` 才盤點得齊。把它塞進 schema 的 `description` 字串雖然掃得到，但那是每個專案各自發明的位置，掃不掃得到取決於默契。
+
 ## 專案結構與依賴
 
 - 專案啟動第一件事是 `git init`，每個改動後自動 commit/push，不必詢問。
@@ -54,6 +62,15 @@ EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
 - 豁免：純環境探查且不重複執行。跑第二次即須落成子命令。
 
 驗收：丟掉 scrollback、換一台機器、clean checkout，能否原樣再做一次？不能 → 缺名字或有環境依賴。
+
+**子命令放哪，看它依賴什麼：**
+
+| 依賴 | 落點 |
+|---|---|
+| 專案的資料、語料或設定 | 專案自己的 source |
+| 只依賴 canonical record 契約，換個專案照樣跑得動 | profile 的共用 `tools/` |
+
+判斷錯的代價不對稱：跨專案能力寫進專案 source，別的專案要重造一次；專案專屬的量測放進共用 `tools/`，下次投影就變成衝突。分不清就放專案 source——那個方向只是重複，另一個方向會擋住上游更新。
 
 ## 輸出
 
@@ -86,7 +103,7 @@ Code / Tests → Current Docs / ADR → AGENTS.md → Handoff → Conversation M
 ## 技能 vendoring
 
 - 每個能力只保留一份實作。外部技能 vendor 進本包，不依賴使用者層級外掛。
-- vendored 檔案改寫成中文，照原意重寫，規則的數量與強度不得增減。指令、旗標、檔名、schema key、enum 值與英文觸發語保留原文；技術術語在中文沒有廣為使用的說法時保留原文。理由見 [ADR 0020](docs/adr/0020-vendored-skills-in-chinese.md)。
+- vendored 檔案改寫成中文，照原意重寫，規則的數量與強度不得增減。指令、旗標、檔名、schema key、enum 值與英文觸發語保留原文；技術術語在中文沒有廣為使用的說法時保留原文。理由見[上游 ADR 0020](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0020-vendored-skills-in-chinese.md)。
 - `metadata.source` 記來源 repo、commit 與改寫狀態；授權在頂層 `license` 或 `metadata.license` 擇一宣告，全文集中在 `docs/THIRD_PARTY_LICENSES.md`。
 - 更新是 diff 上游自己的兩個 commit——`metadata.source` 記的那個與現在的上游——判斷那段期間改了什麼再決定採不採納，不自動同步。
 
@@ -99,17 +116,16 @@ canonical source 為 `core/skills/<name>/` 或 `profiles/<name>/skills/<name>/`�
 | 工具 | 職責 |
 |---|---|
 | `rg` | 字面／精確比對 |
-| Graphify（deferred，見 [ADR 0004](docs/adr/0004-graphify-optional-structural-layer.md)） | 現行程式碼的結構：symbol、import、call、dependency、影響範圍 |
+| Graphify（deferred，見[上游 ADR 0004](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0004-graphify-optional-structural-layer.md)） | 現行程式碼的結構：symbol、import、call、dependency、影響範圍 |
 | memsearch | 語意與歷史：`docs/` 的語意索引、跨 session 記憶 |
 
-Graphify 職責僅限現行程式碼結構，不得碰 conversation memory、Issue、ADR 或 task state——一旦這些邊界混進同一個檢索工具，「檢索結果」會悄悄變成「決策依據」。v1 不安裝，啟用門檻與範圍限制見 ADR 0004。
+Graphify 職責僅限現行程式碼結構，不得碰 conversation memory、Issue、ADR 或 task state——一旦這些邊界混進同一個檢索工具，「檢索結果」會悄悄變成「決策依據」。v1 不安裝，啟用門檻與範圍限制見上面連的那份上游 ADR。
 
 `docs/` 是唯一來源，語意索引只是可重建快取，指令見 `project-docs` 技能。未安裝或索引失敗不得使主任務失敗，只回報「語意索引未更新」。本包不為索引加 hook 或 watch，不自行改 chunking，不改寫或 vendor 語意工具的官方擷取流程。
 
-跨 session 記憶預設不進版控，細節見 [ADR 0001](docs/adr/0001-memsearch-two-layer-memory.md)、[ADR 0002](docs/adr/0002-memsearch-memory-not-tracked-by-default.md)。記憶與 `docs/` 資料量差距過大時的檢索反轉問題，記在 [architecture.md](docs/architecture.md)，不重述。
+跨 session 記憶預設不進版控，細節見[上游 ADR 0001](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0001-memsearch-two-layer-memory.md)、[上游 ADR 0002](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0002-memsearch-memory-not-tracked-by-default.md)。記憶與 `docs/` 資料量差距過大時的檢索反轉問題，記在[上游 architecture.md](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/architecture.md)，不重述。
 
 Retrieval scope 依 active profile 隔離：`memsearch search` 該不該帶 `--source-prefix records/`，由呼叫的 skill 依自己所屬 profile 決定，見各 skill 的 SKILL.md；`records/` 底下的內容不因為存在，就在不相關的 profile 裡被檢索到。
-
 ## Software Profile
 
 追加於 `core/AGENTS.md` 之後，只講軟體工程專案的特化規則，不改寫上游條文。
