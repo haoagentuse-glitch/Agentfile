@@ -31,7 +31,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from experiment_records.comparison_analysis import estimate_from_plan
+from experiment_records.comparison_analysis import estimate_from_plan, load_paired_rows
 from experiment_records.evidence_policy import evaluate_evidence_policy
 
 
@@ -108,6 +108,29 @@ def resolve_config(run: dict, records_root: Path) -> dict | None:
     if not candidate.is_file() or project_root.resolve() not in candidate.parents:
         return None
     return load_json(candidate)
+
+
+def resolve_paired_rows(
+    baseline_run: dict, treatment_run: dict, records_root: Path
+) -> tuple[list[dict[str, Any]] | None, str]:
+    """兩個 run 的 per_question_ref 配對成差分列；配不起來就回傳原因，不丟例外。
+
+    路徑跟 config_ref 用同一條規則：相對 project root，且必須落在 project root 底下。
+    """
+    project_root = records_root.parent.parent
+    paths: list[Path] = []
+    for role, run in (("baseline", baseline_run), ("treatment", treatment_run)):
+        ref = run.get("per_question_ref")
+        if not ref:
+            return None, f"{role} run 沒有 per_question_ref"
+        candidate = (project_root / ref).resolve()
+        if not candidate.is_file() or project_root.resolve() not in candidate.parents:
+            return None, f"{role} run 的 per_question_ref 指到不存在或在 project root 之外的檔案：{ref!r}"
+        paths.append(candidate)
+    try:
+        return load_paired_rows(paths[0], paths[1]), ""
+    except (ValueError, KeyError, json.JSONDecodeError) as error:
+        return None, f"逐筆結果配對失敗：{error}"
 
 
 def diff_dimension(name: str, candidates: list[str], cfg_a: dict, cfg_b: dict) -> dict[str, Any] | None:
@@ -329,12 +352,15 @@ def main(argv: list[str] | None = None) -> int:
             if not estimator or not rule:
                 notes.append(f"estimand {estimand['id']} 缺 estimator 或 decision rule，這次不產生 estimate")
             elif estimator["type"] == "joint_cluster_bootstrap":
-                # run envelope 只保存彙總後的 metrics，重抽 cluster 需要逐筆資料。
-                # 缺輸入就不估計，也不靜默略過——沒有 estimate 的原因要留在紀錄裡。
-                notes.append(
-                    f"estimand {estimand['id']} 用 joint_cluster_bootstrap，"
-                    "需要逐筆資料，compare-runs 讀不到，這次不產生 estimate"
-                )
+                # 重抽 cluster 需要逐筆資料，run envelope 的 metrics 只有彙總純量。
+                # 讀不到或配不起來就不估計，也不靜默略過——原因要留在紀錄裡。
+                rows, reason = resolve_paired_rows(baseline_run, treatment_run, records_root)
+                if rows is None:
+                    notes.append(f"estimand {estimand['id']} 算不出 estimate：{reason}")
+                else:
+                    estimates.append(
+                        estimate_from_plan(estimand, estimator, rule, baseline_run, treatment_run, rows)
+                    )
             else:
                 estimates.append(estimate_from_plan(estimand, estimator, rule, baseline_run, treatment_run))
 

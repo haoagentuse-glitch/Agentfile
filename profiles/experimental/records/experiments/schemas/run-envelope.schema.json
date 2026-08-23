@@ -160,7 +160,16 @@
       "type": "object",
       "description": "key 是 metric name，須對應到已定義的 metric-definition"
     },
-    "artifacts": {
+    "per_question_ref": {
+      "type": "string",
+      "format": "project-ref",
+      "description": "這次 run 的逐筆結果檔（JSONL，每列有 case_id、cluster、component、value）。comparison 層級的衍生量（例如分層效應的差之差）需要兩個 run 的逐筆結果才算得出來，run envelope 的 metrics 只裝彙總後的純量。component 是這一列所屬的分層名稱，對應 analysis_plan 裡 estimator 的 component_a／component_b"
+    },
+    "per_question_metric": {
+      "type": "string",
+      "description": "per_question_ref 裡 value 欄位量的是哪個 metric。逐筆結果本身沒有欄位名可以辨識量的是什麼，不寫下來就只能靠檔名猜"
+    },
+  "artifacts": {
       "type": "array",
       "items": { "type": "string" },
       "default": []
