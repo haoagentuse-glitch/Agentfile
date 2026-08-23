@@ -1,12 +1,10 @@
 ---
 name: claim-audit
 description: >
-  Use before presenting an experimental conclusion, writing up results, or
-  whenever a claim cites a run/comparison as evidence. Mechanically verifies
-  the claim traces to a real, non-confounded comparison with matching numbers,
-  then the agent judges whether the claim's scope matches what the evidence
-  actually covers. Triggers on "does the data support this", "audit this
-  claim", "can we say X improves Y".
+  用在提出實驗結論、撰寫結果，或任何一句主張引用 run／comparison 當證據的時候。
+  它機械核對這句主張追不追得到一個真實、未混雜、數字對得上的比較，
+  再由 agent 判斷主張的適用範圍有沒有超出證據實際涵蓋的範圍。
+  觸發語：「資料撐得住這個結論嗎」、「稽核這個 claim」、「我們能說 X 改善了 Y 嗎」。
 metadata:
   source: 概念參考 ARA（arXiv 2604.24658）的 claim → experiment → evidence 綁定鏈，
     schema 與判準是本包自己設計，不是 vendor（ARA 本身也沒有可 vendor 的實作，

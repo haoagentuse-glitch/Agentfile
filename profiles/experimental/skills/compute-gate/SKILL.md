@@ -1,11 +1,10 @@
 ---
 name: compute-gate
 description: >
-  Use before scaling an experiment up to the next Compute Gate level (L0
-  theory check through L5 full run), or when a pilot/ablation result comes in
-  and you need to decide whether to proceed. Enforces sequential levels and
-  checks abort/scale-up rules deterministically. Triggers on "can we scale
-  this up", "run the full experiment", "should we abort this run".
+  用在把實驗升到下一個 Compute Gate 級別之前（L0 理論檢查到 L5 完整執行），
+  或 pilot／消融的結果出來、要決定走不走下去的時候。它強制逐級推進，
+  並確定性地檢查中止與升級規則。觸發語：「可以放大規模了嗎」、
+  「跑完整實驗」、「這個 run 該不該中止」。
 ---
 
 # Compute Gate

@@ -1,11 +1,10 @@
 ---
 name: zh-lint
 description: >
-  Use before finalizing any Chinese prose file this pack owns (docs/, ADR,
-  README, self-authored SKILL.md) — scans for known English filler words that
-  should be translated per AGENTS.md's language rule. Not a full language
-  checker, only catches words already caught as real mistakes. Triggers on
-  "check for mixed language", "自查中英夾雜".
+  用在這包擁有的中文散文檔定稿之前（docs/、ADR、README、技能檔）——掃出
+  AGENTS.md 語言規則該翻成中文、卻留著的英文詞。它不是完整的語言檢查，
+  只抓已經被抓到過的真實錯誤。觸發語：「自查中英夾雜」、「檢查中英夾雜」、
+  check for mixed language。
 ---
 
 # zh-lint

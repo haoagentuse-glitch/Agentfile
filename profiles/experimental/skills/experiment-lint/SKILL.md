@@ -1,8 +1,8 @@
 ---
 name: experiment-lint
 description: >
-  Use before locking an Experiment Contract or running an experiment.
-  Runs the canonical deterministic experiment-record validator.
+  用在 lock 一份 Experiment Contract 或開始跑實驗之前。
+  它執行實驗紀錄的權威確定性驗證器。
 ---
 
 # Experiment Lint

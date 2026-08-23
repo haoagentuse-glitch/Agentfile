@@ -1,11 +1,10 @@
 ---
 name: compare-runs
 description: >
-  Use when comparing two experiment runs, checking if a treatment improved on
-  a baseline, or ranking runs. Deterministically checks comparability before
-  computing any metric diff — never produces an "A is better than B" claim
-  when the comparison is confounded. Triggers on "compare run A to run B",
-  "is my run better than baseline", "rank these runs".
+  用在比較兩個實驗 run、確認處理組有沒有勝過基準，或替 run 排名的時候。
+  它先確定性地檢查可比較性，才算任何指標差異——比較一旦混雜，
+  絕不產出「A 優於 B」這種說法。觸發語：「比較這兩個 run」、
+  「我這個 run 有比基準好嗎」、「幫這些 run 排名」。
 metadata:
   source: 部分概念參考 fcakyon/phd-skills@8d642d3e114ee1d1e4d000f918d71e9bf0453dc2 的 compare skill
     （同一 epoch 對齊、代理指標與下游指標分開報這兩條規則），但不是 vendor——這個技能的
