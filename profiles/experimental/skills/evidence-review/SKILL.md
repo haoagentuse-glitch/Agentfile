@@ -28,6 +28,15 @@ metadata:
 4. **secondary source** — 部落格、教學文章、社群討論
 5. **agent 推測** — 沒有以上來源支持的判斷，必須明確標 `UNVERIFIED`，不得偽裝成有依據
 
+**這條階梯只講「證據從哪來」，還要記第二軸：你是怎麼讀到它的。**
+
+| 軸 | 值 |
+|---|---|
+| origin（來源） | `primary`（原始論文、官方文件、作者程式碼）／`secondary`（轉述、教學、討論）／`conjecture`（推測） |
+| representation（你讀到的形式） | `direct`（讀原文本身）／`agent_summary`（讀某個工具或模型的摘要） |
+
+一手來源的自動摘要是 `primary + agent_summary`，**不是** `primary + direct`。它看起來像一手，實際上多了一層轉述，而轉述者的偏誤看不見。實際踩過的例子：摘要寫「論文明確宣告與 CLS pooling 不相容」，原文只說「可實作在任何使用 mean pooling 的長文本嵌入模型上」——前者會直接否決一個候選，後者只是界定適用範圍。差別大到會改變選型結果。
+
 搜尋管道：直接搜尋（多換幾種措辭，同一個概念常有不同稱呼）；citation chaining（誰引用了這篇、這篇引用了誰）；發表管道／社群動態（GitHub topic、awesome-list、Papers with Code）。
 
 ## Step 3：Citation Integrity
@@ -37,6 +46,11 @@ metadata:
 - 作者、發表年份、發表管道／repo 名稱要核對，不要憑印象
 - 提到的數字（準確率、延遲、成本）只能引用能追到具體表格/章節/commit 的內容
 - 不確定的地方明講不確定，不要用肯定語氣包裝猜測
+- 每一筆證據都標出 origin 與 representation 兩軸，例如 `primary + agent_summary`
+
+**會決定 Selected approach 或 Why not alternatives 的關鍵句，一律回原文定位核對。** 不是重讀摘要，是把原文抓下來、找到那句話、對字串。核對過的標成 `primary + direct`；核對不到就降級成 `secondary`，並在輸出裡寫明它沒被核對過。
+
+判準很省事：這句話拿掉，候選的去留會不會改變？會，就核對；不會，摘要就夠用。
 
 ## Step 4：輸出
 

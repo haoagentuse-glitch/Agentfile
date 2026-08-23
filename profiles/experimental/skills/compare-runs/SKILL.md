@@ -36,6 +36,18 @@ experiment-viewer 只會自動掃描這個固定路徑；存在別處的話 view
 2. **可比較性**：讀 Contract 宣告的 `controlled_variables` 跟 `treatment.variable`，載入兩邊 run 的 `config_ref` 實際內容逐欄位比對：
    - `dataset`／`evaluation_set`／`model` 這三個維度固定會檢查，不管有沒有寫進 `controlled_variables`——這幾樣沒道理不一致還能比。
    - `controlled_variables` 宣告的其他欄位也要一致。
+
+   **固定維度只認這些欄位名**（設定檔的命名習慣各專案不同，這裡列的是常見別名）：
+
+   | 維度 | 認得的鍵 |
+   |---|---|
+   | `dataset` | `dataset`、`dataset_name`、`dataset_version` |
+   | `evaluation_set` | `evaluation_set`、`eval_set`、`eval_dataset` |
+   | `model` | `model`、`model_name` |
+
+   你的設定用別的名字（`corpus_snapshot`、`embedding_model` 這類），這三個維度就會顯示 `SKIPPED`。**`SKIPPED` 的意思是「這個具名維度沒找到對應的鍵」，不是「檢查過了、沒問題」。** 看到它就要問：是這個維度在這個專案不適用，還是名字沒對上？
+
+   名字沒對上不等於沒防護：兩份設定之間**任何**未宣告的差異都會被通用的逐欄位比對抓成 confound，包括這些改了名的鍵。具名維度多的那一層保護是「就算你忘了宣告，這三樣也一定會被比對」。要拿回那一層，把你的鍵寫進 `controlled_variables`。
    - 宣告的 `treatment.variable` 是唯一允許不同的欄位。
    - 除此之外任何欄位有差異 → 未預期差異。
 3. **指標層級**：個別指標如果兩邊用的 `metric_definitions` 不一致，那個指標跳過不算——不影響其他指標。
