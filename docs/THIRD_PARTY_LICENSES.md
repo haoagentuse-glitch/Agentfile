@@ -4,7 +4,6 @@
 
 | 來源 | Copyright |
 |---|---|
-| [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd) | Copyright (c) 2026 Ayoub Ghriss |
 | [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills) | Copyright (c) 2026 Fatih Cagatay Akyon |
 | [mattpocock/skills](https://github.com/mattpocock/skills) | Copyright (c) 2026 Matt Pocock |
 
