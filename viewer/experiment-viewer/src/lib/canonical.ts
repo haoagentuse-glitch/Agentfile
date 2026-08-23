@@ -271,7 +271,19 @@ export interface CanonicalMetricDefinition {
   displayName?: string;
   unit?: string;
   format?: string;
+  // metric-definition.schema.json 的 validity 區塊，整塊選填。缺它代表這個指標
+  // 還沒被驗證過——那是合法狀態，但它就不能當 primary metric，也不能承載門檻。
+  validity?: CanonicalMetricValidity;
   sourcePath: string;
+}
+
+export interface CanonicalMetricValidity {
+  intendedUse?: string;
+  evidenceRefs: string[];
+  limitations: string[];
+  // 沒宣告就是沒資格。UI 顯示時「未宣告」與「明確為 false」要分得出來，
+  // 前者是還沒做，後者是做過而且判定不適合，兩者不是同一件事。
+  thresholdEligible?: boolean;
 }
 
 // run-envelope 的 artifacts[] 只是相對於 project root 的字串路徑；

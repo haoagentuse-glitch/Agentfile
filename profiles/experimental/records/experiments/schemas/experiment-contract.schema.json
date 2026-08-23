@@ -459,6 +459,40 @@
     },
     "analysis_plan": {
       "$ref": "analysis-plan.schema.json"
+    },
+    "feasibility_checks": {
+      "type": "array",
+      "description": "lock 前實際跑過的可行性檢查。結構檢查（schema 有效、欄位齊全）擋不住「凍結的抽樣規格在凍結的資料範圍上湊不出來」這種算術上界問題——那要實際量一次才知道。validator 只檢查已宣告的檢查完不完整、evidence_ref 解不解析得到，不從 derivation 的散文猜數字。設計見 ADR 0021。",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "command",
+          "evidence_ref",
+          "passed"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "這項檢查在回答哪個疑慮"
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "description": "重跑它的那一行；沒有它，這筆紀錄重現不出來"
+          },
+          "evidence_ref": {
+            "type": "string",
+            "format": "project-ref",
+            "description": "檢查輸出落在哪"
+          },
+          "passed": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "allOf": [

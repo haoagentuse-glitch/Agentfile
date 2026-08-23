@@ -75,6 +75,17 @@ describe("loadCanonicalProject - happy path (RAG / 演算法比較 / 模擬三�
     expect(comparison.estimates[0].decision.reasonCodes).toEqual(["interval_missing"]);
   });
 
+  it("loads metric validity, and leaves it undefined when the metric has none", async () => {
+    // 「未宣告」與「明確判定不適合」不是同一件事——adapter 不得把缺漏補成 false。
+    const snapshot = await loadCanonicalFixture(root);
+    const byName = Object.fromEntries(snapshot.metricDefinitions.map((m) => [m.name, m]));
+    expect(byName.recall_at_10.validity?.thresholdEligible).toBe(true);
+    expect(byName.recall_at_10.validity?.evidenceRefs).toEqual([
+      "docs/evidence/recall-label-audit.md",
+    ]);
+    expect(byName.latency_ms.validity).toBeUndefined();
+  });
+
   it("loads metric definitions with direction", async () => {
     const snapshot = await loadCanonicalFixture(root);
     const byName = Object.fromEntries(snapshot.metricDefinitions.map((m) => [m.name, m]));

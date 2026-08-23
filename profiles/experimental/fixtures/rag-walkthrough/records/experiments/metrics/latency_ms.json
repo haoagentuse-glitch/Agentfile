@@ -3,5 +3,16 @@
   "type": "duration",
   "direction": "lower_is_better",
   "aggregation": "p95",
-  "implementation": "rag_lab/metrics/latency.py::end_to_end_p95"
+  "implementation": "rag_lab/metrics/latency.py::end_to_end_p95",
+  "validity": {
+    "intended_use": "偵測檢索設定造成的延遲退化，中止門檻用",
+    "evidence_refs": [
+      "docs/evidence/latency-instrument.md"
+    ],
+    "limitations": [
+      "只在單一硬體與 runtime 版本上量過儀器擺動",
+      "p50 對尾端延遲不敏感，長尾要另外看 p95"
+    ],
+    "threshold_eligible": true
+  }
 }

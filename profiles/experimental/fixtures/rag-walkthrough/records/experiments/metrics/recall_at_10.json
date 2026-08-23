@@ -5,5 +5,16 @@
   "numerator": "前 10 筆取回結果中命中標準答案片段的查詢數",
   "denominator": "評估集的查詢總數",
   "aggregation": "mean",
-  "implementation": "rag_lab/metrics/recall.py::recall_at_k(k=10)"
+  "implementation": "rag_lab/metrics/recall.py::recall_at_k(k=10)",
+  "validity": {
+    "intended_use": "在 nq-open-eval-v3 上比較檢索設定之間的召回差異，門檻判定用",
+    "evidence_refs": [
+      "docs/evidence/recall-label-audit.md"
+    ],
+    "limitations": [
+      "標籤只在 nq-open-eval-v3 上稽核過，換評估集要重做",
+      "命中判定以片段為單位，不評估生成答案的正確性"
+    ],
+    "threshold_eligible": true
+  }
 }

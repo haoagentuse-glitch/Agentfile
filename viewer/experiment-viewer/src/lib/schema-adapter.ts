@@ -15,6 +15,7 @@ import type {
   CanonicalEstimateComponent,
   CanonicalEstimateInterval,
   CanonicalMetricDefinition,
+  CanonicalMetricValidity,
   CanonicalMetricDiff,
   CanonicalProducer,
   CanonicalRun,
@@ -478,5 +479,20 @@ export function adaptMetricDefinition(
   const aggregation = requireField(raw, "aggregation", sourcePath) as string;
   const implementation = requireField(raw, "implementation", sourcePath) as string;
 
-  return { name, type, direction, aggregation, implementation, sourcePath };
+  return {
+    name, type, direction, aggregation, implementation,
+    validity: adaptMetricValidity(raw.validity),
+    sourcePath,
+  };
+}
+
+function adaptMetricValidity(raw: unknown): CanonicalMetricValidity | undefined {
+  if (raw === null || typeof raw !== "object") return undefined;
+  const validity = raw as Record<string, unknown>;
+  return {
+    intendedUse: validity.intended_use as string | undefined,
+    evidenceRefs: (validity.evidence_refs as string[]) ?? [],
+    limitations: (validity.limitations as string[]) ?? [],
+    thresholdEligible: validity.threshold_eligible as boolean | undefined,
+  };
 }

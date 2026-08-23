@@ -99,6 +99,18 @@ class ProjectSnapshot:
     def metric_defined(self, name: str) -> bool:
         return self.record("metrics", name) is not None
 
+    def metric_threshold_eligible(self, name: str) -> bool:
+        """這個 metric 有沒有資格承載判定門檻。查得到定義、且它自己說 true 才算。
+
+        缺 validity 整塊、或 threshold_eligible 不是 true，一律回 false——
+        「還沒驗證過」與「驗證過但不適合當門檻」在這裡是同一件事：不能掛門檻。
+        """
+        metric = self.record("metrics", name)
+        if metric is None or not isinstance(metric.data, dict):
+            return False
+        validity = metric.data.get("validity")
+        return isinstance(validity, dict) and validity.get("threshold_eligible") is True
+
     def closure(self, experiment_id: str) -> tuple[Record, ...]:
         """一個 experiment 的全部相關紀錄，含它引用的 metric 定義。
 
