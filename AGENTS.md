@@ -126,6 +126,7 @@ Graphify 職責僅限現行程式碼結構，不得碰 conversation memory、Iss
 跨 session 記憶預設不進版控，細節見[上游 ADR 0001](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0001-memsearch-two-layer-memory.md)、[上游 ADR 0002](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0002-memsearch-memory-not-tracked-by-default.md)。記憶與 `docs/` 資料量差距過大時的檢索反轉問題，記在[上游 architecture.md](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/architecture.md)，不重述。
 
 Retrieval scope 依 active profile 隔離：`memsearch search` 該不該帶 `--source-prefix records/`，由呼叫的 skill 依自己所屬 profile 決定，見各 skill 的 SKILL.md；`records/` 底下的內容不因為存在，就在不相關的 profile 裡被檢索到。
+
 ## Software Profile
 
 追加於 `core/AGENTS.md` 之後，只講軟體工程專案的特化規則，不改寫上游條文。
@@ -157,3 +158,9 @@ HTTP API 以 `openapi.yaml` 為唯一來源，models 與契約測試由其生成
 
 - 契約測試只驗證實作符合 spec；業務行為與 regression 由手寫測試負責。契約全綠不代表行為正確。
 - CI 必須重跑生成並確認零差異。有差異就修 spec 或重新生成，不得改產物。
+
+## agentfile 本體維護
+
+這一節在受管前綴之外，不投影到任何下游。只治理本包自己的規則寫在這裡。寫進 `core/` 或 `profiles/` 的規則會出現在每個套用這包的專案裡，下游不負責維護本包。
+
+**規則會過期。** 新增規則的門檻是反覆失敗的證據，移除的判準對稱：原始失敗條件不再重現時就降級或刪除，不因為「當初有理由」而保留。分兩類處理——**方法論**是本包的意圖，長期保留；**補丁**補的是特定模型或 runtime 的弱點，模型大版本更新或 runtime 能力明顯改變時重驗一次，說不出現在還會怎麼失敗就刪掉。
