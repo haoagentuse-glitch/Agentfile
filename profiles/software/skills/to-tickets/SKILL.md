@@ -1,86 +1,86 @@
 ---
 name: to-tickets
-description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in one file per ticket locally, or native blocking links on a real tracker.
+description: 把一份計畫、spec 或目前的對話拆成一組曳光彈式 ticket，每張都宣告它的阻塞邊，並發布到設定好的追蹤系統——本地是一張 ticket 一個檔、阻塞邊寫成文字，真的追蹤系統上則用原生的阻塞關聯。
 disable-model-invocation: true
 metadata:
-  source: mattpocock/skills@84fdeffd12f2ee307994d1eb6feb48173b6e0502
+  source: mattpocock/skills@84fdeffd12f2ee307994d1eb6feb48173b6e0502（改寫成中文，非逐字保留）
   license: MIT
 ---
 
-# To Tickets
+# 拆成 ticket
 
-Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
+把一份計畫、spec 或對話拆成一組 **ticket**——曳光彈式的縱向切片，每張都宣告有哪些 ticket **阻塞**它。
 
-The issue tracker is configured in `docs/agents/issue-tracker.md`, delivered by this pack. The only triage label in use is `ready-for-agent`.
+issue 追蹤系統設定在 `docs/agents/issue-tracker.md`，由這包投影過去。唯一在用的分流 label 是 `ready-for-agent`。
 
-## Process
+## 流程
 
-### 1. Gather context
+### 1. 收集脈絡
 
-Work from whatever is already in the conversation context. If the user passes a reference (a spec path, an issue number or URL) as an argument, fetch it and read its full body and comments.
+用對話脈絡裡已經有的東西。使用者以參數傳了一個引用（spec 路徑、issue 編號或網址），就取回它，讀完整內文與留言。
 
-### 2. Explore the codebase (optional)
+### 2. 探索程式碼（選用）
 
-If you have not already explored the codebase, do so to understand the current state of the code. Ticket titles and descriptions should use the project's domain glossary vocabulary, and respect ADRs in the area you're touching.
+還沒探索過程式碼的話就探索一次，弄清楚目前的狀態。ticket 的標題與描述要用專案領域詞彙表的用詞，並遵守你動到的區域的 ADR。
 
-Look for opportunities to prefactor the code to make the implementation easier. "Make the change easy, then make the easy change."
+順便找找有沒有可以先重整（prefactor）的地方，讓後面的實作更好做。「先讓改動變容易，再做那個容易的改動。」
 
-### 3. Draft vertical slices
+### 3. 草擬縱向切片
 
-Break the work into **tracer bullet** tickets.
+把工作拆成**曳光彈**式的 ticket。
 
 <vertical-slice-rules>
 
-- Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests) — vertical, NOT a horizontal slice of one layer
-- A completed slice is demoable or verifiable on its own
-- Each slice is sized to fit in a single fresh context window
-- Any prefactoring should be done first
+- 每個切片切出一條窄但**完整**、貫穿每一層（schema、API、UI、測試）的路徑——縱向，**不是**單一層的橫向切片
+- 完成的切片本身可以示範或驗證
+- 每個切片的大小要塞得進一個全新的脈絡視窗
+- 需要先重整的部分先做
 
 </vertical-slice-rules>
 
-Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
+給每張 ticket 它的**阻塞邊**——必須先完成、它才能開始的其他 ticket。沒有阻塞者的 ticket 可以馬上開始。
 
-**Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket — green is promised only there.
+**大範圍重構是縱向切片的例外。** **大範圍重構**是一個機械式的改動——改欄位名、改共用符號的型別——它的**波及半徑**橫掃整個程式碼庫，一次編輯就打壞上千個呼叫點，沒有任何縱向切片能綠著落地。不要硬塞成曳光彈；照 **expand–contract** 排序。先 expand：在舊形式旁邊加上新形式，什麼都不會壞。再依波及半徑分批遷移呼叫點（一個套件一批、一個目錄一批），每批各一張 ticket、都被 expand 阻塞，因為舊形式還在，所以批與批之間 CI 都是綠的。最後 contract：沒有呼叫者之後刪掉舊形式，這張 ticket 被每一批遷移阻塞。連分批都無法各自維持綠燈時，順序照舊，但讓它們共用一個整合分支，並讓它們全部阻塞最後一張「整合並驗證」的 ticket——綠燈只在那裡才承諾。
 
-### 4. Quiz the user
+### 4. 拿去問使用者
 
-Present the proposed breakdown as a numbered list. For each ticket, show:
+把提議的拆法列成編號清單。每張 ticket 顯示：
 
-- **Title**: short descriptive name
-- **Blocked by**: which other tickets (if any) must complete first
-- **What it delivers**: the end-to-end behaviour this ticket makes work
+- **標題**：簡短的描述性名稱
+- **被誰阻塞**：哪些 ticket（如果有）必須先完成
+- **它交付什麼**：這張 ticket 讓哪一段端到端的行為能動
 
-Ask the user:
+問使用者：
 
-- Does the granularity feel right? (too coarse / too fine)
-- Are the blocking edges correct — does each ticket only depend on tickets that genuinely gate it?
-- Should any tickets be merged or split further?
+- 顆粒度對嗎？（太粗／太細）
+- 阻塞邊對嗎——每張 ticket 是不是只依賴真正卡住它的那些？
+- 有沒有哪些 ticket 該合併或再拆開？
 
-Iterate until the user approves the breakdown.
+反覆修到使用者同意這個拆法。
 
-### 5. Publish the tickets to the configured tracker
+### 5. 把 ticket 發布到設定好的追蹤系統
 
-Publish the approved tickets. **How** depends on the tracker in `docs/agents/issue-tracker.md` — the tickets are the same either way, only the shape of the blocking edges changes:
+把通過的 ticket 發布出去。**怎麼發**取決於 `docs/agents/issue-tracker.md` 裡設定的追蹤系統——ticket 本身兩邊一樣，只有阻塞邊的形式不同：
 
-- **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
-- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
+- **本地檔案** → 一張 ticket 一個檔，寫在 `.scratch/<feature-slug>/issues/<NN>-<slug>.md`，依相依順序從 `01` 編號（阻塞者在前）。每個檔的「被誰阻塞」列出它依賴的編號或標題。用下面的單張 ticket 樣板——一個檔一張 ticket，絕不合併成單一檔案。
+- **真的 issue 追蹤系統（GitHub、Linear 等等）** → 依相依順序（阻塞者在前）一張 ticket 發一個 issue，這樣每張的阻塞邊才引用得到真實識別碼。平台有原生的阻塞或子議題關聯就用它；沒有的話，把每張 ticket 的「被誰阻塞」設成那些阻塞的 issue。除非另有指示，貼上 `ready-for-agent` 分流 label——這些 ticket 本來就是設計成 agent 可以直接認領的。
 
-Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
+沿著**前緣**推進：所有阻塞者都完成的 ticket。純線性的鏈就是從上往下做。
 
-Do NOT close or modify any parent issue.
+**不要**關閉或修改任何父議題。
 
 <local-ticket-template>
 
-# <NN> — <Ticket title>
+# <NN> — <ticket 標題>
 
-**What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective — not a layer-by-layer implementation list.
+**要做什麼：** 這張 ticket 讓哪一段端到端的行為能動，用使用者的視角寫——不是逐層的實作清單。
 
-**Blocked by:** the numbers/titles of the tickets that gate this one, or "None — can start immediately".
+**被誰阻塞：** 卡住這張的 ticket 編號或標題，或「無——可立即開始」。
 
-**Status:** ready-for-agent
+**狀態：** ready-for-agent
 
-- [ ] Acceptance criterion 1
-- [ ] Acceptance criterion 2
+- [ ] 驗收條件 1
+- [ ] 驗收條件 2
 
 </local-ticket-template>
 
@@ -88,21 +88,21 @@ Do NOT close or modify any parent issue.
 
 ## Parent
 
-A reference to the parent issue on the tracker (if the source was an existing issue, otherwise omit this section).
+指向追蹤系統上父議題的引用（來源本來就是既有 issue 時才寫，否則整節省略）。
 
 ## What to build
 
-The end-to-end behaviour this ticket makes work, from the user's perspective — not layer-by-layer implementation.
+這張 ticket 讓哪一段端到端的行為能動，用使用者的視角寫——不是逐層的實作。
 
 ## Acceptance criteria
 
-- [ ] Criterion 1
-- [ ] Criterion 2
+- [ ] 條件 1
+- [ ] 條件 2
 
 ## Blocked by
 
-- A reference to each blocking ticket, or "None — can start immediately".
+- 每個阻塞 ticket 的引用，或「無——可立即開始」。
 
 </issue-template>
 
-In either form, avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+兩種形式都一樣：避免寫具體的檔案路徑或程式碼片段——它們很快就過期。例外：某個原型產出的片段比散文更精確地表達了一個決策（狀態機、reducer、schema、型別形狀），就內嵌它，並簡短註明它來自原型。只留決策密度高的部分——不是一個能跑的示範，只要重點。

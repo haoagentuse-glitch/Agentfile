@@ -1,5 +1,5 @@
 interface:
-  display_name: "To Spec"
-  short_description: "Turn a conversation into a spec"
+  display_name: "產出 spec"
+  short_description: "把對話整合成 spec 並發布"
 policy:
   allow_implicit_invocation: false

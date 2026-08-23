@@ -1,18 +1,18 @@
 ---
 name: implement
-description: "Implement a piece of work based on a spec or set of tickets."
+description: "依 spec 或一組 ticket 實作一段工作。"
 disable-model-invocation: true
 metadata:
-  source: mattpocock/skills@84fdeffd12f2ee307994d1eb6feb48173b6e0502
+  source: mattpocock/skills@84fdeffd12f2ee307994d1eb6feb48173b6e0502（改寫成中文，非逐字保留）
   license: MIT
 ---
 
-Implement the work described by the user in the spec or tickets.
+實作使用者在 spec 或 ticket 裡描述的那段工作。
 
-Use /tdd where possible, at pre-agreed seams.
+能用 /tdd 的地方就用，並且只在事先講好的 seam 上測。
 
-Run typechecking regularly, single test files regularly, and the full test suite once at the end.
+型別檢查要常跑，單一測試檔要常跑，完整測試套件在最後跑一次。
 
-Once done, use /code-review to review the work.
+做完之後用 /code-review 審查這段工作。
 
-Commit your work to the current branch.
+把工作 commit 到目前的分支。

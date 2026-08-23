@@ -1,60 +1,60 @@
-# CONTEXT.md Format
+# CONTEXT.md 格式
 
-## Structure
+## 結構
 
 ```md
-# {Context Name}
+# {Context 名稱}
 
-{One or two sentence description of what this context is and why it exists.}
+{一到兩句，說明這個 context 是什麼、為什麼存在。}
 
-## Language
+## 語言
 
-**Order**:
-{A one or two sentence description of the term}
-_Avoid_: Purchase, transaction
+**Order**：
+{一到兩句的術語說明}
+_避免_：Purchase、transaction
 
-**Invoice**:
-A request for payment sent to a customer after delivery.
-_Avoid_: Bill, payment request
+**Invoice**：
+交付之後寄給顧客的付款請求。
+_避免_：Bill、payment request
 
-**Customer**:
-A person or organization that places orders.
-_Avoid_: Client, buyer, account
+**Customer**：
+下單的個人或組織。
+_避免_：Client、buyer、account
 ```
 
-## Rules
+## 規則
 
-- **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others under `_Avoid_`.
-- **Keep definitions tight.** One or two sentences max. Define what it IS, not what it does.
-- **Only include terms specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) don't belong even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs.
-- **Group terms under subheadings** when natural clusters emerge. If all terms belong to a single cohesive area, a flat list is fine.
+- **要有立場。** 同一個概念有多種說法時，挑最好的那個，其餘列進 `_避免_`。
+- **定義寫緊。** 最多一到兩句。定義它**是什麼**，不是它做什麼。
+- **只收這個專案 context 特有的術語。** 一般的程式概念（逾時、錯誤型別、工具模式）不屬於這裡，就算專案大量使用也一樣。加一個術語之前先問：這是這個 context 獨有的概念，還是通用的程式概念？只有前者該進來。
+- **自然形成群組時用小標題分組。** 所有術語都屬於同一個連貫領域的話，平鋪的清單就夠了。
 
-## Single vs multi-context repos
+## 單一 context 與多 context 的 repo
 
-**Single context (most repos):** One `CONTEXT.md` at the repo root.
+**單一 context（多數 repo）：** repo 根目錄一份 `CONTEXT.md`。
 
-**Multiple contexts:** A `CONTEXT-MAP.md` at the repo root lists the contexts, where they live, and how they relate to each other:
+**多個 context：** repo 根目錄的 `CONTEXT-MAP.md` 列出有哪些 context、各自放在哪、彼此怎麼關聯：
 
 ```md
 # Context Map
 
 ## Contexts
 
-- [Ordering](./src/ordering/CONTEXT.md) — receives and tracks customer orders
-- [Billing](./src/billing/CONTEXT.md) — generates invoices and processes payments
-- [Fulfillment](./src/fulfillment/CONTEXT.md) — manages warehouse picking and shipping
+- [Ordering](./src/ordering/CONTEXT.md) — 接收並追蹤顧客訂單
+- [Billing](./src/billing/CONTEXT.md) — 產生發票與處理付款
+- [Fulfillment](./src/fulfillment/CONTEXT.md) — 管理倉庫揀貨與出貨
 
 ## Relationships
 
-- **Ordering → Fulfillment**: Ordering emits `OrderPlaced` events; Fulfillment consumes them to start picking
-- **Fulfillment → Billing**: Fulfillment emits `ShipmentDispatched` events; Billing consumes them to generate invoices
-- **Ordering ↔ Billing**: Shared types for `CustomerId` and `Money`
+- **Ordering → Fulfillment**：Ordering 發出 `OrderPlaced` 事件；Fulfillment 消費它開始揀貨
+- **Fulfillment → Billing**：Fulfillment 發出 `ShipmentDispatched` 事件；Billing 消費它產生發票
+- **Ordering ↔ Billing**：共用 `CustomerId` 與 `Money` 型別
 ```
 
-The skill infers which structure applies:
+技能自己推斷適用哪一種結構：
 
-- If `CONTEXT-MAP.md` exists, read it to find contexts
-- If only a root `CONTEXT.md` exists, single context
-- If neither exists, create a root `CONTEXT.md` lazily when the first term is resolved
+- 有 `CONTEXT-MAP.md` 就讀它找出各個 context
+- 只有根目錄的 `CONTEXT.md` 就是單一 context
+- 兩個都沒有，就在第一個術語定案時才建根目錄的 `CONTEXT.md`
 
-When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.
+有多個 context 時，推斷目前的主題屬於哪一個。判斷不出來就問。

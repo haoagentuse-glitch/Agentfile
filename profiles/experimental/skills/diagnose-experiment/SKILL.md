@@ -1,24 +1,23 @@
 ---
 name: diagnose-experiment
 description: >
-  Use when an experiment run fails, diverges, produces weird metrics, hangs,
-  crashes, or behaves unexpectedly — before attempting any fix. Enforces
-  probe → hypothesis → smoke → controls → claim, in that order. Covers RAG,
-  agent architectures, ML/DL, simulation, retrieval/ranking, optimization,
-  and algorithm comparison, not just training runs. Triggers on "why is this
-  failing", "debug this run", "diagnose", "the metric looks wrong".
+  用於實驗跑失敗、發散、指標怪怪的、卡住、崩潰或行為不如預期時——在動手修之前。
+  它強制 probe → hypothesis → smoke → controls → claim 這個順序。涵蓋 RAG、
+  agent 架構、機器學習與深度學習、模擬、檢索與排序、最佳化與演算法比較，
+  不限於訓練。觸發語包括「為什麼會失敗」、「診斷這個 run」、「指標看起來不對」，
+  以及 debug this run、diagnose。
 metadata:
   source: fcakyon/phd-skills@8d642d3e114ee1d1e4d000f918d71e9bf0453dc2 的 debug skill
-    （adapted，not verbatim——probe→hypothesis→smoke→controls→claim 五步紀律、
+    （裁切改編後改寫成中文——probe→hypothesis→smoke→controls→claim 五步紀律、
     「先蒐證再猜」的核心主張、輸出格式整段保留；Step 1 的探測清單跟 Step 3/4
     的對照表原本只寫 ML 訓練，改寫成涵蓋 RAG／agent 架構／模擬／最佳化與演算法
-    比較的 failure taxonomy，見 ADR 0011）
+    比較的失敗分類，見 ADR 0011）
   license: MIT
 ---
 
-# Diagnose Experiment
+# 實驗診斷
 
-最貴的錯誤是憑「聽起來合理」斷言原因，然後動手「修」一個掩蓋症狀而非解決根因的東西。這個技能強制 `探測 → 假設 → smoke 驗證 → 控制變因 → 下結論` 這五步紀律，順序不能跳。規則 6 講的就是這個：結果不好時先診斷，不得直接 optimize。
+最貴的錯誤是憑「聽起來合理」斷言原因，然後動手「修」一個掩蓋症狀而非解決根因的東西。這個技能強制 `探測 → 假設 → smoke 驗證 → 控制變因 → 下結論` 這五步紀律，順序不能跳。規則 6 講的就是這個：結果不好時先診斷，不得直接調參最佳化。
 
 ## 什麼時候用
 

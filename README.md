@@ -159,13 +159,13 @@ uv run pytest tests/test_apply.py
 
 ## 第三方
 
-vendored skill 逐字保留上游內文，只注入來源 metadata；每份的 frontmatter 記著來源 commit。不自動同步，更新時手動比對上游後再決定是否採納：
+vendored skill 改寫成中文，規則不增不減；每份的 frontmatter 記著來源 commit 與改寫狀態。不自動同步，更新時比對上游自己的兩個 commit——`metadata.source` 記的那個與現在的上游——看那段期間改了什麼再決定採不採納：
 
 ```bash
-diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/tdd/SKILL.md) profiles/software/skills/tdd/SKILL.md
+diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/84fdeffd12f2ee307994d1eb6feb48173b6e0502/skills/engineering/tdd/SKILL.md) <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/tdd/SKILL.md)
 ```
 
-- [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）— 逐字保留
-- [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT）— 裁切改編，改了哪些段落見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)
+- [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）— 改寫成中文，理由見 [ADR 0020](docs/adr/0020-vendored-skills-in-chinese.md)
+- [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT）— 裁切改編後改寫成中文，改了哪些段落見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)
 
 其餘 skill 為本包自寫。授權全文見 [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md)。
