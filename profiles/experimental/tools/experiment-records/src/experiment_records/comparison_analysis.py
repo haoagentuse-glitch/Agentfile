@@ -72,7 +72,9 @@ def joint_cluster_bootstrap(
     grouped: dict[str, dict[str, list[float]]] = {}
     for row in rows:
         grouped.setdefault(str(row["cluster"]), {}).setdefault(str(row["component"]), []).append(float(row["value"]))
-    clusters = sorted(grouped)
+    # 兩個 component 都沒有觀測值的 cluster 不進重抽池——它對這個對比沒有資訊，
+    # 但留著會改變抽樣單位數，讓同一批資料在上下游算出不同的區間。
+    clusters = sorted(c for c, kinds in grouped.items() if component_a in kinds or component_b in kinds)
     if len(clusters) < 2:
         raise ValueError("joint_cluster_bootstrap 至少需要兩個 cluster")
 

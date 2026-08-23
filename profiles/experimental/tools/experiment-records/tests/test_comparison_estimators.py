@@ -128,6 +128,52 @@ def test_interval_inside_equivalence_margin_is_equivalent() -> None:
     assert decision["reason_codes"] == ["interval_inside_margin"]
 
 
+def test_joint_cluster_bootstrap_matches_the_downstream_golden_vector() -> None:
+    """跟下游 frus-agentic-rag_v2 的 `experiment_records/contrasts.py` 逐位元相同。
+
+    期望值由下游實作對同一組輸入、同一個 seed 與同樣的 replicates 實跑產生。
+    上游移植的目的就是取代下游那份本地新增；數字只要有任何一位不同，
+    兩邊對同一批資料就會給出不同的區間，移植即失敗。因此這裡用 `==`，不用近似比較。
+    """
+    spec = []
+    for i in range(8):
+        spec.append(("topic", f"v{i}", 0.05 * i - 0.10))
+        spec.append(("topic", f"v{i}", 0.05 * i + 0.02))
+        spec.append(("exact", f"v{i}", 0.01 * i + 0.04))
+    rows = [{"cluster": cluster, "component": kind, "value": value} for kind, cluster, value in spec]
+
+    result = joint_cluster_bootstrap(
+        rows, "topic", "exact", replicates=500, seed=1729, confidence_level=0.95
+    )
+
+    assert result["point_estimate"] == 0.06000000000000001
+    assert result["interval"] == {"lower": 6.938893903907228e-18, "upper": 0.12000000000000001}
+    assert result["components"]["topic"] == {
+        "point_estimate": 0.135,
+        "interval": {"lower": 0.06000000000000001, "upper": 0.21000000000000002},
+    }
+    assert result["components"]["exact"] == {
+        "point_estimate": 0.075,
+        "interval": {"lower": 0.060000000000000005, "upper": 0.09},
+    }
+    assert result["clusters"] == 8
+    assert result["observations"] == 24
+    assert result["skipped_replicates"] == 0
+
+
+def test_clusters_without_either_component_stay_out_of_the_resampling_pool() -> None:
+    """空 cluster 進池會改變抽樣單位數，同一批資料就會算出不同的區間。"""
+    rows = [{"cluster": f"v{i}", "component": "topic", "value": float(i)} for i in range(4)]
+    rows += [{"cluster": f"v{i}", "component": "exact", "value": float(i) + 1.0} for i in range(4)]
+    rows += [{"cluster": "v9", "component": "unused", "value": 99.0}]
+
+    result = joint_cluster_bootstrap(
+        rows, "topic", "exact", replicates=200, seed=7, confidence_level=0.95
+    )
+
+    assert result["clusters"] == 4
+
+
 def test_estimator_pointing_at_another_estimand_cannot_conclude_equivalence() -> None:
     rule = {
         "id": "decision.eq",
