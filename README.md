@@ -166,7 +166,6 @@ diff <(curl -sS https://raw.githubusercontent.com/mattpocock/skills/main/skills/
 ```
 
 - [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）— 逐字保留
-- [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd)（MIT）— 逐字保留，手動輸入 `/i-have-adhd` 啟用
 - [fcakyon/phd-skills](https://github.com/fcakyon/phd-skills)（MIT）— 裁切改編，改了哪些段落見 [ADR 0006](docs/adr/0006-experimental-profile-upstream-evaluation.md)
 
 其餘 skill 為本包自寫。授權全文見 [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md)。
