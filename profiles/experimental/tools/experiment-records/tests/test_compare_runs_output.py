@@ -207,9 +207,7 @@ def test_diagnostic_stage_computes_numbers_but_is_not_formal_evidence(scenario) 
     assert any("diagnostic" in reason for reason in written["evidence_reasons"])
 
 
-def test_bootstrap_estimand_without_row_data_says_why_there_is_no_estimate(scenario) -> None:
-    """run envelope 只有彙總指標，重抽 cluster 需要逐筆資料。缺輸入不估計，但不得靜默略過。"""
-    project = scenario({"dataset": "corpus-a", "model": "embed-v1", "top_k": 10, "seed": 42})
+def _freeze_bootstrap_estimator(project: Path) -> None:
     path = project / "records" / "experiments" / "definitions" / "smoke-exp.json"
     contract = json.loads(path.read_text(encoding="utf-8"))
     contract["analysis_plan"]["estimators"] = [{
@@ -217,20 +215,89 @@ def test_bootstrap_estimand_without_row_data_says_why_there_is_no_estimate(scena
         "estimand_ref": "effect.primary",
         "type": "joint_cluster_bootstrap",
         "method_ref": "joint-cluster-bootstrap@1",
-        "component_a": "baseline",
-        "component_b": "treatment",
+        "component_a": "topic",
+        "component_b": "exact",
         "uncertainty": {
             "confidence_level": 0.95,
             "interval_method": "percentile",
             "resampling_unit": "query_id",
-            "replicates": 1000,
+            "replicates": 500,
             "seed": 1729,
             "method_reference": "https://doi.org/10.1111/j.1467-9868.2007.00593.x",
         },
     }]
     _write(path, contract)
 
+
+def _write_per_question(project: Path, run_id: str, offset: float) -> str:
+    """逐筆結果 JSONL：8 個 cluster，兩個分層，每題一列。"""
+    ref = f"records/experiments/per-question/{run_id}.jsonl"
+    path = project / ref
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for i in range(8):
+        lines.append({"case_id": f"topic-{i}", "cluster": f"v{i}", "component": "topic", "value": 0.5 + 0.05 * i + offset})
+        lines.append({"case_id": f"exact-{i}", "cluster": f"v{i}", "component": "exact", "value": 0.6 + 0.01 * i + offset * 0.5})
+    path.write_text("\n".join(json.dumps(line, ensure_ascii=False) for line in lines) + "\n", encoding="utf-8")
+    return ref
+
+
+def _attach_per_question(project: Path) -> None:
+    for run_id, offset in (("smoke-baseline", 0.0), ("smoke-treatment", 0.08)):
+        ref = _write_per_question(project, run_id, offset)
+        run_path = project / "records" / "experiments" / "runs" / f"{run_id}.json"
+        run = json.loads(run_path.read_text(encoding="utf-8"))
+        run["per_question_ref"] = ref
+        run["per_question_metric"] = "recall_at_10"
+        _write(run_path, run)
+
+
+def test_bootstrap_estimand_without_row_data_says_why_there_is_no_estimate(scenario) -> None:
+    """run envelope 只有彙總指標，重抽 cluster 需要逐筆資料。缺輸入不估計，但不得靜默略過。"""
+    project = scenario({"dataset": "corpus-a", "model": "embed-v1", "top_k": 10, "seed": 42})
+    _freeze_bootstrap_estimator(project)
+
     _, written = _compare(project)
 
     assert written["estimates"] == []
-    assert any("joint_cluster_bootstrap" in note for note in written["notes"])
+    assert any("per_question_ref" in note for note in written["notes"])
+
+
+def test_bootstrap_estimand_with_row_data_persists_interval_and_decision(scenario) -> None:
+    """有逐筆資料就走凍結的重抽設定，區間與判定一起寫進紀錄。"""
+    project = scenario({"dataset": "corpus-a", "model": "embed-v1", "top_k": 10, "seed": 42})
+    _freeze_bootstrap_estimator(project)
+    _attach_per_question(project)
+
+    compare, written = _compare(project)
+
+    assert compare.returncode == 0, compare.stdout + compare.stderr
+    [estimate] = written["estimates"]
+    assert estimate["estimand_id"] == "effect.primary"
+    assert estimate["method_ref"] == "joint-cluster-bootstrap@1"
+    assert estimate["interval"]["confidence_level"] == 0.95
+    assert estimate["interval"]["method"] == "percentile"
+    assert estimate["interval"]["lower"] <= estimate["point_estimate"] <= estimate["interval"]["upper"]
+    assert estimate["sample_size"] == {"observations": 16, "clusters": 8}
+    assert {item["id"] for item in estimate["component_estimates"]} == {"topic", "exact"}
+    # 區間完全在 null value 之上，才判 superior；這組資料就是這種情況。
+    assert estimate["decision"]["conclusion"] == "superior"
+    assert estimate["decision"]["reason_codes"] == ["interval_above_null"]
+
+    validate = run_cli("validate", str(project))
+    assert validate.returncode == 0, validate.stdout + validate.stderr
+
+
+def test_mismatched_case_sets_block_the_estimate_instead_of_dropping_rows(scenario) -> None:
+    """少一題就不是配對比較。缺題不得被靜默丟掉。"""
+    project = scenario({"dataset": "corpus-a", "model": "embed-v1", "top_k": 10, "seed": 42})
+    _freeze_bootstrap_estimator(project)
+    _attach_per_question(project)
+    path = project / "records" / "experiments" / "per-question" / "smoke-treatment.jsonl"
+    kept = path.read_text(encoding="utf-8").splitlines()[:-1]
+    path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+
+    _, written = _compare(project)
+
+    assert written["estimates"] == []
+    assert any("題目集合不一致" in note for note in written["notes"])

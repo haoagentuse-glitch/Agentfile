@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import random
+from pathlib import Path
 from typing import Any
 
 
@@ -51,6 +53,44 @@ def evaluate_decision(
         case unexpected:
             raise ValueError(f"不支援的 decision rule：{unexpected!r}")
     return {"rule_id": rule["id"], "conclusion": conclusion, "reason_codes": reasons}
+
+
+def _load_per_question(path: Path) -> dict[str, dict[str, Any]]:
+    """逐筆結果 JSONL，以 case_id 為鍵。每列需要 case_id、cluster、component、value。"""
+    rows: dict[str, dict[str, Any]] = {}
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            rows[row["case_id"]] = row
+    return rows
+
+
+def load_paired_rows(baseline_path: Path, treatment_path: Path) -> list[dict[str, Any]]:
+    """兩個 run 的逐筆結果配對成差分列。
+
+    少一題就不是配對比較；component 或 cluster 兩邊不同代表評估集被換過，
+    算出來的效應會把組成差異混進去。這三種情況都直接失敗，不補值也不略過。
+    """
+    baseline = _load_per_question(baseline_path)
+    treatment = _load_per_question(treatment_path)
+    if set(baseline) != set(treatment):
+        raise ValueError(
+            f"逐筆結果的題目集合不一致：只在 baseline 的 {len(set(baseline) - set(treatment))} 題，"
+            f"只在 treatment 的 {len(set(treatment) - set(baseline))} 題"
+        )
+    rows: list[dict[str, Any]] = []
+    for case_id in sorted(baseline):
+        b, t = baseline[case_id], treatment[case_id]
+        for field in ("component", "cluster"):
+            if b[field] != t[field]:
+                raise ValueError(f"{case_id} 的 {field} 兩邊不同：{b[field]!r} vs {t[field]!r}")
+        rows.append(
+            {"cluster": b["cluster"], "component": b["component"], "value": t["value"] - b["value"]}
+        )
+    return rows
 
 
 def _percentile(values: list[float], alpha: float) -> tuple[float, float]:
