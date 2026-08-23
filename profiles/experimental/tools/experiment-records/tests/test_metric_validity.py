@@ -72,23 +72,8 @@ def test_unvalidated_metric_is_a_legal_record(project: Path) -> None:
     assert _errors(project, "metric-definition.schema.json", honest) == []
 
 
-def test_primary_metric_must_be_threshold_eligible(project: Path) -> None:
-    """判定門檻掛在 primary metric 上，所以它必須有資格承載門檻。"""
-    _project_with_evidence(project)
-    write_record(project, "metrics", "recall_at_10", valid_metric(validity={
-        "threshold_eligible": False,
-        "limitations": ["標籤誤差率未量化"],
-    }))
-    write_record(project, "definitions", "demo-exp", valid_definition())
-
-    result = run_cli("validate", str(project))
-
-    assert result.returncode == 1
-    assert "threshold_eligible" in result.stdout
-    assert "primary_metric" in result.stdout
-
-
-def test_primary_metric_with_eligible_validity_passes(project: Path) -> None:
+def test_validated_metric_passes_every_rule_shape(project: Path) -> None:
+    """有資格的指標在哪一種規則下都通過。"""
     _project_with_evidence(project)
     write_record(project, "metrics", "recall_at_10", valid_metric(validity=_eligible_validity()))
     write_record(project, "definitions", "demo-exp", valid_definition())
@@ -208,3 +193,60 @@ def test_recorded_feasibility_check_survives_the_contract_hash(project: Path) ->
 
     assert result.returncode == 1
     assert before in result.stdout
+
+
+# --- 門檻資格只要求在「拿數字跟一條線比」的地方 --------------------------------
+
+
+def test_interval_against_zero_does_not_require_threshold_eligibility(project: Path) -> None:
+    """區間對 0 的判定自己帶著不確定性：儀器越吵，區間越寬，結論就越判不出來。
+
+    這種規則不需要事先量出可偵測差距——真正需要的是「拿點估計跟一條非零的線比」
+    的地方，那裡量測誤差會直接翻轉判定。
+    """
+    _project_with_evidence(project)
+    write_record(project, "metrics", "recall_at_10", _unvalidated_metric("recall_at_10"))
+    write_record(project, "definitions", "demo-exp", valid_definition())
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_non_zero_null_value_requires_threshold_eligibility(project: Path) -> None:
+    """null value 不是 0，就是在宣告一個最小有意義差距，那需要量測誤差撐得住。"""
+    _project_with_evidence(project)
+    write_record(project, "metrics", "recall_at_10", _unvalidated_metric("recall_at_10"))
+    plan = valid_definition()["analysis_plan"]
+    plan["decision_rules"] = [{
+        "id": "decision.primary", "estimand_ref": "effect.primary",
+        "type": "superiority", "null_value": 0.05,
+    }]
+    write_record(project, "definitions", "demo-exp", valid_definition(analysis_plan=plan))
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "threshold_eligible" in result.stdout
+    assert "decision.primary" in result.stdout
+
+
+def test_equivalence_margin_requires_threshold_eligibility(project: Path) -> None:
+    """等價 margin 是最典型的門檻：誤差比 margin 大，判定就沒有意義。"""
+    _project_with_evidence(project)
+    write_record(project, "metrics", "recall_at_10", _unvalidated_metric("recall_at_10"))
+    plan = valid_definition()["analysis_plan"]
+    plan["decision_rules"] = [{
+        "id": "decision.primary", "estimand_ref": "effect.primary", "type": "equivalence",
+        "equivalence_margin": {
+            "lower": -0.05, "upper": 0.05, "scale": "raw",
+            "interval_confidence_level": 0.95, "interval_method": "percentile",
+            "boundary": "exclusive",
+        },
+    }]
+    write_record(project, "definitions", "demo-exp", valid_definition(analysis_plan=plan))
+
+    result = run_cli("validate", str(project))
+
+    assert result.returncode == 1
+    assert "threshold_eligible" in result.stdout

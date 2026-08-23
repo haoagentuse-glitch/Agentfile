@@ -21,12 +21,17 @@
 
 `threshold_eligible: true` 時必須有 `intended_use` 與至少一個 `evidence_refs`。沒有證據就宣稱可承載門檻，正是這次要擋的事。
 
-### 門檻只能掛在有資格的指標上
+### 門檻資格只要求在「拿數字跟一條線比」的地方
 
-兩條機械規則：
+需要門檻資格的是這三種位置：
 
-- Contract 的 `primary_metric` 引用的指標必須 `validity.threshold_eligible` 為 true。
-- `compute_cascade` 的 `promotion`／`abort` 規則引用的指標必須 `validity.threshold_eligible` 為 true。
+- `compute_cascade` 的 `promotion`／`abort` 規則——它們拿點估計跟一個固定數字比。
+- `decision_rules` 的 `equivalence_margin`——margin 就是那條線。
+- `decision_rules` 的 `superiority`，且 `null_value` 不是 0——非零的 null value 是在宣告一個最小有意義差距。
+
+**區間對 0 的判定不在此列。** 儀器越吵，區間越寬，結論就越判不出來——不確定性由區間自己承擔，不需要事先量出可偵測差距。要求它反而會逼人在沒有 MDE 的情況下簽一個空的 `threshold_eligible: true`，那比不檢查更糟。
+
+`primary_metric` 本身不觸發這個要求。它需不需要資格，取決於掛在它上面的是哪一種規則——ADR 0018 之後 `analysis_plan` 已經把規則結構化了，可以直接判，不必再拿 `primary_metric` 當代理。
 
 `secondary_metrics` 不受限——次要指標本來就是觀察用的，不承載判定。
 
@@ -43,6 +48,14 @@ validator 只檢查已宣告的檢查完不完整、`evidence_ref` 解不解析�
 `compare_runs.py` 對 `environment` 的引用次數是 0。描述改成明講「給人看的摘要，不進可比較性判定」，並指出參與判定的環境事實要放進 `config_ref` 的設定快照。
 
 下游已經實測過這條路：把偵測到的環境事實寫成設定快照的頂層鍵之後，CPU 容器與 GPU 環境的差異被既有的未宣告差異偵測抓到。
+
+## 修訂紀錄
+
+**2026-08-23，落地下游前修正。** 最初的規則寫成「`primary_metric` 必須有門檻資格」。拿下游 frus-agentic-rag_v2 的 G3 實驗當第二份 fixture 驗證時，它不成立：G3 的 primary metric 是分層效應的差之差，決策規則是「95% 區間排除 0」，而它的指標定義誠實地標著 `threshold_eligible: false`——因為它沒有 `mde_at_n`，也不需要有。
+
+原規則會逼它簽一個沒有內容的 `true`。改成依規則形狀判定之後，兩邊都對：區間對 0 不要求資格，gate 門檻與 equivalence margin 照樣擋。
+
+這是本計畫預先寫下的第三條失敗條件（「成熟標準無法套入第二份不同 fixture 時，不把下游特例升格成上游通用契約」）第一次真的觸發。
 
 ## 拒絕的方案
 
@@ -64,7 +77,7 @@ validator 只檢查已宣告的檢查完不完整、`evidence_ref` 解不解析�
 
 ## 後果
 
-- 現有的指標定義不必遷移，`validity` 是選填。但要當 primary metric 或 gate 門檻的指標必須補上。
+- 現有的指標定義不必遷移，`validity` 是選填。但被 gate 門檻、equivalence margin 或非零 null value 引用的指標必須補上。
 - 下游 frus-agentic-rag_v2 可以把九個本地欄位收斂成這四個，並刪掉對應的 `EXCEPTION:`。收斂會遺失欄位名稱層級的結構（例如 `label_error_rate` 變成 `evidence_refs` 指向的一份文件），這是刻意的取捨：上游只保證跨領域成立的那一層。
 - `experiment-design` 多一個 lock 前步驟。它產出的是紀錄，不是新的閘門。
 - 這四個欄位若在第二份、領域不同的 fixture 上套不進去，代表判斷錯誤，該退回下游特例——這是預先寫下的翻盤條件。
