@@ -28,8 +28,8 @@ exit code 0 = 乾淨，1 = 抓到至少一處。這是提醒用的 lint，不是
 ## 已知不掃的東西（不是漏掃，是刻意排除）
 
 - **`core/.claude/templates/agents/issue-tracker.md`**：GitHub Issue 與 label 的操作樣板，內容幾乎全是 `gh` 指令與 label 名稱，剩下的散文極少，翻了也只是把指令的說明文字改語言。
-
-vendored skill 本體不在排除之列——[ADR 0020](../../../docs/adr/0020-vendored-skills-in-chinese.md) 之後它們都是中文，跟自寫技能一樣要掃。
 - **`.memsearch/memory/`**：memsearch 自己的擷取流程產生的逐字稿摘要，不是這包手寫的文件，不歸這條規則管，也不該手動改——改了下次索引照樣蓋掉。
+
+vendored skill 本體**不**在排除之列。[ADR 0020](../../../docs/adr/0020-vendored-skills-in-chinese.md) 之後它們都是中文，跟自寫技能一樣要掃。
 
 真的要對整個 repo 跑一次，記得把上面這幾類路徑排除，不然會撈到一堆不該修、也修不動的假警報。
