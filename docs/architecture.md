@@ -18,6 +18,8 @@
 
 agentfile 自己的根目錄 `AGENTS.md`／`.gitignore`／`.claude/settings.json`／`.claude/skills` 是手動組裝出跟 `apply.sh --profile software` 相同邏輯的結果——`apply.sh` 拒絕以自己為目標（見 [ADR 0003](adr/0003-apply-copies-not-symlinks-to-dotfiles.md)），所以這四個產物不會自動同步，改了 `core/` 或 `profiles/software/` 底下的來源要記得手動重跑組裝。
 
+四個裡只有 `AGENTS.md` 有測試守著受管前綴（`tests/test_docs.py`）。加這條測試時它已經漂掉一個換行。`AGENTS.md` 與 `.gitignore` 的受管前綴之後都接著本包自己的特化段：`AGENTS.md` 放只治理本包、不該投影下去的維護規則，`.gitignore` 放本機 Windows release 副本。另外兩個沒有漂移紀錄，暫不加測試。
+
 ## 兩條資料流
 
 規範往下走，回饋往上走。兩條路徑的寫入權限不同，不得互相取代。
