@@ -5,5 +5,15 @@
   "numerator": "relevant_docs_in_top_10",
   "denominator": "total_relevant_docs",
   "aggregation": "mean",
-  "implementation": "eval/recall.py:recall_at_k"
+  "implementation": "eval/recall.py:recall_at_k",
+  "validity": {
+    "intended_use": "在 nq-open-eval-v3 上比較檢索設定的召回差異，門檻判定用",
+    "evidence_refs": [
+      "docs/evidence/recall-label-audit.md"
+    ],
+    "limitations": [
+      "標籤只在這個評估集上稽核過"
+    ],
+    "threshold_eligible": true
+  }
 }

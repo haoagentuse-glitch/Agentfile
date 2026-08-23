@@ -663,6 +663,22 @@ def _validate_contract_configs(instance: dict[str, Any], label: str, layout: Pro
         results.append(("警告", f"{label}: controlled_variables 未宣告 random seed"))
     return results
 
+def _compute_cascade_rules(instance: dict[str, Any]) -> list[tuple[int, dict[str, Any], str]]:
+    """攤平 compute_cascade 裡所有帶門檻的規則，附上它在哪一級、是哪一種。"""
+    rules: list[tuple[int, dict[str, Any], str]] = []
+    cascade = instance.get("compute_cascade")
+    if not isinstance(cascade, list):
+        return rules
+    for index, level in enumerate(cascade):
+        if not isinstance(level, dict):
+            continue
+        for kind in ("promotion", "abort"):
+            rule = level.get(kind)
+            if isinstance(rule, dict):
+                rules.append((index, rule, kind))
+    return rules
+
+
 def _validate_contract_metrics(
     instance: dict[str, Any], label: str, snapshot: ProjectSnapshot
 ) -> list[Result]:
@@ -678,6 +694,22 @@ def _validate_contract_metrics(
             "錯誤",
             f"{label}: primary_metric {primary!r} 沒有對應的 metric 定義；"
             "先在 records/experiments/metrics/ 建立它",
+        ))
+    elif isinstance(primary, str) and not snapshot.metric_threshold_eligible(primary):
+        # decision_rule 的門檻掛在 primary metric 上，所以它必須有資格承載門檻。
+        results.append((
+            "錯誤",
+            f"{label}: primary_metric {primary!r} 的 validity.threshold_eligible 不是 true，"
+            "不得承載判定門檻；先補上 intended_use 與 evidence_refs（見 ADR 0021）",
+        ))
+    for index, rule, kind in _compute_cascade_rules(instance):
+        metric = rule.get("metric")
+        if not isinstance(metric, str) or snapshot.metric_threshold_eligible(metric):
+            continue
+        results.append((
+            "錯誤",
+            f"{label}: compute_cascade[{index}].{kind} 的門檻掛在 {metric!r} 上，"
+            "但它的 validity.threshold_eligible 不是 true（見 ADR 0021）",
         ))
     for index, name in enumerate(instance.get("secondary_metrics", [])):
         if isinstance(name, str) and not snapshot.metric_defined(name):

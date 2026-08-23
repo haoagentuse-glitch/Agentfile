@@ -121,6 +121,13 @@ def valid_metric(**overrides: object) -> dict:
         "direction": "higher_is_better",
         "aggregation": "mean",
         "implementation": "demo/metrics.py::recall_at_k(k=10)",
+        # 預設是「驗證過、可承載門檻」，因為多數測試需要一份鎖得起來的 Contract。
+        # 要測「還沒驗證過」的情況，把這一塊 pop 掉或覆寫。
+        "validity": {
+            "intended_use": "在固定評估集上比較檢索設定",
+            "evidence_refs": ["docs/evidence/metric-validity.md"],
+            "threshold_eligible": True,
+        },
     }
     data.update(overrides)
     return data

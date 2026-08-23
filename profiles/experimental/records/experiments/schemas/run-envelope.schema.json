@@ -5,17 +5,39 @@
   "description": "所有 run 共同固定的欄位。experiment type 特有的量測值放 metrics 底下，格式由 metric-definition.schema.json 描述的各個 metric 自行決定。Append-only：跑錯了標 invalid，不刪除、不改寫既有 run。跑失敗也是正式結果，填 failure 區塊，不得用空 metrics 偽裝成功。",
   "type": "object",
   "required": [
-    "run_id", "experiment_id", "experiment_type", "created_at",
-    "config_hash", "schema_version", "status"
+    "run_id",
+    "experiment_id",
+    "experiment_type",
+    "created_at",
+    "config_hash",
+    "schema_version",
+    "status"
   ],
   "properties": {
-    "run_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-    "experiment_id": { "type": "string" },
-    "experiment_type": { "type": "string" },
-    "created_at": { "type": "string", "format": "date-time" },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "experiment_id": {
+      "type": "string"
+    },
+    "experiment_type": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "stage": {
       "type": "string",
-      "enum": ["pilot", "tune", "main", "ablation", "replication", "diagnostic"],
+      "enum": [
+        "pilot",
+        "tune",
+        "main",
+        "ablation",
+        "replication",
+        "diagnostic"
+      ],
       "description": "這次 run 在算力階梯上的位置。分階段是為了讓便宜的測試先排除錯誤與沒希望的方向，不是為了建通用樹狀搜尋"
     },
     "parent_run_id": {
@@ -24,15 +46,25 @@
     },
     "attempt_kind": {
       "type": "string",
-      "enum": ["initial", "retry", "replication", "ablation_variant", "diagnostic_probe"],
+      "enum": [
+        "initial",
+        "retry",
+        "replication",
+        "ablation_variant",
+        "diagnostic_probe"
+      ],
       "description": "相對 parent_run_id 這次是什麼性質的再跑一次"
     },
-    "code_commit": { "type": "string" },
+    "code_commit": {
+      "type": "string"
+    },
     "dirty_worktree": {
       "type": "boolean",
       "description": "true 代表 code_commit 不足以重現這次 run——工作目錄有未提交的變更"
     },
-    "dataset_version": { "type": "string" },
+    "dataset_version": {
+      "type": "string"
+    },
     "config_hash": {
       "type": "string",
       "description": "這次 run 實際用的設定內容 hash，用來偵測跟 Contract 裡的 baseline/treatment config 是否一致"
@@ -46,38 +78,72 @@
       "type": "object",
       "description": "這次 run 實際吃到的資料身分。key 是資料角色——dataset、evaluation_set、corpus_snapshot 是常見角色，其他角色直接加 key，不必為每種資料在最外層開新欄位",
       "properties": {
-        "dataset": { "$ref": "#/$defs/dataIdentity" },
-        "evaluation_set": { "$ref": "#/$defs/dataIdentity" },
-        "corpus_snapshot": { "$ref": "#/$defs/dataIdentity" }
+        "dataset": {
+          "$ref": "#/$defs/dataIdentity"
+        },
+        "evaluation_set": {
+          "$ref": "#/$defs/dataIdentity"
+        },
+        "corpus_snapshot": {
+          "$ref": "#/$defs/dataIdentity"
+        }
       },
-      "additionalProperties": { "$ref": "#/$defs/dataIdentity" }
+      "additionalProperties": {
+        "$ref": "#/$defs/dataIdentity"
+      }
     },
     "components": {
       "type": "object",
       "description": "pipeline 各個可替換零件的身分。key 是角色——retriever、reranker、generator、evaluator、embedding_model、index_build 都是常見角色。prompt 是最常被當成隱藏設定的東西，所以 prompt_id 與 prompt_hash 放在這裡，讓它進得了 config diff",
       "additionalProperties": {
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "version": { "type": "string" },
-          "model": { "type": "string" },
-          "config_hash": { "type": "string" },
-          "prompt_id": { "type": "string" },
-          "prompt_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-          "temperature": { "type": "number", "minimum": 0 },
-          "tool_policy": { "type": "string" }
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "config_hash": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0
+          },
+          "tool_policy": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
     },
     "seed": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "description": "隨機種子。真的沒有種子可固定時填 null，並在 nondeterminism_sources 明列不確定性來源"
     },
     "nondeterminism_sources": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": [],
       "description": "無法由 seed 固定的不確定性來源，例如 API 取樣、平行歸約順序、外部服務版本"
     },
@@ -87,24 +153,44 @@
     },
     "environment": {
       "type": "string",
-      "description": "執行環境摘要，例如 OS、硬體、runtime 版本"
+      "description": "給人看的執行環境摘要，例如 OS、硬體、runtime 版本。它不進可比較性判定——compare-runs 只比對 config_ref 指向的設定快照。參與判定的環境事實（硬體、GPU 有無、tracing 開關）要寫進那份快照，未宣告的差異才會被 confound 偵測抓到。理由見 ADR 0021。"
     },
-    "started_at": { "type": "string", "format": "date-time" },
-    "finished_at": { "type": "string", "format": "date-time" },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "metric_definitions": {
       "type": "object",
       "description": "key 是 metric 名稱，value 是這次 run 計算該 metric 時實際用的 metric-definition 檔案路徑或內容 hash；用來偵測兩個 run 是不是用同一套算法算出同名指標",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
-    "schema_version": { "type": "string" },
+    "schema_version": {
+      "type": "string"
+    },
     "baseline_run": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "指向另一個 run_id；這個 run 本身就是 baseline 則為 null"
     },
-    "treatment": { "type": "string" },
+    "treatment": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
-      "enum": ["pending", "running", "completed", "invalid"]
+      "enum": [
+        "pending",
+        "running",
+        "completed",
+        "invalid"
+      ]
     },
     "invalid_reason": {
       "type": "string",
@@ -113,13 +199,27 @@
     "failure": {
       "type": "object",
       "description": "跑失敗的結構化紀錄。分類與確定性事實分開：class 與 phase 是給後續分析用的具名分類，不是自由敘述",
-      "required": ["class", "phase"],
+      "required": [
+        "class",
+        "phase"
+      ],
       "properties": {
-        "class": { "$ref": "failure-taxonomy.schema.json#/$defs/failureClass" },
-        "phase": { "$ref": "failure-taxonomy.schema.json#/$defs/failurePhase" },
-        "exit_code": { "type": "integer" },
-        "retriable": { "type": "boolean" },
-        "error_artifact": { "type": "string", "format": "project-ref" }
+        "class": {
+          "$ref": "failure-taxonomy.schema.json#/$defs/failureClass"
+        },
+        "phase": {
+          "$ref": "failure-taxonomy.schema.json#/$defs/failurePhase"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "retriable": {
+          "type": "boolean"
+        },
+        "error_artifact": {
+          "type": "string",
+          "format": "project-ref"
+        }
       },
       "additionalProperties": false
     },
@@ -132,12 +232,30 @@
       "type": "object",
       "description": "牆鐘耗時以外的資源消耗。牆鐘時間在 duration_seconds，不在這裡重複一份",
       "properties": {
-        "cpu_seconds": { "type": "number", "minimum": 0 },
-        "gpu_seconds": { "type": "number", "minimum": 0 },
-        "tokens_in": { "type": "integer", "minimum": 0 },
-        "tokens_out": { "type": "integer", "minimum": 0 },
-        "cost_usd": { "type": "number", "minimum": 0 },
-        "samples": { "type": "integer", "minimum": 0 }
+        "cpu_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gpu_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tokens_in": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokens_out": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "samples": {
+          "type": "integer",
+          "minimum": 0
+        }
       },
       "additionalProperties": false
     },
@@ -145,10 +263,22 @@
       "type": "object",
       "description": "這次 run 被授權的上限。超過上限就必須有 abort_reason，不得靜默跑完",
       "properties": {
-        "max_wall_clock_seconds": { "type": "number", "exclusiveMinimum": 0 },
-        "max_samples": { "type": "integer", "exclusiveMinimum": 0 },
-        "max_cost_usd": { "type": "number", "exclusiveMinimum": 0 },
-        "max_tokens": { "type": "integer", "exclusiveMinimum": 0 }
+        "max_wall_clock_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_samples": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "max_cost_usd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_tokens": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        }
       },
       "additionalProperties": false
     },
@@ -169,33 +299,65 @@
       "type": "string",
       "description": "per_question_ref 裡 value 欄位量的是哪個 metric。逐筆結果本身沒有欄位名可以辨識量的是什麼，不寫下來就只能靠檔名猜"
     },
-  "artifacts": {
+    "artifacts": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": []
     },
-    "notes": { "type": "string" }
+    "notes": {
+      "type": "string"
+    }
   },
   "$defs": {
     "dataIdentity": {
       "type": "object",
-      "required": ["id"],
+      "required": [
+        "id"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "hash": { "type": "string" }
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hash": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "status": { "const": "invalid" } }, "required": ["status"] },
-      "then": { "required": ["invalid_reason"] }
+      "if": {
+        "properties": {
+          "status": {
+            "const": "invalid"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "invalid_reason"
+        ]
+      }
     },
     {
-      "if": { "required": ["failure"] },
+      "if": {
+        "required": [
+          "failure"
+        ]
+      },
       "then": {
-        "properties": { "status": { "const": "invalid" } },
+        "properties": {
+          "status": {
+            "const": "invalid"
+          }
+        },
         "description": "有 failure 就不是成功的 run。跑失敗必須反映在 status，不得只藏在 failure 區塊裡"
       }
     }

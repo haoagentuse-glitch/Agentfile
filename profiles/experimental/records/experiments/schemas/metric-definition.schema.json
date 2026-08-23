@@ -24,6 +24,44 @@
     "implementation": {
       "type": "string",
       "description": "程式碼路徑或公式描述，讓 metric 的算法可回溯、可覆核"
+    },
+    "validity": {
+      "type": "object",
+      "description": "這個 metric 被驗證到什麼程度、能用在哪。效度屬於「詮釋與用途」，不屬於量測工具本身——同一個算法用在沒驗證過的用途上，就沒有效度可言。整塊選填：缺它代表還沒驗證過，那是合法狀態，但它就不能當 primary metric，也不能承載 Compute Gate 門檻。設計見 ADR 0021。",
+      "properties": {
+        "intended_use": {
+          "type": "string",
+          "minLength": 1,
+          "description": "這個 metric 被驗證到可以用在哪；不是它算什麼，是它的結果可以支撐哪一種判斷"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string", "format": "project-ref" },
+          "description": "支持 intended_use 的證據位置。標籤稽核、test-retest、儀器確定性量測都放這裡——schema 不規定證據長什麼樣，只要求指得出來"
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "已知會讓這個 metric 失真的情況。「標籤誤差率未量化」寫在這裡是誠實，不寫才是問題"
+        },
+        "threshold_eligible": {
+          "type": "boolean",
+          "description": "能不能拿來承載判定門檻。true 時必須有 intended_use 與至少一個 evidence_refs"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "threshold_eligible": { "const": true } },
+            "required": ["threshold_eligible"]
+          },
+          "then": {
+            "required": ["intended_use", "evidence_refs"],
+            "properties": { "evidence_refs": { "minItems": 1 } }
+          }
+        }
+      ]
     }
   },
   "additionalProperties": false

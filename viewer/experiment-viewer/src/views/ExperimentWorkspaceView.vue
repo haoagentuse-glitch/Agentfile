@@ -90,6 +90,12 @@ const metricDefinitionByName = computed(() => {
   return map;
 });
 
+// 「未宣告」與「明確判定不適合」不是同一件事，UI 要分得出來。
+function thresholdEligibility(metric: CanonicalMetricDefinition): string {
+  if (!metric.validity || metric.validity.thresholdEligible === undefined) return "未宣告";
+  return metric.validity.thresholdEligible ? "可承載門檻" : "不可承載門檻";
+}
+
 // 缺 interval 是合法狀態，照實說「未估計」，不用點估計替代區間。
 function formatInterval(interval: CanonicalEstimateInterval | null): string {
   if (!interval) return "未估計";
@@ -376,15 +382,24 @@ const selectedDiagnosis = ref<CanonicalDiagnosis | null>(null);
     <div v-else-if="activeTab === 'records'" class="tab-panel">
       <h3>相關指標定義</h3>
       <table v-if="relevantMetricDefinitions.length > 0">
-        <thead><tr><th>名稱</th><th>顯示名稱</th><th>類型</th><th>方向</th><th>單位</th><th>彙總方式</th></tr></thead>
+        <thead><tr><th>名稱</th><th>顯示名稱</th><th>類型</th><th>方向</th><th>單位</th><th>彙總方式</th><th>門檻資格</th></tr></thead>
         <tbody>
           <tr v-for="m in relevantMetricDefinitions" :key="m.name">
-            <td>{{ m.name }}</td>
+            <td>
+              {{ m.name }}
+              <p v-if="m.validity?.intendedUse" class="hint">{{ m.validity.intendedUse }}</p>
+            </td>
             <td>{{ m.displayName ?? "—" }}</td>
             <td>{{ m.type }}</td>
             <td>{{ m.direction ?? "（未定義）" }}</td>
             <td>{{ m.unit ?? "—" }}</td>
             <td>{{ m.aggregation }}</td>
+            <td>
+              {{ thresholdEligibility(m) }}
+              <p v-if="m.validity?.limitations?.length" class="hint">
+                {{ m.validity.limitations.join("；") }}
+              </p>
+            </td>
           </tr>
         </tbody>
       </table>

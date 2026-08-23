@@ -30,6 +30,12 @@ def project(tmp_path: Path) -> Path:
     for schema_file in CANONICAL_SCHEMAS.glob("*.json"):
         shutil.copy(schema_file, schemas_dir / schema_file.name)
 
+    # valid_metric() 的 validity.evidence_refs 指到這裡。證據指不到就等於沒有證據，
+    # 所以乾淨專案要先有它，否則每個用到 primary metric 的測試都會卡在 ref 解析。
+    evidence = tmp_path / "docs" / "evidence" / "metric-validity.md"
+    evidence.parent.mkdir(parents=True, exist_ok=True)
+    evidence.write_text("# 指標效度證據\n\n測試用佔位。\n", encoding="utf-8")
+
     metrics_dir = tmp_path / "records" / "experiments" / "metrics"
     metrics_dir.mkdir(parents=True)
     for name in DEFAULT_METRICS:
