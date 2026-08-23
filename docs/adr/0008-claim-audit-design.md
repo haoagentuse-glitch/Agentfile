@@ -2,6 +2,8 @@
 
 Phase C 第二個 skill，接上 `compare-runs` 的輸出，封完 `Experiment Contract → Run → compare-runs → claim-audit` 這條鏈。
 
+**機械段引用哪個數字這條已被 [ADR 0018](0018-comparison-estimands-estimates-and-decisions.md) 取代**：claim 改為引用 `estimand_id` 而非 `metric`，機械欄位改為 `estimand_exists` 與 `conclusion_matches`，`expected_direction` 不再接受 `no_change`。本 ADR 其餘結論（機械與語意分工、機械沒過就不進語意段、claim schema 刻意留小）仍然有效。
+
 ## 為什麼要分兩段
 
 「claim 有沒有引用真的存在、沒有 confounded 的比較，數字方向對不對」是可以機械判定的——同一個 claim 跑兩次要給一樣的答案，這種事不該交給 LLM 自由心證（跟 experiment-lint、compare-runs 一路下來的原則一致）。但「這個結論有沒有超出證據涵蓋的範圍」沒辦法寫成規則——「僅限這個資料集」跟「一般都適用」之間的界線，需要理解語言，機械檢查做不到，勉強寫規則只會變成一堆脆弱的關鍵字比對。

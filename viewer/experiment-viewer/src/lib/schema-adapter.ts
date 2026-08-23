@@ -5,12 +5,15 @@ import type {
   CanonicalClaim,
   CanonicalClaimAuditResult,
   CanonicalComparison,
+  CanonicalComparisonEstimate,
   CanonicalDerivation,
   CanonicalDiagnosis,
   CanonicalEvidenceRef,
   CanonicalExperiment,
   CanonicalGateHistoryEntry,
   CanonicalGateState,
+  CanonicalEstimateComponent,
+  CanonicalEstimateInterval,
   CanonicalMetricDefinition,
   CanonicalMetricDiff,
   CanonicalProducer,
@@ -18,6 +21,7 @@ import type {
   CanonicalRunFailure,
   ClaimStatus,
   ClaimVerdict,
+  DecisionConclusion,
   GateLevel,
   MetricDirection,
   RunStatus,
@@ -252,6 +256,10 @@ export function adaptComparisonResult(
     relativeDiff: (m.relative_diff as number | null) ?? null,
   }));
 
+  const estimates = list(requireField(raw, "estimates", sourcePath)).map((item) =>
+    adaptComparisonEstimate(item as Record<string, unknown>, sourcePath)
+  );
+
   return {
     experimentId,
     runA,
@@ -263,7 +271,53 @@ export function adaptComparisonResult(
     confoundedReasons: (raw.confounded_reasons as string[]) ?? [],
     notes: (raw.notes as string[]) ?? [],
     metrics,
+    estimates,
     sourcePath,
+  };
+}
+
+function adaptInterval(raw: unknown): CanonicalEstimateInterval | null {
+  if (raw === null || typeof raw !== "object") return null;
+  const interval = raw as Record<string, unknown>;
+  return {
+    lower: interval.lower as number,
+    upper: interval.upper as number,
+    confidenceLevel: interval.confidence_level as number,
+    method: String(interval.method ?? ""),
+  };
+}
+
+// comparison-estimate.schema.json → CanonicalComparisonEstimate。
+// 只搬欄位，不重算：point estimate、interval 與 decision 都由 compare-runs 寫死在紀錄裡。
+export function adaptComparisonEstimate(
+  raw: Record<string, unknown>,
+  sourcePath: string
+): CanonicalComparisonEstimate {
+  const decision = requireField(raw, "decision", sourcePath) as Record<string, unknown>;
+  const sampleSize = (raw.sample_size as Record<string, unknown>) ?? {};
+  const components: CanonicalEstimateComponent[] = list(raw.component_estimates).map((item) => {
+    const component = item as Record<string, unknown>;
+    return {
+      id: String(component.id ?? ""),
+      pointEstimate: component.point_estimate as number,
+      interval: adaptInterval(component.interval ?? null),
+    };
+  });
+
+  return {
+    estimandId: requireField(raw, "estimand_id", sourcePath) as string,
+    estimatorId: requireField(raw, "estimator_id", sourcePath) as string,
+    pointEstimate: requireField(raw, "point_estimate", sourcePath) as number,
+    interval: adaptInterval(requireField(raw, "interval", sourcePath)),
+    observations: (sampleSize.observations as number | undefined) ?? null,
+    clusters: (sampleSize.clusters as number | undefined) ?? null,
+    methodRef: requireField(raw, "method_ref", sourcePath) as string,
+    componentEstimates: components,
+    decision: {
+      ruleId: requireField(decision, "rule_id", sourcePath) as string,
+      conclusion: requireField(decision, "conclusion", sourcePath) as DecisionConclusion,
+      reasonCodes: (decision.reason_codes as string[]) ?? [],
+    },
   };
 }
 
@@ -273,11 +327,15 @@ export function adaptClaim(raw: Record<string, unknown>, sourcePath: string): Ca
   const statement = requireField(raw, "statement", sourcePath) as string;
   const experimentId = requireField(raw, "experiment_id", sourcePath) as string;
   const comparisonRef = requireField(raw, "comparison_ref", sourcePath) as string;
-  const metric = requireField(raw, "metric", sourcePath) as string;
+  const estimandId = requireField(raw, "estimand_id", sourcePath) as string;
   const expectedDirection = requireField(raw, "expected_direction", sourcePath) as
     | "increase"
-    | "decrease"
-    | "no_change";
+    | "decrease";
+  const expectedConclusion = requireField(
+    raw,
+    "expected_conclusion",
+    sourcePath
+  ) as DecisionConclusion;
   const scope = requireField(raw, "scope", sourcePath) as string;
   const createdAt = requireField(raw, "created_at", sourcePath) as string;
 
@@ -286,8 +344,9 @@ export function adaptClaim(raw: Record<string, unknown>, sourcePath: string): Ca
     statement,
     experimentId,
     comparisonRef,
-    metric,
+    estimandId,
     expectedDirection,
+    expectedConclusion,
     statedMagnitude: raw.stated_magnitude as number | undefined,
     magnitudeType: raw.magnitude_type as "absolute" | "relative" | undefined,
     scope,
@@ -336,8 +395,9 @@ export function adaptClaimAuditResult(
     evidenceReasons: (raw.evidence_reasons as string[]) ?? [],
     referenceExists: Boolean(mechanical.reference_exists),
     comparisonValid: (mechanical.comparison_valid as boolean | null) ?? null,
-    metricExists: (mechanical.metric_exists as boolean | null) ?? null,
+    estimandExists: (mechanical.estimand_exists as boolean | null) ?? null,
     directionMatches: (mechanical.direction_matches as boolean | null) ?? null,
+    conclusionMatches: (mechanical.conclusion_matches as boolean | null) ?? null,
     magnitudeMatches: (mechanical.magnitude_matches as boolean | null) ?? null,
     mechanicalReasons: (raw.mechanical_reasons as string[]) ?? [],
     scopeVerdict: (raw.scope_verdict as ClaimVerdict) ?? "pending",

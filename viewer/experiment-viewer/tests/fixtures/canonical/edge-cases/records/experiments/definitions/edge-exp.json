@@ -8,6 +8,25 @@
   "primary_metric": "score",
   "secondary_metrics": [],
   "decision_rule": "score 提升即可",
+  "analysis_plan": {
+    "estimands": [
+      {
+        "id": "effect.primary",
+        "metric": "score",
+        "population": "邊界情境測試集",
+        "conditions": { "baseline": "x=1", "treatment": "x=2" },
+        "scale": "raw",
+        "summary_measure": "difference",
+        "orientation": "treatment_minus_baseline"
+      }
+    ],
+    "estimators": [
+      { "id": "estimator.primary", "estimand_ref": "effect.primary", "type": "difference", "method_ref": "arithmetic-difference@1" }
+    ],
+    "decision_rules": [
+      { "id": "decision.primary", "estimand_ref": "effect.primary", "type": "superiority", "null_value": 0.0 }
+    ]
+  },
   "compute_budget": { "pilot_max_minutes": 1, "pilot_max_samples": 10 },
   "abort_rule": "無",
   "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },

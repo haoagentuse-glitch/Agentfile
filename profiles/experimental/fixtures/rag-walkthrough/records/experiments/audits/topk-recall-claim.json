@@ -7,12 +7,13 @@
     "reference_exists": true,
     "comparison_valid": true,
     "comparison_confounded": false,
-    "metric_exists": true,
+    "estimand_exists": true,
     "direction_matches": true,
     "magnitude_matches": true,
     "evidence_hashes_match": true,
     "numeric_recomputed": true,
-    "mechanical_pass": true
+    "mechanical_pass": true,
+    "conclusion_matches": true
   },
   "mechanical_reasons": [],
   "entailment": {
@@ -30,7 +31,9 @@
   },
   "novelty": {
     "status": "prior_art_found",
-    "source_refs": ["records/experiments/artifacts/topk-prior-art.md"],
+    "source_refs": [
+      "records/experiments/artifacts/topk-prior-art.md"
+    ],
     "reasoning": "提高取回數量提升覆蓋率是既有結果。本實驗的貢獻是在這一組具體零件上量化該效應，不是機制上的新發現。"
   },
   "review_independence": {

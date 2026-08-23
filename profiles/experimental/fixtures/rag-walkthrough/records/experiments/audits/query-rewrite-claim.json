@@ -7,12 +7,13 @@
     "reference_exists": true,
     "comparison_valid": true,
     "comparison_confounded": false,
-    "metric_exists": true,
+    "estimand_exists": true,
     "direction_matches": true,
     "magnitude_matches": true,
     "evidence_hashes_match": null,
     "numeric_recomputed": true,
-    "mechanical_pass": true
+    "mechanical_pass": true,
+    "conclusion_matches": true
   },
   "mechanical_reasons": [],
   "entailment": {
@@ -29,7 +30,9 @@
     "verdict": "partially_answers",
     "reasoning": "回答的是「這次量到多少」，不是 definition.question 問的「能不能提升」。"
   },
-  "novelty": { "status": "not_applicable" },
+  "novelty": {
+    "status": "not_applicable"
+  },
   "review_independence": {
     "independent": true,
     "reason": "由人工審核者覆核，未使用產出這個 claim 的 prompt",

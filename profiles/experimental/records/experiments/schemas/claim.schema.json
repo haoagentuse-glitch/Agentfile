@@ -5,25 +5,39 @@
   "description": "一個可稽核的結論陳述，最小欄位——只放 claim-audit 這條證據鏈真正需要的東西，不是完整的研究知識圖譜。statement 是給人讀的自然語言；其餘欄位是給 claim_audit.py 機械核對用的結構化陳述，兩者必須一致，這正是稽核在檢查的事。",
   "type": "object",
   "required": [
-    "claim_id", "statement", "experiment_id", "comparison_ref",
-    "metric", "expected_direction", "scope", "created_at"
+    "claim_id",
+    "statement",
+    "experiment_id",
+    "comparison_ref",
+    "estimand_id",
+    "expected_direction",
+    "scope",
+    "created_at",
+    "expected_conclusion"
   ],
   "properties": {
-    "claim_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "claim_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
     "statement": {
       "type": "string",
       "description": "人類可讀的結論陳述，例如「top_k 從 5 提高到 10 讓 recall_at_k 提升約 12 個百分點」"
     },
-    "experiment_id": { "type": "string" },
+    "experiment_id": {
+      "type": "string"
+    },
     "comparison_ref": {
       "type": "string",
       "format": "project-ref",
       "description": "指向支撐這個 claim 的 comparison-result.json 路徑"
     },
-    "metric": { "type": "string", "description": "這個 claim 引用的是哪個 metric" },
     "expected_direction": {
       "type": "string",
-      "enum": ["increase", "decrease", "no_change"],
+      "enum": [
+        "increase",
+        "decrease"
+      ],
       "description": "claim 宣稱這個 metric 的原始數值該往哪個方向動——不是「有沒有變好」（那要看 metric 的 direction 是 higher/lower_is_better，屬於語意判斷），純粹是可驗證的數字方向"
     },
     "stated_magnitude": {
@@ -32,18 +46,33 @@
     },
     "magnitude_type": {
       "type": "string",
-      "enum": ["absolute", "relative"],
+      "enum": [
+        "absolute",
+        "relative"
+      ],
       "description": "stated_magnitude 對應 comparison-result 裡的 absolute_diff 還是 relative_diff"
     },
     "scope": {
       "type": "string",
       "description": "這個 claim 宣稱的適用範圍，例如「僅限這個資料集與這個 model」或「所有 retrieval 任務都適用」——scope audit 就是在檢查這句話有沒有超出證據實際涵蓋的範圍"
     },
-    "created_at": { "type": "string", "format": "date-time" },
-    "producer": { "$ref": "provenance.schema.json#/$defs/producer" },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "$ref": "provenance.schema.json#/$defs/producer"
+    },
     "claim_type": {
       "type": "string",
-      "enum": ["descriptive", "comparative", "causal", "novelty", "mechanism", "negative_result"],
+      "enum": [
+        "descriptive",
+        "comparative",
+        "causal",
+        "novelty",
+        "mechanism",
+        "negative_result"
+      ],
       "description": "不同類型的主張需要不同強度的證據。causal 需要 comparison_valid 且非 confounded；negative_result 是正式結果，不是失敗"
     },
     "evidence_refs": {
@@ -52,10 +81,24 @@
       "description": "支撐這個 claim 的具名證據位置。comparison_ref 是主要比較來源，這裡放完整清單，包含 run、artifact 與外部來源",
       "items": {
         "type": "object",
-        "required": ["kind", "ref"],
+        "required": [
+          "kind",
+          "ref"
+        ],
         "properties": {
-          "kind": { "type": "string", "enum": ["comparison", "run", "artifact", "source"] },
-          "ref": { "type": "string", "format": "project-ref" },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "comparison",
+              "run",
+              "artifact",
+              "source"
+            ]
+          },
+          "ref": {
+            "type": "string",
+            "format": "project-ref"
+          },
           "locator": {
             "type": "string",
             "description": "檔案內的具名位置，例如 metrics.recall_at_10.absolute_diff。指到檔案而不指到欄位，稽核就得自己猜引用的是哪個數字"
@@ -70,19 +113,50 @@
     },
     "status": {
       "type": "string",
-      "enum": ["candidate", "supported", "refuted", "inconclusive", "superseded"],
+      "enum": [
+        "candidate",
+        "supported",
+        "refuted",
+        "inconclusive",
+        "superseded"
+      ],
       "default": "candidate",
       "description": "inconclusive 是正式終態，不是待辦。沒有稽核通過就不得標 supported"
     },
     "superseded_by": {
       "type": "string",
       "description": "status 為 superseded 時指向取代它的 claim_id。舊結論保留，不刪除"
+    },
+    "estimand_id": {
+      "type": "string",
+      "description": "引用 comparison.estimates 的 estimand_id"
+    },
+    "expected_conclusion": {
+      "enum": [
+        "superior",
+        "inferior",
+        "equivalent",
+        "inconclusive"
+      ]
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "status": { "const": "superseded" } }, "required": ["status"] },
-      "then": { "required": ["superseded_by"] }
+      "if": {
+        "properties": {
+          "status": {
+            "const": "superseded"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "superseded_by"
+        ]
+      }
     }
   ],
   "additionalProperties": false

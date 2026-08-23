@@ -88,6 +88,16 @@ def schema_count() -> int:
     return len(all_schema_names())
 
 
+def validator_for(layout: ProjectLayout, schema_name: str) -> Draft202012Validator:
+    """單一 schema 的 validator，帶著同一份 $ref registry。
+
+    schema 之間有跨檔 $ref（例如 contract → analysis-plan、provenance）。
+    裸 Draft202012Validator 解析不到這些 URI，會退回嘗試網路取回；
+    要驗證單一 schema 的呼叫端一律走這裡，不要自己組 validator。
+    """
+    return _validator(_load_schema(layout.schemas_dir / schema_name), layout)
+
+
 def _validate_lifecycle_schema(schema: dict[str, Any]) -> list[Result]:
     states = set(schema.get("$defs", {}).get("lifecycleState", {}).get("enum", []))
     initial_state = schema.get("x-initial-state")

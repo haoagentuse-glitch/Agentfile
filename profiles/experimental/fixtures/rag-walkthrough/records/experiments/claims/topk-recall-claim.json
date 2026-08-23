@@ -3,7 +3,6 @@
   "statement": "在 nq-open-2026-01 語料與 nq-open-eval-v3 評估集上，把 top_k 從 5 提高到 20，讓 recall_at_10 從 0.62 上升到 0.71，絕對提升 0.09，並經三次複現重現。",
   "experiment_id": "rag-topk-recall",
   "comparison_ref": "records/experiments/comparisons/topk-main.json",
-  "metric": "recall_at_10",
   "expected_direction": "increase",
   "stated_magnitude": 0.09,
   "magnitude_type": "absolute",
@@ -18,9 +17,21 @@
       "locator": "metrics.recall_at_10.absolute_diff",
       "hash": "sha256:f1e4d7c0a3b6e9f2c5a8d1b4e7c0f3a6d9b2e5c8f1a4d7b0e3c6f9a2d5b8e1c4"
     },
-    { "kind": "run", "ref": "records/experiments/runs/topk-replication-1.json", "locator": "metrics.recall_at_10" },
-    { "kind": "run", "ref": "records/experiments/runs/topk-replication-2.json", "locator": "metrics.recall_at_10" },
-    { "kind": "run", "ref": "records/experiments/runs/topk-replication-3.json", "locator": "metrics.recall_at_10" }
+    {
+      "kind": "run",
+      "ref": "records/experiments/runs/topk-replication-1.json",
+      "locator": "metrics.recall_at_10"
+    },
+    {
+      "kind": "run",
+      "ref": "records/experiments/runs/topk-replication-2.json",
+      "locator": "metrics.recall_at_10"
+    },
+    {
+      "kind": "run",
+      "ref": "records/experiments/runs/topk-replication-3.json",
+      "locator": "metrics.recall_at_10"
+    }
   ],
   "producer": {
     "kind": "software_agent",
@@ -28,7 +39,11 @@
     "model": "anthropic/claude-opus-5",
     "prompt_id": "claim-writer@1",
     "prompt_hash": "sha256:0f0669d7a805ef170225937cf4872eab027fffa04296caac5e948094e51fee29",
-    "input_refs": ["records/experiments/comparisons/topk-main.json"],
+    "input_refs": [
+      "records/experiments/comparisons/topk-main.json"
+    ],
     "created_at": "2026-01-05T10:00:00Z"
-  }
+  },
+  "estimand_id": "effect.primary",
+  "expected_conclusion": "inconclusive"
 }

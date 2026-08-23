@@ -1,0 +1,12 @@
+{
+  "run_id": "edge-good-run-2",
+  "experiment_id": "edge-exp",
+  "experiment_type": "misc",
+  "created_at": "2026-01-08T02:00:00Z",
+  "config_hash": "sha256:good222",
+  "schema_version": "1",
+  "baseline_run": "edge-good-run",
+  "status": "completed",
+  "metrics": { "score": 1.2 },
+  "artifacts": []
+}

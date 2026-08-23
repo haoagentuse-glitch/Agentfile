@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "comparison-estimate.schema.json",
+  "title": "Comparison Estimate",
+  "type": "object",
+  "required": ["estimand_id", "estimator_id", "point_estimate", "interval", "sample_size", "method_ref", "component_estimates", "decision"],
+  "properties": {
+    "estimand_id": { "type": "string" },
+    "estimator_id": { "type": "string" },
+    "point_estimate": { "type": "number" },
+    "interval": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "required": ["lower", "upper", "confidence_level", "method"],
+          "properties": {
+            "lower": { "type": "number" }, "upper": { "type": "number" },
+            "confidence_level": { "type": "number" }, "method": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sample_size": {
+      "type": "object",
+      "properties": {
+        "observations": { "type": "integer", "minimum": 0 },
+        "clusters": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "method_ref": { "type": "string" },
+    "component_estimates": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "point_estimate"],
+        "properties": {
+          "id": { "type": "string" }, "point_estimate": { "type": "number" },
+          "interval": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decision": {
+      "type": "object", "required": ["rule_id", "conclusion", "reason_codes"],
+      "properties": {
+        "rule_id": { "type": "string" },
+        "conclusion": { "enum": ["superior", "inferior", "equivalent", "inconclusive"] },
+        "reason_codes": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

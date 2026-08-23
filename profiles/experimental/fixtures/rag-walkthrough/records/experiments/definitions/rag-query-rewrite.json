@@ -26,7 +26,13 @@
     "pilot_max_samples": 200
   },
   "abort_rule": "改寫失敗率超過 5% 立即中止",
-  "evidence_policy": { "eligible_run_stages": ["pilot", "main", "replication"] },
+  "evidence_policy": {
+    "eligible_run_stages": [
+      "pilot",
+      "main",
+      "replication"
+    ]
+  },
   "review_policy": {
     "required_reviewer_kind": "human",
     "min_reviewers": 1
@@ -71,5 +77,37 @@
     "source_refs": [],
     "novelty_status": "unverified"
   },
-  "contract_hash": "bbce6e5667794720216afa4404b100d79cac288bde54d1d505cdf1645009fb0d"
+  "contract_hash": "ceb54d5092227f4c762805d26c27a0c08057acc3bb03d9c781a6f3a5a7058256",
+  "analysis_plan": {
+    "estimands": [
+      {
+        "id": "effect.primary",
+        "metric": "recall_at_10",
+        "population": "凍結評估集",
+        "conditions": {
+          "baseline": "不做查詢改寫",
+          "treatment": "只開啟查詢改寫"
+        },
+        "scale": "raw",
+        "summary_measure": "difference",
+        "orientation": "treatment_minus_baseline"
+      }
+    ],
+    "estimators": [
+      {
+        "id": "estimator.primary",
+        "estimand_ref": "effect.primary",
+        "type": "difference",
+        "method_ref": "arithmetic-difference@1"
+      }
+    ],
+    "decision_rules": [
+      {
+        "id": "decision.primary",
+        "estimand_ref": "effect.primary",
+        "type": "superiority",
+        "null_value": 0
+      }
+    ]
+  }
 }

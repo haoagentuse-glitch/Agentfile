@@ -31,6 +31,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from experiment_records.comparison_analysis import estimate_from_plan
 from experiment_records.evidence_policy import evaluate_evidence_policy
 
 
@@ -317,6 +318,26 @@ def main(argv: list[str] | None = None) -> int:
             entry["baseline"] = entry["treatment"] = entry["absolute_diff"] = entry["relative_diff"] = None
         metrics_out[name] = entry
 
+    estimates: list[dict[str, Any]] = []
+    if comparison_valid and contract:
+        plan = contract.get("analysis_plan", {})
+        estimators = {item["estimand_ref"]: item for item in plan.get("estimators", [])}
+        rules = {item["estimand_ref"]: item for item in plan.get("decision_rules", [])}
+        for estimand in plan.get("estimands", []):
+            estimator = estimators.get(estimand["id"])
+            rule = rules.get(estimand["id"])
+            if not estimator or not rule:
+                notes.append(f"estimand {estimand['id']} 缺 estimator 或 decision rule，這次不產生 estimate")
+            elif estimator["type"] == "joint_cluster_bootstrap":
+                # run envelope 只保存彙總後的 metrics，重抽 cluster 需要逐筆資料。
+                # 缺輸入就不估計，也不靜默略過——沒有 estimate 的原因要留在紀錄裡。
+                notes.append(
+                    f"estimand {estimand['id']} 用 joint_cluster_bootstrap，"
+                    "需要逐筆資料，compare-runs 讀不到，這次不產生 estimate"
+                )
+            else:
+                estimates.append(estimate_from_plan(estimand, estimator, rule, baseline_run, treatment_run))
+
     result = {
         "experiment_id": experiment_id,
         "run_a": baseline_run["run_id"],
@@ -335,6 +356,7 @@ def main(argv: list[str] | None = None) -> int:
         "confounded": confounded,
         "confounded_reasons": confounded_reasons,
         "metrics": metrics_out,
+        "estimates": estimates,
         "diagnostic_suggestions": [],
         "notes": notes,
     }

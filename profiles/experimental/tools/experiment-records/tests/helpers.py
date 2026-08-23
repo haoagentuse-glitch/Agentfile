@@ -78,6 +78,11 @@ def valid_definition(**overrides: object) -> dict:
         "controlled_variables": ["dataset"],
         "primary_metric": "recall_at_10",
         "decision_rule": "recall 提升至少 0.05 視為成功",
+        "analysis_plan": {
+            "estimands": [{"id": "effect.primary", "metric": "recall_at_10", "population": "固定評估集", "conditions": {"baseline": "baseline", "treatment": "treatment"}, "scale": "raw", "summary_measure": "difference", "orientation": "treatment_minus_baseline"}],
+            "estimators": [{"id": "estimator.primary", "estimand_ref": "effect.primary", "type": "difference", "method_ref": "arithmetic-difference"}],
+            "decision_rules": [{"id": "decision.primary", "estimand_ref": "effect.primary", "type": "superiority", "null_value": 0.0}],
+        },
         "compute_budget": {"pilot_max_minutes": 5, "pilot_max_samples": 100},
         "abort_rule": "guardrail 超標立即中止",
         "evidence_policy": {"eligible_run_stages": ["pilot", "main", "replication"]},
@@ -138,7 +143,7 @@ def valid_comparison(**overrides: object) -> dict:
         "generated_at": "2026-01-01T00:00:00Z",
         "comparability": {"dimensions": {}, "declared_variable": {}},
         "structurally_comparable": True, "controlled_variables_match": True, "differences": [],
-        "comparison_valid": True, "confounded": False, "metrics": {},
+        "comparison_valid": True, "confounded": False, "metrics": {}, "estimates": [{"estimand_id": "effect.primary", "estimator_id": "estimator.primary", "point_estimate": 0.09, "interval": None, "sample_size": {}, "method_ref": "arithmetic-difference", "component_estimates": [{"id": "baseline", "point_estimate": 0.62}, {"id": "treatment", "point_estimate": 0.71}], "decision": {"rule_id": "decision.primary", "conclusion": "inconclusive", "reason_codes": ["interval_missing"]}}],
         "evidence_eligible": True, "evidence_reasons": [],
     }
     data.update(overrides)
@@ -149,7 +154,7 @@ def valid_claim(**overrides: object) -> dict:
     data = {
         "claim_id": "demo-claim", "statement": "top_k 提升讓 recall 提高",
         "experiment_id": "demo-exp", "comparison_ref": "records/experiments/comparisons/demo-comparison.json",
-        "metric": "recall_at_10", "expected_direction": "increase", "scope": "此資料集與此模型",
+        "estimand_id": "effect.primary", "expected_direction": "increase", "expected_conclusion": "inconclusive", "scope": "此資料集與此模型",
         "created_at": "2026-01-01T00:00:00Z",
     }
     data.update(overrides)
@@ -160,8 +165,8 @@ def valid_audit(**overrides: object) -> dict:
     data = {
         "claim_id": "demo-claim", "audited_at": "2026-01-01T00:00:00Z",
         "mechanical": {
-            "reference_exists": True, "comparison_valid": True, "metric_exists": True,
-            "direction_matches": True, "magnitude_matches": None, "mechanical_pass": True,
+            "reference_exists": True, "comparison_valid": True, "estimand_exists": True,
+            "direction_matches": True, "conclusion_matches": True, "magnitude_matches": None, "mechanical_pass": True,
         },
         "scope_verdict": "fully_supported", "scope_reasoning": "證據範圍一致",
         "final_verdict": "fully_supported",

@@ -94,7 +94,8 @@ def audit(claim_path: Path) -> dict[str, Any]:
     reference_exists = False
     comparison_valid: bool | None = None
     comparison_confounded: bool | None = None
-    metric_exists: bool | None = None
+    estimand_exists: bool | None = None
+    conclusion_matches: bool | None = None
     direction_matches: bool | None = None
     magnitude_matches: bool | None = None
     comparison: dict | None = None
@@ -122,43 +123,36 @@ def audit(claim_path: Path) -> dict[str, Any]:
             cause = "confounded" if comparison_confounded else "沒有共同基準可比"
             reasons.append(f"引用的 comparison 不可引用（{cause}），不得用來支撐結論（規則 10）")
 
-        metric_name = claim.get("metric")
-        metric_entry = comparison.get("metrics", {}).get(metric_name)
-        metric_exists = bool(metric_entry and metric_entry.get("computed"))
-        if not metric_exists:
-            reasons.append(f"metric '{metric_name}' 在引用的 comparison 裡沒有被算出來（可能是 comparison invalid 或 metric definition 不一致）")
+        estimand_id = claim.get("estimand_id")
+        estimate = next((item for item in comparison.get("estimates", []) if item.get("estimand_id") == estimand_id), None)
+        estimand_exists = estimate is not None
+        if not estimand_exists:
+            reasons.append(f"estimand {estimand_id!r} 在引用的 comparison 裡沒有持久化 estimate")
 
-        if comparison_valid and metric_exists:
-            actual_diff = metric_entry["absolute_diff"]
+        if comparison_valid and estimate is not None:
+            actual_diff = estimate["point_estimate"]
             expected = claim.get("expected_direction")
             if expected == "increase":
                 direction_matches = actual_diff > 0
             elif expected == "decrease":
                 direction_matches = actual_diff < 0
-            elif expected == "no_change":
-                direction_matches = abs(actual_diff) < 1e-9
             else:
                 direction_matches = False
                 reasons.append(f"expected_direction={expected!r} 不是合法值")
             if direction_matches is False:
-                reasons.append(
-                    f"claim 宣稱 metric 應該 {expected}，但實際 absolute_diff={actual_diff!r}——方向對不上"
-                )
+                reasons.append(f"claim 宣稱數值方向應該 {expected}，但 point_estimate={actual_diff!r}")
+
+            actual_conclusion = estimate.get("decision", {}).get("conclusion")
+            conclusion_matches = actual_conclusion == claim.get("expected_conclusion")
+            if not conclusion_matches:
+                reasons.append(f"claim 宣稱結論為 {claim.get('expected_conclusion')!r}，實際為 {actual_conclusion!r}")
 
             stated = claim.get("stated_magnitude")
             if stated is not None:
-                mtype = claim.get("magnitude_type", "absolute")
-                actual = metric_entry["absolute_diff"] if mtype == "absolute" else metric_entry["relative_diff"]
-                if actual is None:
-                    magnitude_matches = False
-                    reasons.append(f"comparison 裡沒有 {mtype} 差異可比對")
-                else:
-                    tol = max(abs(actual) * TOLERANCE, 1e-9)
-                    magnitude_matches = abs(actual - stated) <= tol
-                    if not magnitude_matches:
-                        reasons.append(
-                            f"claim 宣稱的幅度 {stated!r}（{mtype}）跟實際 {actual!r} 差距超過容許誤差（±{TOLERANCE:.0%}）"
-                        )
+                tol = max(abs(actual_diff) * TOLERANCE, 1e-12)
+                magnitude_matches = abs(actual_diff - stated) <= tol
+                if not magnitude_matches:
+                    reasons.append(f"claim 宣稱幅度 {stated!r} 跟 point_estimate {actual_diff!r} 差距超過 ±{TOLERANCE:.0%}")
 
     contract, evidence_runs = load_audit_evidence(claim, comparison, records_root)
     evidence = evaluate_evidence_policy(contract, evidence_runs)
@@ -168,7 +162,8 @@ def audit(claim_path: Path) -> dict[str, Any]:
     mechanical_pass = bool(
         reference_exists
         and comparison_valid
-        and metric_exists
+        and estimand_exists
+        and conclusion_matches
         and direction_matches
         and (magnitude_matches is not False)
         and evidence["eligible"]
@@ -180,7 +175,7 @@ def audit(claim_path: Path) -> dict[str, Any]:
         scope_verdict = "unauditable"
     elif comparison_valid is False:
         scope_verdict = "unsupported"
-    elif metric_exists is False:
+    elif estimand_exists is False:
         scope_verdict = "unauditable"
     else:
         scope_verdict = "unsupported"
@@ -194,7 +189,8 @@ def audit(claim_path: Path) -> dict[str, Any]:
             "reference_exists": reference_exists,
             "comparison_valid": comparison_valid,
             "comparison_confounded": comparison_confounded,
-            "metric_exists": metric_exists,
+            "estimand_exists": estimand_exists,
+            "conclusion_matches": conclusion_matches,
             "direction_matches": direction_matches,
             "magnitude_matches": magnitude_matches,
             "mechanical_pass": mechanical_pass,
@@ -232,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"claim_id: {result['claim_id']}")
         print(f"reference_exists   : {m['reference_exists']}")
         print(f"comparison_valid   : {m['comparison_valid']}")
-        print(f"metric_exists      : {m['metric_exists']}")
+        print(f"estimand_exists      : {m['estimand_exists']}")
         print(f"direction_matches  : {m['direction_matches']}")
         print(f"magnitude_matches  : {m['magnitude_matches']}")
         print(f"evidence_eligible  : {result['evidence_eligible']}")

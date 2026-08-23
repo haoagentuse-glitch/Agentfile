@@ -79,8 +79,12 @@ export interface CanonicalClaim {
   statement: string;
   experimentId: string;
   comparisonRef: string;
-  metric: string;
-  expectedDirection: "increase" | "decrease" | "no_change";
+  // claim 引用的是 comparison.estimates 裡的 estimand，不是 run metric。
+  estimandId: string;
+  // 只描述 point estimate 相對 null value 的符號預期，不含尺度與不確定性。
+  expectedDirection: "increase" | "decrease";
+  // 證據結論的預期，由凍結的 decision rule 判定，跟 expectedDirection 分開。
+  expectedConclusion: DecisionConclusion;
   statedMagnitude?: number;
   magnitudeType?: "absolute" | "relative";
   scope: string;
@@ -111,8 +115,9 @@ export interface CanonicalClaimAuditResult {
   evidenceReasons: string[];
   referenceExists: boolean;
   comparisonValid: boolean | null;
-  metricExists: boolean | null;
+  estimandExists: boolean | null;
   directionMatches: boolean | null;
+  conclusionMatches: boolean | null;
   magnitudeMatches: boolean | null;
   mechanicalReasons: string[];
   scopeVerdict: ClaimVerdict;
@@ -193,6 +198,43 @@ export interface CanonicalMetricDiff {
   relativeDiff: number | null;
 }
 
+export interface CanonicalEstimateInterval {
+  lower: number;
+  upper: number;
+  confidenceLevel: number;
+  method: string;
+}
+
+export interface CanonicalEstimateComponent {
+  id: string;
+  pointEstimate: number;
+  interval: CanonicalEstimateInterval | null;
+}
+
+export type DecisionConclusion = "superior" | "inferior" | "equivalent" | "inconclusive";
+
+export interface CanonicalEstimateDecision {
+  ruleId: string;
+  // 數值方向與證據結論分開：point estimate 為正不等於 superior，
+  // 區間跨過決策邊界時只會是 inconclusive。
+  conclusion: DecisionConclusion;
+  reasonCodes: string[];
+}
+
+export interface CanonicalComparisonEstimate {
+  estimandId: string;
+  estimatorId: string;
+  pointEstimate: number;
+  // interval 為 null 是合法狀態（例如沒設定 uncertainty），
+  // 此時 decision 只能是 inconclusive，UI 照實顯示「未估計」。
+  interval: CanonicalEstimateInterval | null;
+  observations: number | null;
+  clusters: number | null;
+  methodRef: string;
+  componentEstimates: CanonicalEstimateComponent[];
+  decision: CanonicalEstimateDecision;
+}
+
 export interface CanonicalComparison {
   experimentId: string;
   runA: string;
@@ -207,6 +249,9 @@ export interface CanonicalComparison {
   confoundedReasons: string[];
   notes: string[];
   metrics: CanonicalMetricDiff[];
+  // 凍結 analysis plan 產生的 estimate 與判定。Viewer 只顯示持久化結果，
+  // 不在前端重算點估計、區間或 decision——統計語意屬於 compare-runs，不屬於 UI。
+  estimates: CanonicalComparisonEstimate[];
   sourcePath: string;
 }
 

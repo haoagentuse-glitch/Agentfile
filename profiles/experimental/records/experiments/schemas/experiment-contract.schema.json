@@ -5,9 +5,20 @@
   "description": "凍結一個 experiment 的假設、控制條件與決策規則。Lock 後計算 contract_hash；任何 controlled_variables 之外的欄位改動都必須開新 condition 或新 experiment，不得原地改寫。",
   "type": "object",
   "required": [
-    "experiment_id", "question", "hypothesis", "baseline", "treatment",
-    "controlled_variables", "primary_metric", "decision_rule",
-    "compute_budget", "abort_rule", "evidence_policy", "status", "created_at"
+    "experiment_id",
+    "question",
+    "hypothesis",
+    "baseline",
+    "treatment",
+    "controlled_variables",
+    "primary_metric",
+    "decision_rule",
+    "compute_budget",
+    "abort_rule",
+    "evidence_policy",
+    "status",
+    "created_at",
+    "analysis_plan"
   ],
   "properties": {
     "experiment_id": {
@@ -15,22 +26,46 @@
       "pattern": "^[a-z0-9][a-z0-9-]*$",
       "description": "唯一識別碼，kebab-case"
     },
-    "question": { "type": "string", "minLength": 1 },
-    "hypothesis": { "type": "string", "minLength": 1 },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hypothesis": {
+      "type": "string",
+      "minLength": 1
+    },
     "baseline": {
       "type": "object",
-      "required": ["description", "config_ref"],
+      "required": [
+        "description",
+        "config_ref"
+      ],
       "properties": {
-        "description": { "type": "string" },
-        "config_ref": { "type": "string", "format": "project-ref", "description": "指向 baseline 設定檔的路徑" }
+        "description": {
+          "type": "string"
+        },
+        "config_ref": {
+          "type": "string",
+          "format": "project-ref",
+          "description": "指向 baseline 設定檔的路徑"
+        }
       }
     },
     "treatment": {
       "type": "object",
-      "required": ["description", "config_ref", "variable"],
+      "required": [
+        "description",
+        "config_ref",
+        "variable"
+      ],
       "properties": {
-        "description": { "type": "string" },
-        "config_ref": { "type": "string", "format": "project-ref" },
+        "description": {
+          "type": "string"
+        },
+        "config_ref": {
+          "type": "string",
+          "format": "project-ref"
+        },
         "variable": {
           "type": "string",
           "description": "相對 baseline 改了什麼——單一主要變因；多因素實驗改用陣列並在 controlled_variables 聲明"
@@ -39,19 +74,27 @@
     },
     "controlled_variables": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "minItems": 1,
       "description": "刻意保持一致、不隨 treatment 變動的條件（dataset、model、seed、budget……）"
     },
-    "primary_metric": { "type": "string" },
+    "primary_metric": {
+      "type": "string"
+    },
     "secondary_metrics": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": []
     },
     "expected_failure_modes": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": []
     },
     "decision_rule": {
@@ -60,13 +103,24 @@
     },
     "compute_budget": {
       "type": "object",
-      "required": ["pilot_max_minutes", "pilot_max_samples"],
+      "required": [
+        "pilot_max_minutes",
+        "pilot_max_samples"
+      ],
       "properties": {
-        "pilot_max_minutes": { "type": "number", "exclusiveMinimum": 0 },
-        "pilot_max_samples": { "type": "integer", "exclusiveMinimum": 0 }
+        "pilot_max_minutes": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "pilot_max_samples": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        }
       }
     },
-    "abort_rule": { "type": "string" },
+    "abort_rule": {
+      "type": "string"
+    },
     "scale_up_rule": {
       "type": "string",
       "description": "從 pilot 升級到下一個 Compute Gate 等級的條件；不存在代表停在 pilot"
@@ -76,37 +130,85 @@
       "description": "由便宜到昂貴的階梯，每一級各有預算、升級條件與中止條件。這是 scale_up_rule／abort_rule 那兩句自然語言的機械可判定版本：翻譯只做一次，而且凍結在 Contract 裡，不是散在某次呼叫的命令列參數。因此同一組紀錄重跑 compute-gate 會得到同一個判定。",
       "items": {
         "type": "object",
-        "required": ["stage", "level"],
+        "required": [
+          "stage",
+          "level"
+        ],
         "properties": {
           "stage": {
             "type": "string",
-            "enum": ["preflight", "pilot", "main", "replication", "independent_review"]
+            "enum": [
+              "preflight",
+              "pilot",
+              "main",
+              "replication",
+              "independent_review"
+            ]
           },
           "level": {
             "type": "string",
-            "enum": ["L0", "L1", "L2", "L3", "L4", "L5"],
+            "enum": [
+              "L0",
+              "L1",
+              "L2",
+              "L3",
+              "L4",
+              "L5"
+            ],
             "description": "對應的算力等級。stage 是研究階段，level 是花多少算力，兩個是不同的軸"
           },
           "budget": {
             "type": "object",
             "description": "這一級被授權的上限。run 的實際用量超過就不得升級",
             "properties": {
-              "max_wall_clock_seconds": { "type": "number", "exclusiveMinimum": 0 },
-              "max_samples": { "type": "integer", "exclusiveMinimum": 0 },
-              "max_cost_usd": { "type": "number", "exclusiveMinimum": 0 },
-              "max_runs": { "type": "integer", "exclusiveMinimum": 0 }
+              "max_wall_clock_seconds": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "max_samples": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "max_cost_usd": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "max_runs": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
             },
             "additionalProperties": false
           },
           "promotion": {
             "description": "升到這一級要滿足的條件。null 代表這一級不設指標門檻，只做序列與預算檢查",
-            "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/computeGateRule" }]
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/computeGateRule"
+              }
+            ]
           },
           "abort": {
             "description": "觸發就整條路線終止，不是補證據重來",
             "oneOf": [
-              { "type": "null" },
-              { "allOf": [{ "$ref": "#/$defs/computeGateRule" }, { "required": ["reason"] }] }
+              {
+                "type": "null"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/computeGateRule"
+                  },
+                  {
+                    "required": [
+                      "reason"
+                    ]
+                  }
+                ]
+              }
             ]
           }
         },
@@ -116,11 +218,25 @@
     "evidence_policy": {
       "type": "object",
       "description": "哪些 run stage 可作為比較、claim audit 與 Compute Gate 的正式證據。由 Contract 明確宣告。",
-      "required": ["eligible_run_stages"],
+      "required": [
+        "eligible_run_stages"
+      ],
       "properties": {
         "eligible_run_stages": {
-          "type": "array", "minItems": 1, "uniqueItems": true,
-          "items": { "type": "string", "enum": ["pilot", "tune", "main", "ablation", "replication", "diagnostic"] }
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "pilot",
+              "tune",
+              "main",
+              "ablation",
+              "replication",
+              "diagnostic"
+            ]
+          }
         }
       },
       "additionalProperties": false
@@ -128,32 +244,58 @@
     "review_policy": {
       "type": "object",
       "description": "誰有資格審核這個 experiment 的結論。跟 Contract 一起凍結——看到結果之後才放寬審核標準，等於沒有審核",
-      "required": ["required_reviewer_kind"],
+      "required": [
+        "required_reviewer_kind"
+      ],
       "properties": {
         "required_reviewer_kind": {
           "type": "string",
-          "enum": ["human", "second_model", "any_independent"],
+          "enum": [
+            "human",
+            "second_model",
+            "any_independent"
+          ],
           "description": "any_independent 接受任何獨立審核；second_model 要求換一個模型；human 要求人工審核"
         },
-        "min_reviewers": { "type": "integer", "minimum": 1, "default": 1 }
+        "min_reviewers": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
       },
       "additionalProperties": false
     },
-    "status": { "type": "string", "enum": ["draft", "locked"] },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "locked"
+      ]
+    },
     "contract_hash": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
       "description": "lock 後才有值：對 lock 當下的 JSON（不含此欄位本身、RFC 8785 正規化）算 sha256，小寫 64 位 hex，不帶前綴"
     },
-    "created_at": { "type": "string", "format": "date-time" },
-    "producer": { "$ref": "provenance.schema.json#/$defs/producer" },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "$ref": "provenance.schema.json#/$defs/producer"
+    },
     "derivation": {
       "type": "object",
       "title": "Research Question Certificate",
       "description": "題目怎麼推導出來的可稽核紀錄，不是模型的私密推理過程。保存可公開審核的推導摘要，讓「為什麼做這個實驗」跟「實驗做了什麼」一樣可被檢查。lock 之後即凍結；要改就開新 experiment，不得原地改寫。",
       "required": [
-        "primitives", "assumptions", "mechanism_model", "tension",
-        "falsifier", "minimal_decisive_test", "novelty_status"
+        "primitives",
+        "assumptions",
+        "mechanism_model",
+        "tension",
+        "falsifier",
+        "minimal_decisive_test",
+        "novelty_status"
       ],
       "properties": {
         "primitives": {
@@ -162,10 +304,19 @@
           "description": "這個題目賴以成立的基本概念。需要穩定 ID，因為 assumptions 與 claim audit 會引用",
           "items": {
             "type": "object",
-            "required": ["id", "definition"],
+            "required": [
+              "id",
+              "definition"
+            ],
             "properties": {
-              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
-              "definition": { "type": "string", "minLength": 1 }
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]*$"
+              },
+              "definition": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "additionalProperties": false
           }
@@ -176,11 +327,28 @@
           "description": "題目成立所依賴、但尚未驗證的前提。failure_update 靠 ID 指回這裡",
           "items": {
             "type": "object",
-            "required": ["id", "statement", "status"],
+            "required": [
+              "id",
+              "statement",
+              "status"
+            ],
             "properties": {
-              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
-              "statement": { "type": "string", "minLength": 1 },
-              "status": { "type": "string", "enum": ["unverified", "supported", "refuted"] }
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]*$"
+              },
+              "statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unverified",
+                  "supported",
+                  "refuted"
+                ]
+              }
             },
             "additionalProperties": false
           }
@@ -188,10 +356,22 @@
         "mechanism_model": {
           "type": "object",
           "description": "預期的因果鏈。summary 為必填——沒有機制敘述的題目無法判斷結果是否支持原本的想法",
-          "required": ["summary", "variables"],
+          "required": [
+            "summary",
+            "variables"
+          ],
           "properties": {
-            "summary": { "type": "string", "minLength": 1 },
-            "variables": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "variables": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
           },
           "additionalProperties": false
         },
@@ -212,7 +392,9 @@
         },
         "expected_observations": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": []
         },
         "failure_update": {
@@ -221,41 +403,80 @@
           "description": "預先寫好的失敗更新規則：看到什麼結果就把哪個 assumption 改成什麼狀態。事後才決定怎麼解讀失敗，等於沒有預先承諾",
           "items": {
             "type": "object",
-            "required": ["when", "update_assumption_id", "to"],
+            "required": [
+              "when",
+              "update_assumption_id",
+              "to"
+            ],
             "properties": {
-              "when": { "type": "string", "minLength": 1 },
-              "update_assumption_id": { "type": "string" },
-              "to": { "type": "string", "enum": ["unverified", "supported", "refuted"] }
+              "when": {
+                "type": "string",
+                "minLength": 1
+              },
+              "update_assumption_id": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string",
+                "enum": [
+                  "unverified",
+                  "supported",
+                  "refuted"
+                ]
+              }
             },
             "additionalProperties": false
           }
         },
         "source_refs": {
           "type": "array",
-          "items": { "type": "string", "format": "project-ref" },
+          "items": {
+            "type": "string",
+            "format": "project-ref"
+          },
           "default": [],
           "description": "實際查過並保存下來的來源。空陣列代表沒查過，novelty_status 只能是 unverified"
         },
         "counterexamples": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "反方研究者找到的既有反例、替代機制或會讓結果失效的 slice"
         },
         "novelty_status": {
           "type": "string",
-          "enum": ["unverified", "novel_claimed", "prior_art_found"],
+          "enum": [
+            "unverified",
+            "novel_claimed",
+            "prior_art_found"
+          ],
           "description": "unverified 是預設值。沒有保存下來的來源就不得宣告 novel——模型憑記憶判斷新穎性會系統性高估"
         }
       },
       "additionalProperties": false
+    },
+    "analysis_plan": {
+      "$ref": "analysis-plan.schema.json"
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "status": { "const": "locked" } }, "required": ["status"] },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "locked"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "then": {
-        "required": ["derivation"],
+        "required": [
+          "derivation"
+        ],
         "description": "lock 是開始花算力的那一刻。此時題目推導必須已可稽核，否則事後只能用結果反推當初想問什麼"
       }
     }
@@ -266,26 +487,92 @@
       "oneOf": [
         {
           "type": "object",
-          "required": ["metric", "source", "field", "run_scope", "comparator", "threshold"],
+          "required": [
+            "metric",
+            "source",
+            "field",
+            "run_scope",
+            "comparator",
+            "threshold"
+          ],
           "properties": {
-            "metric": { "type": "string" }, "source": { "const": "run" },
-            "field": { "const": "value" },
-            "run_scope": { "enum": ["baseline", "treatment", "all"] },
-            "comparator": { "enum": [">", "<", ">=", "<=", "==", "!="] },
-            "threshold": { "type": "number" },
-            "reason": { "type": "string", "minLength": 1 }
+            "metric": {
+              "type": "string"
+            },
+            "source": {
+              "const": "run"
+            },
+            "field": {
+              "const": "value"
+            },
+            "run_scope": {
+              "enum": [
+                "baseline",
+                "treatment",
+                "all"
+              ]
+            },
+            "comparator": {
+              "enum": [
+                ">",
+                "<",
+                ">=",
+                "<=",
+                "==",
+                "!="
+              ]
+            },
+            "threshold": {
+              "type": "number"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "additionalProperties": false
         },
         {
           "type": "object",
-          "required": ["metric", "source", "field", "comparator", "threshold"],
+          "required": [
+            "metric",
+            "source",
+            "field",
+            "comparator",
+            "threshold"
+          ],
           "properties": {
-            "metric": { "type": "string" }, "source": { "const": "comparison" },
-            "field": { "enum": ["baseline", "treatment", "absolute_diff", "relative_diff"] },
-            "comparator": { "enum": [">", "<", ">=", "<=", "==", "!="] },
-            "threshold": { "type": "number" },
-            "reason": { "type": "string", "minLength": 1 }
+            "metric": {
+              "type": "string"
+            },
+            "source": {
+              "const": "comparison"
+            },
+            "field": {
+              "enum": [
+                "baseline",
+                "treatment",
+                "absolute_diff",
+                "relative_diff"
+              ]
+            },
+            "comparator": {
+              "enum": [
+                ">",
+                "<",
+                ">=",
+                "<=",
+                "==",
+                "!="
+              ]
+            },
+            "threshold": {
+              "type": "number"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "additionalProperties": false
         }
