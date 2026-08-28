@@ -1,7 +1,7 @@
-# agentfile
+# Agentfile
 
-**目的**：一套可搬移的開發規範與工作流程。套進任何新專案，讓 Claude Code 與 Codex 遵循同一組規則、讀同一份 skill。
+目的：用一個宣告式命令，把可組合的來源 layer 建立成可直接複製的 Agent 工作包。
 
-**範圍**：規範文件（`core/AGENTS.md` + `profiles/<name>/AGENTS.md`）、vendored 與自有 skills、`.claude/` 設定、`apply.sh` 投影腳本。分 core（跨專案類型都成立）與 profile（`software`／`experimental`，只在被選為 active profile 時生效）兩層，避免軟體開發規則污染實驗型專案，反之亦然。這包只管「怎麼做事」，不管「做什麼」——不含任何目標專案的業務邏輯。
+範圍：`agentfile build`、`core-superpowers`、`experimental`、相關技能、實驗資料契約與獨立 Experiment Viewer。本專案不管理目標專案的安裝狀態，也不提供上游或下游回報機制。
 
-**穩定背景**：套用方式與每日流程見 [README.md](../README.md)；系統組成見 [architecture.md](architecture.md)；決策理由見 `docs/adr/`；做事規則見 [AGENTS.md](../AGENTS.md)。
+穩定背景：使用方式見 [README](../README.md)。目前系統邊界見 [架構文件](architecture.md)。難以逆轉的決策見 [ADR](adr/)。

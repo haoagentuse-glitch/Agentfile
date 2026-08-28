@@ -1,0 +1,9 @@
+[build]
+output = "dist"
+
+[profiles.core-superpowers]
+layers = ["packages/core-superpowers"]
+
+[profiles.experimental]
+extends = "core-superpowers"
+layers = ["packages/experimental"]

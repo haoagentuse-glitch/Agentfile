@@ -1,5 +1,0 @@
-interface:
-  display_name: "拆成 ticket"
-  short_description: "拆成帶阻塞關係的縱向切片"
-policy:
-  allow_implicit_invocation: false

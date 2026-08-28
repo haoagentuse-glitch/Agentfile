@@ -1,12 +1,16 @@
 [project]
 name = "agentfile"
-version = "0.1.0"
-description = "隨身包本身的驗收測試。這個 repo 不是 Python 套件，只用 pytest 當 apply.sh 的測試入口。"
+version = "0.2.0"
+description = "從 core 與 experimental layers 產生可直接複製的 Agentfile 發行包。"
 requires-python = ">=3.12"
 dependencies = []
 
-[tool.uv]
-package = false
+[project.scripts]
+agentfile = "agentfile.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
@@ -17,5 +21,6 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
+
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]

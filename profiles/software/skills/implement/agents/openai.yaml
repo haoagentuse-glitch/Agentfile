@@ -1,5 +1,0 @@
-interface:
-  display_name: "實作"
-  short_description: "依 spec 或 ticket 把工作做出來"
-policy:
-  allow_implicit_invocation: false

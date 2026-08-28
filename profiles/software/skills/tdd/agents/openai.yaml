@@ -1,3 +1,0 @@
-interface:
-  display_name: "TDD"
-  short_description: "測試驅動的 red-green-refactor"

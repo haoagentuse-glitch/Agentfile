@@ -1,5 +1,5 @@
 // Schema Adapter — 把 records/experiments/ 底下目前這包定義的 schema 轉成 canonical model。
-// 只認 profiles/experimental/records/experiments/schemas/ 現有的欄位；schema 改版時只改這個檔案。
+// 只認 packages/experimental/records/experiments/schemas/ 現有的欄位；schema 改版時只改這個檔案。
 
 import type {
   CanonicalClaim,

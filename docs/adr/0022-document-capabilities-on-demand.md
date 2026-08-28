@@ -1,5 +1,7 @@
 # 文件治理吸收 claude-Godzilla-z 的能力，不吸收它的預設產物
 
+> **狀態：已由 [ADR 0023](0023-build-time-profile-composition.md) 取代。本文僅保留歷史脈絡。**
+
 `claude-Godzilla-z` 有一套 18 份的文件模板庫（`VibeCoding_Workflow_Templates/00–17`）與四個上層治理機制（`ABLATION.md`、`.out-of-scope/`、`PLAYBOOK.md` 的 A/B/C 工作深度、`01` 的文件路由）。它自己說得很清楚：這 18 份是能力庫，不是待辦清單。
 
 逐項比對本包現況之後，多數項目的結論是**已經有擁有者**。真正的缺口只有一個，而且不在文件層：本包替自己寫的規則沒有地方放——根 `AGENTS.md` 逐位元等於 `core/AGENTS.md` 加上 `profiles/software/AGENTS.md`，所以任何「怎麼維護 agentfile」的條文都會投影進每個下游專案。

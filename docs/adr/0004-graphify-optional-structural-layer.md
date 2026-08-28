@@ -1,5 +1,7 @@
 # Graphify 列為 optional 的未來結構檢索層，v1 不啟用
 
+> **狀態：已由 [ADR 0023](0023-build-time-profile-composition.md) 取代。本文僅保留歷史脈絡。**
+
 三種檢索各有分工：字面用 `rg`、語意與歷史用 memsearch，但「現行程式碼的結構」（symbol、import、call、dependency、影響範圍）目前沒有工具負責——多檔案探索或多 agent 重複讀檔時，只能整檔讀或用 `rg` 硬猜，成本隨 repo 複雜度上升。
 
 研究了 Graphify（本機 tree-sitter 靜態分析、零 LLM 呼叫、40+ 語言，跟主流 AI coding agent 都有整合），符合「結構檢索」這個缺口。決定：列為 optional 的未來層，v1 不安裝、不啟用。原則見 AGENTS.md「檢索」一節。

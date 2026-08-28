@@ -1,5 +1,7 @@
 # apply.sh 用投影雜湊判定可否更新，不再一律跳過既有檔
 
+> **狀態：已由 [ADR 0023](0023-build-time-profile-composition.md) 取代。本文僅保留歷史脈絡。**
+
 `apply.sh` 原本對已存在的檔案一律跳過。這對使用者改過的檔是對的，對從未被動過的投影檔是錯的，而兩者分不出來。實際後果：commit `468dfde` 同時新增 `project-bootstrap` 技能並修正 `core/.claude/commands/kickoff.md`，下游重跑只拿到新技能，`kickoff.md` 因為已存在被跳過，斷鏈的舊版留在目標專案裡，最後靠人工 diff 覆蓋。同時目標專案沒有任何來源紀錄，「這包是不是舊的」只能人工去比對。
 
 決定：投影時把內容雜湊記進目標專案的 `.agentfile/manifest.tsv`，來源版本記進 `.agentfile/source.json`。重跑時比對三個雜湊——本次組裝出的來源、manifest 記錄、目標現況——只有「目標現況等於當初投影的內容」才更新，其餘一律不動並回報。

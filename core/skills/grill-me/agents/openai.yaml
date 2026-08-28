@@ -1,5 +1,0 @@
-interface:
-  display_name: "追問我"
-  short_description: "用訪談把計畫問到站得住腳"
-policy:
-  allow_implicit_invocation: false

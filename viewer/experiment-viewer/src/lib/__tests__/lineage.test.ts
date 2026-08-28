@@ -11,7 +11,7 @@ import type { ProjectSnapshot } from "../canonical";
 // 貫穿式 fixture 只有一份，放在 profile 底下（experiment_records 的測試也讀它）。
 // 這裡直接指過去，不在 viewer 複製一份——複製出來的那份遲早會跟本尊分歧。
 const walkthroughDir = fileURLToPath(
-  new URL("../../../../../profiles/experimental/fixtures/rag-walkthrough", import.meta.url)
+  new URL("../../../../../examples/experimental/rag-walkthrough", import.meta.url)
 );
 
 async function walkthrough(): Promise<ProjectSnapshot> {

@@ -1,5 +1,0 @@
-interface:
-  display_name: "追問並寫文件"
-  short_description: "追問一個設計，同時把文件寫出來"
-policy:
-  allow_implicit_invocation: false

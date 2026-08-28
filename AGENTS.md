@@ -1,166 +1,60 @@
-# AGENTS.md
+# Agentfile 維護規則
 
-唯一規範來源。CLAUDE.md 僅以一行引用本檔。專案特化章節只追加於末尾，不改寫上游條文。
+## 語言
 
-## 核心原則
+所有自然語言輸出使用繁體中文。採用 `ASD-STE100` 的簡化技術寫作原則。一句一意。短句。直接表達。固定術語。
 
-- **KISS / YAGNI**：禁推測性抽象、設定與過度間接轉介。
-- **Context Budget**：AGENTS.md、skills、docs、memory、（未來可能的）graph 一律按需揭露，不預載。本檔只放不變量與導航；機制細節、已知限制留給各自的擁有文件，不重述。
-- **Optimize for Comprehension**：降低理解成本優先於降低操作成本。
-  - 順向：公開入口到實際邏輯 ≤ 2 跳，不需追 registry／factory／dispatcher。僅轉呼叫的層直接折疊，禁 wrapper chain。第三方庫不計跳數。
-  - 逆向（Glass Box）：任何結果可回溯至命令、設定、輸入與 commit。入口預設輸出這四項摘要，不得只回 `Done.`；禁未述副作用。完成與否以 test/lint/build/contract 等實際證據為準，不採自述完成。
-- **Walking Skeleton**：先端到端最小可運行版本，新能力疊在已可運作的產品上；不為未完成的複雜度犧牲可運作狀態。
-- **Structure Follows Need**：結構隨實際需求生長。無空目錄、無單路徑巢狀、無預建技術分層。模組邊界依「會一起改變的理由」切，不依技術類型切。
-- **One Obvious Way**：每種操作單一公開入口，並依「執行面」規範的入口交付——具體入口依 active profile 定義。
-- **Single Source of Truth**：依賴、設定、schema、文件各有唯一來源，其餘以連結引用。衍生產物（索引、快取、摘要、generated models、graph）永遠可刪除重建，不得凌駕權威來源。
-- **Cheapest Correct Retrieval Primitive**：能用 `rg` 精確比對就不用 embedding；能由程式結構（AST/graph）得到就不讓 LLM 猜；只有語意與歷史問題才查 memsearch。細節見「檢索」一節。
-- **Borrow Before Building**：先研究成熟產品與既有依賴的既定解法，不從零發明。沿用順序：既有依賴 → 標準庫 → 成熟函式庫 → 自寫；判準是整體複雜度，非依賴數量。斷言函式庫做不到之前，先查文件與型別。
-- **Delete, Don't Deprecate**：過時路徑直接移除，不加相容層、fallback、遷移邏輯。移除對外契約屬難逆決定，依優先序另判。
-- **Small Reversible Changes**：一次一事。重構、依賴升級各自獨立成一次變更；變更含清理，殘留即未完成。
-- **Parallelism Requires Isolation**：v1 不做協調器。真正開始多 Agent／多帳號平行改同一 repo 時，用 git worktree 隔離，屆時再評估 vendor `using-git-worktrees`；現在不預建。
-- **Explicit Over Implicit**：無隱藏依賴、臨時路徑、未述副作用。
-- **Measure Before Optimizing**。
+## 文件優先
 
-## 決策與衝突
+- `README.md` 是使用入口。
+- `docs/architecture.md` 是目前架構的唯一來源。
+- `docs/adr/` 保存難以逆轉的決策。
+- `agentfile.toml` 是 profile、繼承與 layer 的唯一設定來源。
+- Code 與 tests 是實際行為的依據。
 
-優先序：安全與可逆性 > 契約穩定 > SSoT > YAGNI。
+Issue、對話、記憶與外部 tracker 不是規格來源。改架構前先更新或新增 ADR。不要在多份文件重複同一事實。
 
-- 可逆決定走 YAGNI，取當下最簡。
-- 難逆決定（對外契約、資料 schema、持久化格式、儲存選型）依長期考量，不接受「先這樣之後再換」。
-- 分不清 → 當難逆處理。
-- 新增規則、skill 或工具的門檻：同類失敗反覆發生且有具體證據，才升格為 test／CI gate／AGENTS 規則／skill／工具。「之後可能會用到」不構成理由。
-- 本檔與 skill 是上游投影的產物。發現規範本身有缺口，用 `upstream-feedback` 技能回報上游，不在投影出來的檔案裡改寫上游條文——專案特化只追加於末尾。
+## 開發流程
 
-偏離規則不禁止，但須在對應位置留下一行；靜默偏離視為違規。盤點：`rg -n 'EXCEPTION:' --hidden --glob '!.git'`
+- 不在 `main` 或 `master` 直接修改。
+- 先建立可重現的失敗測試，再修改行為。
+- 使用 KISS 與 YAGNI。每個公開操作只有一個入口。
+- 不吞例外。不把錯誤偽裝成空結果。
+- 宣稱完成前，執行相關測試與完整測試。
+- 完成必須附實跑輸出。
 
-```
-EXCEPTION: <偏離哪條規則 + 理由> | 回收條件: <何時該移除>
-```
+## 建置邊界
 
-JSON、lock 檔與 generated file 不寫這一行——JSON 沒有註解，lock 檔與產物不該手改。這幾類的例外寫進**最近的權威 Markdown 決策紀錄**（該目錄的 ADR 或 `DECISIONS.md`），並在那一行裡寫出目標檔的路徑：
+- 來源只放在 `packages/`。不得手改 `dist/`。
+- `core-superpowers` 是完整 core layer。
+- `experimental` 只保存相對 core 新增的內容。
+- `agentfile build` 必須產生可獨立複製的完整 profile。
+- `.agents/skills/` 是技能來源。`.claude/skills/` 由建置器產生實體副本。
+- layer 間內容不同的同路徑檔案必須使建置失敗。
+- 發行包不得包含 `apply.sh`、`.agentfile/`、安裝狀態或回報協定。
 
-```
-EXCEPTION: records/experiments/schemas/foo.schema.json 追加 bar 欄位 + 理由 | 回收條件: <何時該移除>
-```
+## Vendored 內容
 
-落點統一，`rg` 才盤點得齊。把它塞進 schema 的 `description` 字串雖然掃得到，但那是每個專案各自發明的位置，掃不掃得到取決於默契。
+`packages/core-superpowers/.agents/skills/` 內的 superpowers 技能來自固定 commit。除非正在執行明確的 vendor 更新，不要改寫其流程語意。來源與授權記在 `docs/THIRD_PARTY_LICENSES.md`。
 
-## 專案結構與依賴
+## Experimental
 
-- 專案啟動第一件事是 `git init`，每個改動後自動 commit/push，不必詢問。
+實驗 schema 與 prompt 位於 `packages/experimental/records/experiments/`。確定性工具位於 `packages/experimental/.agents/tools/experiment-records/`。技能不得複製工具內的判定邏輯。
 
-語言、框架、依賴管理等技術棧限定規則依 active profile 定義，見本檔末尾追加的 Profile 章節。
+範例位於 `examples/`。範例不得混入發行包。
 
-## 執行面
+## Viewer
 
-約束交付方式，非僅程式碼結構。規範入口依 active profile 定義（見 Profile 章節「執行面」），此處只放跨 profile 都成立的不變量：
+`viewer/experiment-viewer/` 是獨立 Windows 原生工具。`agentfile build` 不得包含 Viewer。Windows 發行檔只能在 Windows NTFS checkout 建立。
 
-**可具名重現**：值得跑第二次的操作都要有名字；名字之外不承載狀態。終端是傳輸層，不是儲存層。
+## 驗證
 
-- 尚無名字的操作先加子命令再給指令。「先跑一次看看」不構成例外，診斷同規。不另開腳本檔包裝既有命令。
-- 交付格式：每個操作恰好一行可複製指令 + 一句說明。
-- 豁免：純環境探查且不重複執行。跑第二次即須落成子命令。
+根目錄 Python 環境只使用 `pyproject.toml + uv.lock + uv`。完整 Python gate：
 
-驗收：丟掉 scrollback、換一台機器、clean checkout，能否原樣再做一次？不能 → 缺名字或有環境依賴。
-
-**子命令放哪，看它依賴什麼：**
-
-| 依賴 | 落點 |
-|---|---|
-| 專案的資料、語料或設定 | 專案自己的 source |
-| 只依賴 canonical record 契約，換個專案照樣跑得動 | profile 的共用 `tools/` |
-
-判斷錯的代價不對稱：跨專案能力寫進專案 source，別的專案要重造一次；專案專屬的量測放進共用 `tools/`，下次投影就變成衝突。分不清就放專案 source——那個方向只是重複，另一個方向會擋住上游更新。
-
-## 輸出
-
-所有自然語言輸出使用中文，並採用 `ASD-STE100` skill 的簡化技術寫作原則。
-
-## 職責邊界
-
-各來源回答的問題不重疊，同一事實只有一個擁有者。
-
-| 來源 | 回答什麼 |
-|---|---|
-| GitHub Issues | 要做什麼 |
-| `docs/` | 系統現在是什麼、為什麼 |
-| AGENTS.md | Agent 必須怎麼做 |
-| Code / Tests | 系統實際做什麼 |
-| memsearch memory | 過去發生過什麼 |
-| `CLAUDE.local.md`（Claude Code 原生機制，不進版控） | 這台機器、這個人專屬的規範覆寫 |
-| `docs/eval/` | 這包的能力有沒有變好變壞，怎麼量 |
-
-`docs/PROJECT.md` 只記目的、範圍、系統概觀與穩定背景，不是 feature spec 或任務清單，不複製 issue 內容。
-
-判斷專案現況與歷史時的權威順序，**不決定工程行為**：
-
-```text
-Code / Tests → Current Docs / ADR → AGENTS.md → Handoff → Conversation Memory → Raw Transcript
+```bash
+uv run --frozen ruff check src tests packages/experimental/.agents/tools/experiment-records/src packages/experimental/.agents/tools/experiment-records/tests
+uv run --frozen pytest
+uv run --project packages/experimental/.agents/tools/experiment-records --frozen pytest packages/experimental/.agents/tools/experiment-records/tests
 ```
 
-工程行為始終遵守 AGENTS.md；現況違規是待修偏離，不構成先例。Memory 只解釋歷史，不覆蓋現行 code/docs。Handoff 置於 OS 暫存目錄，不進版控。
-
-## 技能 vendoring
-
-- 每個能力只保留一份實作。外部技能 vendor 進本包，不依賴使用者層級外掛。
-- vendored 檔案改寫成中文，照原意重寫，規則的數量與強度不得增減。指令、旗標、檔名、schema key、enum 值與英文觸發語保留原文；技術術語在中文沒有廣為使用的說法時保留原文。理由見[上游 ADR 0020](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0020-vendored-skills-in-chinese.md)。
-- `metadata.source` 記來源 repo、commit 與改寫狀態；授權在頂層 `license` 或 `metadata.license` 擇一宣告，全文集中在 `docs/THIRD_PARTY_LICENSES.md`。
-- 更新是 diff 上游自己的兩個 commit——`metadata.source` 記的那個與現在的上游——判斷那段期間改了什麼再決定採不採納，不自動同步。
-
-canonical source 為 `core/skills/<name>/` 或 `profiles/<name>/skills/<name>/`；`.claude/skills` 以 symlink 指向投影後的聯集；Codex 直接掃 `.agents/skills`。
-
-## 檢索
-
-三種檢索各司其職，選最便宜、夠精確的那個：
-
-| 工具 | 職責 |
-|---|---|
-| `rg` | 字面／精確比對 |
-| Graphify（deferred，見[上游 ADR 0004](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0004-graphify-optional-structural-layer.md)） | 現行程式碼的結構：symbol、import、call、dependency、影響範圍 |
-| memsearch | 語意與歷史：`docs/` 的語意索引、跨 session 記憶 |
-
-Graphify 職責僅限現行程式碼結構，不得碰 conversation memory、Issue、ADR 或 task state——一旦這些邊界混進同一個檢索工具，「檢索結果」會悄悄變成「決策依據」。v1 不安裝，啟用門檻與範圍限制見上面連的那份上游 ADR。
-
-`docs/` 是唯一來源，語意索引只是可重建快取，指令見 `project-docs` 技能。未安裝或索引失敗不得使主任務失敗，只回報「語意索引未更新」。本包不為索引加 hook 或 watch，不自行改 chunking，不改寫或 vendor 語意工具的官方擷取流程。
-
-跨 session 記憶預設不進版控，細節見[上游 ADR 0001](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0001-memsearch-two-layer-memory.md)、[上游 ADR 0002](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/adr/0002-memsearch-memory-not-tracked-by-default.md)。記憶與 `docs/` 資料量差距過大時的檢索反轉問題，記在[上游 architecture.md](https://github.com/haoagentuse-glitch/Agentfile/blob/main/docs/architecture.md)，不重述。
-
-Retrieval scope 依 active profile 隔離：`memsearch search` 該不該帶 `--source-prefix records/`，由呼叫的 skill 依自己所屬 profile 決定，見各 skill 的 SKILL.md；`records/` 底下的內容不因為存在，就在不相關的 profile 裡被檢索到。
-
-## Software Profile
-
-追加於 `core/AGENTS.md` 之後，只講軟體工程專案的特化規則，不改寫上游條文。
-
-### 專案結構與依賴（軟體特化）
-
-- 每個 Python 專案獨立 `.venv`，禁全域依賴。
-- 遵循 Python 3.12+ 最新 PEP。嚴格禁止（不可 EXCEPTION 豁免）：舊版專案配置、已廢棄型態寫法、SQL/Shell 的 f-string 拼接、過時併發模式。
-- 版本釘選並提交鎖檔，禁以 latest 作為穩定策略。新增依賴須在 commit 訊息寫理由。
-
-### 執行面（軟體特化）
-
-規範入口恰有兩個：
-
-- 營運／管線：`python -m <pkg> <subcommand>`，子命令集中註冊於一處，`--help` 即完整清單，README 只連到此。
-- 測試：`pytest <node-id>`，不自建測試包裝。
-
-```
-✗ python -c "from proj.pipeline import run; run('ingest')"
-✗ $env:MODE='dev'; python scripts/a.py
-✗ cat > proj/task.py << 'EOF' ...
-✓ python -m proj pipeline run --stage ingest
-✓ pytest tests/test_ingest.py::test_schema
-```
-
-### 契約驅動
-
-HTTP API 以 `openapi.yaml` 為唯一來源，models 與契約測試由其生成，皆為產物、禁手改。做法見 `api-contract` 技能。
-
-- 契約測試只驗證實作符合 spec；業務行為與 regression 由手寫測試負責。契約全綠不代表行為正確。
-- CI 必須重跑生成並確認零差異。有差異就修 spec 或重新生成，不得改產物。
-
-## agentfile 本體維護
-
-這一節在受管前綴之外，不投影到任何下游。只治理本包自己的規則寫在這裡。寫進 `core/` 或 `profiles/` 的規則會出現在每個套用這包的專案裡，下游不負責維護本包。
-
-**規則會過期。** 新增規則的門檻是反覆失敗的證據，移除的判準對稱：原始失敗條件不再重現時就降級或刪除，不因為「當初有理由」而保留。分兩類處理——**方法論**是本包的意圖，長期保留；**補丁**補的是特定模型或 runtime 的弱點，模型大版本更新或 runtime 能力明顯改變時重驗一次，說不出現在還會怎麼失敗就刪掉。
+Viewer 依其 README 執行獨立測試。

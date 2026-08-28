@@ -1,5 +1,7 @@
 # 拆成 core + profile，不再無差別套用整包
 
+> **狀態：已由 [ADR 0023](0023-build-time-profile-composition.md) 取代。本文僅保留歷史脈絡。**
+
 這包原本假設所有專案都是「軟體工程開發」：`skills/`、`AGENTS.md`、`.claude/settings.json` 全部無差別複製到任何目標專案。使用者在做演算法／RAG／ML 這類實驗型工作時發現：一般軟體開發的約束防不住實驗特有的失真模式——baseline 漂移、變因混雜、事後挑指標、算力預算不一致。這些需要一整套跟「軟體工程」性質不同的不變量（凍結 baseline、控制變因、決策規則先於結果），但同時大部分現有規則（KISS/YAGNI、SSoT、Glass Box、Context Budget……）對任何技術專案都成立，不該為了加這批新規則就複製一整份新的 AGENTS.md。
 
 決定：拆成 `core/`（永遠啟用的共通能力）+ `profiles/<name>/`（只在被選為 active profile 時才生效的特化規則與 skill）。`apply.sh` 依 `--profile` 參數（預設 `software`）組裝目標專案，未啟用 profile 的規則、skill、設定完全不會出現在目標專案裡——不是「寫在文件裡告誡 agent 不要用」，是實體檔案不存在，agent 讀不到就不可能誤用。

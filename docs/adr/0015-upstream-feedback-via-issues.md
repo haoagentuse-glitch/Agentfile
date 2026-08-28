@@ -1,5 +1,7 @@
 # 下游回饋走上游 repo 的 GitHub Issue，不自建回收管線
 
+> **狀態：已由 [ADR 0023](0023-build-time-profile-composition.md) 取代。本文僅保留歷史脈絡。**
+
 下游專案在實際使用中會發現規範缺口——某條規則與情境衝突、某個 skill 少了一步、某個 profile 的欄位要求套不到這個階段。這些觀察目前沒有回路：除非人工轉述，否則直接消失。上游也因此看不到「同一個問題在幾個專案重現過」。
 
 評估過的另一個做法是在下游寫 `.agentfile/feedback.jsonl`，上游跑 `feedback sync` 回收，經 fingerprint 聚合後走 observed → candidate → recommend_accept → accepted → resolved 的生命週期。決定不做，改用上游 repo 的 GitHub Issue。

@@ -20,13 +20,15 @@ jobs:
       - name: Install locked Python environments
         run: |
           uv sync --frozen --python 3.12.12
-          uv sync --project profiles/experimental/tools/experiment-records --frozen --python 3.12.12
+          uv sync --project packages/experimental/.agents/tools/experiment-records --frozen --python 3.12.12
       - name: Lint Python
-        run: uv run --frozen ruff check tests profiles/experimental/tools/experiment-records/src profiles/experimental/tools/experiment-records/tests
-      - name: Test apply projection
+        run: uv run --frozen ruff check src tests packages/experimental/.agents/tools/experiment-records/src packages/experimental/.agents/tools/experiment-records/tests
+      - name: Build distributions
+        run: uv run --frozen agentfile build
+      - name: Test Agentfile
         run: uv run --frozen pytest
       - name: Test experiment records
-        run: uv run --project profiles/experimental/tools/experiment-records --frozen pytest profiles/experimental/tools/experiment-records/tests
+        run: uv run --project packages/experimental/.agents/tools/experiment-records --frozen pytest packages/experimental/.agents/tools/experiment-records/tests
 
   viewer:
     runs-on: ubuntu-24.04
