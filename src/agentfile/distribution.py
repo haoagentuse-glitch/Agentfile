@@ -160,12 +160,17 @@ def _build_plans(
         if missing:
             raise BuildError(f"profile {profile} 缺少 layer：{', '.join(missing)}")
         target = (output / profile).resolve()
-        overlapping = [str(layer) for layer in layers if _paths_overlap(target, layer)]
+        plans.append(_BuildPlan(profile, layers, target))
+    all_layers = {layer for plan in plans for layer in plan.layers}
+    for plan in plans:
+        overlapping = [
+            str(layer) for layer in all_layers if _paths_overlap(plan.target, layer)
+        ]
         if overlapping:
             raise BuildError(
-                f"profile {profile} 的輸出與來源 layer 重疊：{', '.join(overlapping)}"
+                f"profile {plan.profile} 的輸出與來源 layer 重疊："
+                f"{', '.join(sorted(overlapping))}"
             )
-        plans.append(_BuildPlan(profile, layers, target))
     return plans
 
 
