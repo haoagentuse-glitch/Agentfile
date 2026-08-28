@@ -26,6 +26,8 @@
 
 一般檔案依相對路徑合併。內容不同的同路徑檔案視為設計碰撞，建置失敗。`AGENTS*.md` 與 `CLAUDE*.md` 是唯一具有串接語意的片段。
 
+建置排除常見本機衍生目錄。輸出 profile 不得與來源 layer 重疊。這兩項檢查都在替換既有輸出前完成。
+
 `.agents/skills/` 是技能來源。建置器產生內容相同的 `.claude/skills/` 實體副本。不得依賴 symlink。這讓同一發行包可跨 Windows、WSL、Linux 與 macOS 複製。
 
 ### 複製是所有權轉移

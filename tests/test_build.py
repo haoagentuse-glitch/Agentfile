@@ -61,7 +61,9 @@ def test_build_produces_two_complete_copyable_profiles(built: Path) -> None:
     assert not (core / ".agents/skills/experiment-design").exists()
     assert (experimental / ".agents/skills/experiment-design/SKILL.md").is_file()
     assert (experimental / ".agents/tools/experiment-records/pyproject.toml").is_file()
-    assert (experimental / "records/experiments/schemas/experiment-contract.schema.json").is_file()
+    assert (
+        experimental / "records/experiments/schemas/experiment-contract.schema.json"
+    ).is_file()
 
 
 def test_claude_and_codex_receive_identical_physical_skill_trees(built: Path) -> None:
@@ -72,7 +74,9 @@ def test_claude_and_codex_receive_identical_physical_skill_trees(built: Path) ->
         )
 
 
-def test_removed_projection_and_grill_mechanisms_are_not_distributed(built: Path) -> None:
+def test_removed_projection_and_grill_mechanisms_are_not_distributed(
+    built: Path,
+) -> None:
     for profile_name in ("core-superpowers", "experimental"):
         profile = built / profile_name
         assert not (profile / ".agentfile").exists()

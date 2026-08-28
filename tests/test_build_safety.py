@@ -64,8 +64,8 @@ def test_profile_name_cannot_escape_output_directory(tmp_path: Path) -> None:
 def test_profile_inheritance_cycle_fails_clearly(tmp_path: Path) -> None:
     config = tmp_path / "agentfile.toml"
     config.write_text(
-        "[profiles.a]\nextends = \"b\"\nlayers = []\n"
-        "[profiles.b]\nextends = \"a\"\nlayers = []\n",
+        '[profiles.a]\nextends = "b"\nlayers = []\n'
+        '[profiles.b]\nextends = "a"\nlayers = []\n',
         encoding="utf-8",
     )
 

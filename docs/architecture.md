@@ -39,6 +39,8 @@ agentfile.toml
 
 每個 layer 的目錄形狀和最終專案相同。一般檔案依相對路徑複製。不同 layer 若提供內容不同的同一路徑，建置立即失敗。內容完全相同時可安全合併。
 
+本機衍生目錄不屬於 layer 內容。建置器會排除 `.venv`、`__pycache__`、`.pytest_cache`、`.ruff_cache`、`node_modules` 與 `target`。輸出 profile 若與任一來源 layer 重疊，建置會在建立輸出前失敗。
+
 layer 根目錄可提供 `AGENTS*.md` 與 `CLAUDE*.md` 片段。建置器依繼承順序和檔名順序串接片段，產生單一 `AGENTS.md` 與 `CLAUDE.md`。
 
 `.agents/skills/` 是技能來源。建置器把它實體複製為 `.claude/skills/`。來源 layer 不得自行提供 `.claude/skills/`。這項規則避開 Windows 與 WSL 對 symlink 的差異。
