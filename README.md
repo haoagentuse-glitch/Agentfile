@@ -48,6 +48,8 @@ cp -a dist/experimental/. /path/to/project/
 
 `core-superpowers` 使用 vendored [obra/superpowers](https://github.com/obra/superpowers) 工作流。需求先經 `brainstorming` 形成設計。核准後由 `writing-plans` 產生計畫。實作使用測試驅動開發、完成前驗證與程式碼審查。
 
+core 也包含 `frontend-router`。它依框架與頁面類型漸進載入 Streamlit、React／Next.js／shadcn 或 SwiftUI 技能，再按需求加入設計系統、動效與審查技能。Archify 與 Mono Color 不在此路由內。
+
 文件是規格與決策的權威來源：
 
 - `docs/superpowers/specs/` 保存核准的設計。

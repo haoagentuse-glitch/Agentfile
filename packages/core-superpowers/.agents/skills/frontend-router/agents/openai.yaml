@@ -1,0 +1,6 @@
+interface:
+  display_name: "Frontend Router"
+  short_description: "Route frontend work to framework-specific design skills"
+  default_prompt: "Use $frontend-router to choose the right framework and design workflow for this frontend task."
+policy:
+  allow_implicit_invocation: true

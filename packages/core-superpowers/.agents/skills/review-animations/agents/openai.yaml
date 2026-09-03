@@ -1,0 +1,6 @@
+interface:
+  display_name: "Review Animations"
+  short_description: "Review animation code against a strict craft bar"
+  default_prompt: "Use $review-animations to review the motion code in the requested scope."
+policy:
+  allow_implicit_invocation: false
